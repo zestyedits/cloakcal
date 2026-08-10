@@ -1,6 +1,7 @@
 export {
   expandSeries,
   expandAllDay,
+  occurrenceInstant,
   resolveLocal,
   type AllDayOccurrence,
   type AllDaySpec,

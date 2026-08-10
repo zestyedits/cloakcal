@@ -1,5 +1,11 @@
 import { CLOAK_ALG, type CloakedPayload } from '@cloakcal/crypto'
-import { expandSeries, planSeriesEdit, type EditScope, type SeriesSpec } from '@cloakcal/domain'
+import {
+  expandSeries,
+  occurrenceInstant,
+  planSeriesEdit,
+  type EditScope,
+  type SeriesSpec,
+} from '@cloakcal/domain'
 
 /**
  * Event CRUD — the layer where recurrence, encryption and RLS meet.
@@ -233,18 +239,94 @@ export async function loadSeriesSpec(
   }
 }
 
-export interface ApplySeriesEditInput {
+export interface VerifyRange {
+  readonly from: string
+  readonly to: string
+}
+
+export interface SeriesEditBase {
   readonly seriesId: string
   readonly workspaceId: string
   readonly actorId: string
   readonly occurrenceLocal: string
-  readonly scope: EditScope
   /** Gate 2: the version the caller believes it is editing. */
   readonly expectedVersion: number
   /** Content for a detached occurrence or a successor series. Cloaked, never plaintext. */
   readonly fields?: readonly CloakedField[]
-  /** Window used for the post-write verification in gate 3. */
-  readonly verifyRange?: { readonly from: string; readonly to: string }
+}
+
+/**
+ * Gate 3 made unskippable.
+ *
+ * `verifyRange` was previously optional for every scope, which meant a caller could
+ * silently bypass post-write verification on a split by forgetting one field. A split is
+ * the only edit that can destroy future occurrences, so it is the one edit where
+ * verification must not be a matter of remembering.
+ *
+ * The union makes `this-and-future` without a range a COMPILE error. `assertVerifyRange`
+ * covers the rest — values arriving over an API boundary or through `any`.
+ */
+export type SeriesEditCommand =
+  | (SeriesEditBase & { readonly scope: 'this' })
+  | (SeriesEditBase & { readonly scope: 'entire-series'; readonly verifyRange?: VerifyRange })
+  | (SeriesEditBase & { readonly scope: 'this-and-future'; readonly verifyRange: VerifyRange })
+
+export class InvalidVerifyRangeError extends Error {
+  constructor(message: string) {
+    super(`Post-write verification range is unusable: ${message}`)
+    this.name = 'InvalidVerifyRangeError'
+  }
+}
+
+const isIsoInstant = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false
+  const t = Date.parse(value)
+  return Number.isFinite(t) && /\d{4}-\d{2}-\d{2}T/.test(value)
+}
+
+/** Structural validation. Runs before any write, so a bad range never opens a transaction. */
+export function assertVerifyRangeShape(range: unknown): asserts range is VerifyRange {
+  if (range === null || typeof range !== 'object') {
+    throw new InvalidVerifyRangeError('a range is required for a this-and-future edit')
+  }
+  const { from, to } = range as Record<string, unknown>
+  if (!isIsoInstant(from) || !isIsoInstant(to)) {
+    throw new InvalidVerifyRangeError('from and to must both be ISO instants')
+  }
+  if (Date.parse(from) >= Date.parse(to)) {
+    throw new InvalidVerifyRangeError('from must be strictly before to')
+  }
+}
+
+/**
+ * Containment validation, once the series timezone is known.
+ *
+ * A range that does not straddle the split point makes verification VACUOUS: both sides
+ * come back empty and the comparison passes without having checked anything. Requiring the
+ * split strictly inside the window guarantees the truncated series and the successor can
+ * each contribute occurrences, so a real mismatch has somewhere to show up.
+ */
+function assertVerifyRangeStraddles(
+  range: VerifyRange,
+  occurrenceLocal: string,
+  timezone: string,
+): void {
+  // occurrenceInstant applies the same DST policy the expansion does, so containment is
+  // judged against the instant the occurrence will actually land on.
+  const at = Date.parse(occurrenceInstant(occurrenceLocal, timezone))
+  const from = Date.parse(range.from)
+  const to = Date.parse(range.to)
+
+  if (at <= from) {
+    throw new InvalidVerifyRangeError(
+      `the range starts at or after the split point (${occurrenceLocal}), so the truncated series would not be checked`,
+    )
+  }
+  if (at >= to) {
+    throw new InvalidVerifyRangeError(
+      `the range ends at or before the split point (${occurrenceLocal}), so the successor would not be checked`,
+    )
+  }
 }
 
 export interface ApplySeriesEditResult {
@@ -265,14 +347,30 @@ export interface ApplySeriesEditResult {
  */
 export async function applySeriesEdit(
   db: Db,
-  input: ApplySeriesEditInput,
+  input: SeriesEditCommand,
 ): Promise<ApplySeriesEditResult> {
   for (const field of input.fields ?? []) assertCloaked(field)
+
+  // Runtime backstop for the compile-time union: a command arriving over an API boundary
+  // or through `any` still cannot skip verification on a split.
+  const verifyRange =
+    input.scope === 'this-and-future' || input.scope === 'entire-series'
+      ? (input as { verifyRange?: unknown }).verifyRange
+      : undefined
+
+  if (input.scope === 'this-and-future') {
+    assertVerifyRangeShape(verifyRange)
+  }
 
   return db.transaction(async (tx) => {
     const current = await loadSeriesSpec(tx, input.seriesId)
     if (current === null) {
       throw new VersionConflictError(input.seriesId, input.expectedVersion)
+    }
+
+    if (input.scope === 'this-and-future') {
+      // Deferred until the series is loaded, because containment depends on its timezone.
+      assertVerifyRangeStraddles(verifyRange as VerifyRange, input.occurrenceLocal, current.timezone)
     }
 
     const plan = planSeriesEdit({
@@ -414,15 +512,16 @@ export async function applySeriesEdit(
     }
 
     /* Gate 3 — re-expand what was actually STORED and compare against the plan. */
-    if (plan.newSeries !== null && input.verifyRange !== undefined) {
+    if (plan.newSeries !== null) {
+      const range = verifyRange as VerifyRange
       const storedOriginal = await loadSeriesSpec(tx, input.seriesId)
       const storedSuccessor = await loadSeriesSpec(tx, successorSeriesId!)
       if (storedOriginal === null || storedSuccessor === null) {
         throw new VerificationFailedError('Split verification could not read back both series')
       }
 
-      const before = expandSeries(storedOriginal, input.verifyRange).map((o) => o.occurrenceLocal)
-      const after = expandSeries(storedSuccessor, input.verifyRange).map((o) => o.occurrenceLocal)
+      const before = expandSeries(storedOriginal, range).map((o) => o.occurrenceLocal)
+      const after = expandSeries(storedSuccessor, range).map((o) => o.occurrenceLocal)
 
       if (before.some((o) => o >= input.occurrenceLocal)) {
         throw new VerificationFailedError(
@@ -438,7 +537,7 @@ export async function applySeriesEdit(
         throw new VerificationFailedError('Split produced duplicate occurrences')
       }
 
-      const expected = expandSeries(current, input.verifyRange).map((o) => o.occurrenceLocal)
+      const expected = expandSeries(current, range).map((o) => o.occurrenceLocal)
       if ([...before, ...after].join('|') !== expected.join('|')) {
         throw new VerificationFailedError(
           'Stored split does not reproduce the original occurrence set',
@@ -479,4 +578,42 @@ export async function trashEvent(
 
     await audit(tx, input.workspaceId, input.actorId, 'event.trashed', input.eventId)
   })
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Named entry points                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Edit one occurrence, detaching it from the series. No verification range: nothing is
+ * truncated, so there is no occurrence set to reconcile.
+ */
+export function editSingleOccurrence(
+  db: Db,
+  input: SeriesEditBase,
+): Promise<ApplySeriesEditResult> {
+  return applySeriesEdit(db, { ...input, scope: 'this' })
+}
+
+/**
+ * Edit every occurrence. The rule is unchanged, so verification is genuinely unnecessary
+ * and the range stays optional — pass one when a caller wants the extra assurance.
+ */
+export function editEntireSeries(
+  db: Db,
+  input: SeriesEditBase & { readonly verifyRange?: VerifyRange },
+): Promise<ApplySeriesEditResult> {
+  return applySeriesEdit(db, { ...input, scope: 'entire-series' })
+}
+
+/**
+ * Split the series. `verifyRange` is REQUIRED — this is the only edit that can destroy
+ * future occurrences, so it always post-write verifies.
+ */
+export function editThisAndFuture(
+  db: Db,
+  input: SeriesEditBase & { readonly verifyRange: VerifyRange },
+): Promise<ApplySeriesEditResult> {
+  return applySeriesEdit(db, { ...input, scope: 'this-and-future' })
 }

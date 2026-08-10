@@ -115,6 +115,18 @@ export function resolveLocal(
   return { zoned: later, dst: 'nonexistent-shifted' }
 }
 
+/**
+ * Resolve a local occurrence key to an ISO instant, applying the ADR 0001 policy.
+ *
+ * Exists so consumers (the CRUD service, later the API) can compare occurrence times
+ * without importing Temporal or hand-rolling zone maths — the DST policy stays in exactly
+ * one place, which is the entire point of this module.
+ */
+export function occurrenceInstant(occurrenceLocal: string, timezone: string): string {
+  const { zoned } = resolveLocal(Temporal.PlainDateTime.from(occurrenceLocal), timezone)
+  return zoned.toInstant().toString()
+}
+
 /** Local candidates, before zone resolution and before exceptions. */
 function localCandidates(spec: SeriesSpec, windowFrom: Date, windowTo: Date): Date[] {
   const dtstart = toFloatingDate(Temporal.PlainDateTime.from(spec.dtstartLocal))

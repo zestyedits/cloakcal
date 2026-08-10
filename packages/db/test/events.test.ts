@@ -2,12 +2,15 @@ import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { cloakField, rootKeyFromSeedBytes } from '@cloakcal/crypto'
 import { expandSeries } from '@cloakcal/domain'
 import {
+  InvalidVerifyRangeError,
   PlaintextRejectedError,
   VerificationFailedError,
   VersionConflictError,
   applySeriesEdit,
   assertCloaked,
   createEvent,
+  editSingleOccurrence,
+  editThisAndFuture,
   loadSeriesSpec,
   trashEvent,
   type Db,
@@ -317,6 +320,107 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
     expect(events.rows).toHaveLength(1)
     expect(events.rows[0]!['rrule']).toBe('FREQ=WEEKLY;BYDAY=TU')
     expect(events.rows[0]!['version']).toBe(1)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+
+describe('gate 3 cannot be skipped', () => {
+  const base = (seriesId: string) => ({
+    seriesId,
+    workspaceId: wsA,
+    actorId: USER_A,
+    occurrenceLocal: '2026-03-10T09:00:00',
+    expectedVersion: 1,
+  })
+
+  it('rejects a split with no verification range at all', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    // The union makes this a compile error; the cast simulates a value arriving over an
+    // API boundary, which is exactly where the runtime guard has to hold.
+    await expect(
+      applySeriesEdit(dbFor(USER_A), {
+        ...base(seriesId),
+        scope: 'this-and-future',
+      } as never),
+    ).rejects.toThrow(InvalidVerifyRangeError)
+  })
+
+  it('rejects a malformed range', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    await expect(
+      applySeriesEdit(dbFor(USER_A), {
+        ...base(seriesId),
+        scope: 'this-and-future',
+        verifyRange: { from: 'not-a-date', to: '2026-12-31T00:00:00Z' },
+      } as never),
+    ).rejects.toThrow(/ISO instants/)
+  })
+
+  it('rejects an inverted range', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    await expect(
+      editThisAndFuture(dbFor(USER_A), {
+        ...base(seriesId),
+        verifyRange: { from: '2026-12-31T00:00:00Z', to: '2026-01-01T00:00:00Z' },
+      }),
+    ).rejects.toThrow(/strictly before/)
+  })
+
+  it('rejects a range that starts after the split, which would leave truncation unchecked', async () => {
+    // The vacuous case: with no window before the split, the truncated series contributes
+    // nothing and the comparison passes without having verified anything.
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    await expect(
+      editThisAndFuture(dbFor(USER_A), {
+        ...base(seriesId),
+        verifyRange: { from: '2026-06-01T00:00:00Z', to: '2026-12-31T00:00:00Z' },
+      }),
+    ).rejects.toThrow(/would not be checked/)
+  })
+
+  it('rejects a range that ends before the split, which would leave the successor unchecked', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    await expect(
+      editThisAndFuture(dbFor(USER_A), {
+        ...base(seriesId),
+        verifyRange: { from: '2026-01-01T00:00:00Z', to: '2026-02-01T00:00:00Z' },
+      }),
+    ).rejects.toThrow(/would not be checked/)
+  })
+
+  it('writes nothing when the range is rejected', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    await expect(
+      applySeriesEdit(dbFor(USER_A), { ...base(seriesId), scope: 'this-and-future' } as never),
+    ).rejects.toThrow(InvalidVerifyRangeError)
+
+    const events = await db.as(USER_A, 'select id, rrule, version from public.events')
+    expect(events.rows).toHaveLength(1)
+    expect(events.rows[0]!['version']).toBe(1)
+  })
+
+  it('accepts a straddling range', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    const result = await editThisAndFuture(dbFor(USER_A), {
+      ...base(seriesId),
+      verifyRange: VERIFY_RANGE,
+      fields: [await anyField('title', 'v2')],
+    })
+    expect(result.successorSeriesId).toBeTruthy()
+  })
+
+  it('needs no range for a single-occurrence edit, which truncates nothing', async () => {
+    const seriesId = await makeSeries(USER_A, wsA, calA)
+    const result = await editSingleOccurrence(dbFor(USER_A), {
+      seriesId,
+      workspaceId: wsA,
+      actorId: USER_A,
+      occurrenceLocal: '2026-02-10T09:00:00',
+      expectedVersion: 1,
+      fields: [await anyField('title', 'one-off')],
+    })
+    expect(result.detachedEventId).toBeTruthy()
   })
 })
 
