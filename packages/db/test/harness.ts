@@ -82,13 +82,27 @@ const MIGRATIONS = [
   '0005_route_token_128bit.sql',
 ] as const
 
+export interface QueryResult {
+  rows: Record<string, unknown>[]
+}
+
+export type Executor = (sql: string, params?: unknown[]) => Promise<QueryResult>
+
 export interface TestDb {
   /** Run SQL as the Postgres superuser, bypassing RLS. Use only for setup/teardown. */
-  raw(sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>
+  raw(sql: string, params?: unknown[]): Promise<QueryResult>
   /** Run SQL as a specific signed-in user, with RLS enforced. */
-  as(userId: string, sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>
+  as(userId: string, sql: string, params?: unknown[]): Promise<QueryResult>
   /** Run SQL as an anonymous caller (no JWT subject), with RLS enforced. */
-  asAnon(sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>
+  asAnon(sql: string, params?: unknown[]): Promise<QueryResult>
+  /**
+   * Run a callback inside a real transaction, as a signed-in user.
+   *
+   * Identity is applied with `SET LOCAL`, so it reverts at commit or rollback and cannot
+   * bleed into the next test. Without this, atomicity claims could not be tested at all —
+   * a partial write would look identical to a successful one.
+   */
+  asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T>
   /** Create an auth.users row and return its id. */
   createUser(id: string, email: string): Promise<string>
   close(): Promise<void>
@@ -124,6 +138,21 @@ export async function createTestDb(): Promise<TestDb> {
     },
     as: (userId, sql, params) => runAs(userId, sql, params),
     asAnon: (sql, params) => runAs(null, sql, params),
+
+    async asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T> {
+      const result = await pg.transaction(async (tx) => {
+        // SET LOCAL scopes both settings to this transaction: they revert on COMMIT and on
+        // ROLLBACK alike, so a rolled-back test cannot leave an identity behind.
+        await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [userId])
+        await tx.exec('set local role authenticated')
+
+        return fn(async (sql, params = []) => {
+          const r = await tx.query<Record<string, unknown>>(sql, params)
+          return { rows: r.rows }
+        })
+      })
+      return result as T
+    },
     async createUser(id, email) {
       await pg.query('insert into auth.users (id, email) values ($1, $2)', [id, email])
       return id

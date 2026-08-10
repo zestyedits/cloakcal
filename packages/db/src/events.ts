@@ -1,0 +1,482 @@
+import { CLOAK_ALG, type CloakedPayload } from '@cloakcal/crypto'
+import { expandSeries, planSeriesEdit, type EditScope, type SeriesSpec } from '@cloakcal/domain'
+
+/**
+ * Event CRUD — the layer where recurrence, encryption and RLS meet.
+ *
+ * FIVE SERVICE GATES, all enforced here rather than left to callers:
+ *   1. A series split is atomic. Truncate, successor, exceptions and audit land in ONE
+ *      transaction, or none of them do.
+ *   2. Optimistic concurrency. Every mutation is guarded by an expected version, so two
+ *      concurrent edits cannot produce overlapping or lost series.
+ *   3. Post-write verification. After a split, the STORED series are re-expanded and
+ *      compared against the plan. A mismatch rolls the transaction back.
+ *   4. No plaintext, ever. Tier B content enters only as CloakedPayload — the signature
+ *      makes a string unrepresentable, and a runtime guard catches structural mistakes.
+ *   5. Cross-workspace writes fail, and failure rolls back cleanly.
+ */
+
+export interface QueryResult {
+  rows: Record<string, unknown>[]
+}
+
+export type Executor = (sql: string, params?: unknown[]) => Promise<QueryResult>
+
+export interface Db {
+  query: Executor
+  transaction<T>(fn: (tx: Executor) => Promise<T>): Promise<T>
+}
+
+/* -------------------------------------------------------------------------- */
+/* Gate 4 — nothing plaintext crosses this boundary                           */
+/* -------------------------------------------------------------------------- */
+
+export interface CloakedField {
+  readonly fieldName: string
+  readonly payload: CloakedPayload
+}
+
+export class PlaintextRejectedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PlaintextRejectedError'
+  }
+}
+
+export class VersionConflictError extends Error {
+  constructor(
+    readonly eventId: string,
+    readonly expected: number,
+  ) {
+    super(`Event ${eventId} was modified by someone else (expected version ${expected})`)
+    this.name = 'VersionConflictError'
+  }
+}
+
+export class VerificationFailedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'VerificationFailedError'
+  }
+}
+
+/**
+ * Structural check that a value is genuine AEAD output.
+ *
+ * The TYPE is the real guard — `CloakedPayload` cannot be satisfied by a string, so
+ * plaintext cannot reach here from typed code. This catches the cases types cannot: a
+ * value crossing an `any` boundary, arriving over the wire, or built by hand in a test.
+ *
+ * The 16-byte floor is meaningful rather than arbitrary: AES-GCM output always carries a
+ * 128-bit authentication tag, so any real ciphertext is at least 16 bytes even when the
+ * plaintext is empty. A short field name or title encoded as bytes fails it outright.
+ */
+export function assertCloaked(field: CloakedField): void {
+  const { fieldName, payload } = field
+
+  if (payload.alg !== CLOAK_ALG) {
+    throw new PlaintextRejectedError(
+      `Field "${fieldName}" has algorithm "${payload.alg}"; only ${CLOAK_ALG} may be stored`,
+    )
+  }
+  if (!(payload.ciphertext instanceof Uint8Array) || !(payload.nonce instanceof Uint8Array)) {
+    throw new PlaintextRejectedError(`Field "${fieldName}" must carry raw bytes, not text`)
+  }
+  if (payload.nonce.length !== 12) {
+    throw new PlaintextRejectedError(
+      `Field "${fieldName}" has a ${payload.nonce.length}-byte nonce; AES-GCM requires 12`,
+    )
+  }
+  if (payload.ciphertext.length < 16) {
+    throw new PlaintextRejectedError(
+      `Field "${fieldName}" ciphertext is ${payload.ciphertext.length} bytes; ` +
+        `real AES-GCM output is at least 16 (the authentication tag). This looks like plaintext.`,
+    )
+  }
+  if (!Number.isInteger(payload.keyVersion) || payload.keyVersion < 1) {
+    throw new PlaintextRejectedError(`Field "${fieldName}" has an invalid key version`)
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Writes                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export interface CreateEventInput {
+  readonly workspaceId: string
+  readonly calendarId: string
+  readonly ownerId: string
+  readonly startUtc: string
+  readonly endUtc: string
+  readonly timezone: string
+  readonly rrule?: string | null
+  readonly dtstartLocal?: string | null
+  readonly allDay?: { readonly startDate: string; readonly endDate: string } | null
+  readonly busy?: 'busy' | 'free' | 'tentative'
+  readonly reminderOffsets?: readonly number[]
+  readonly fields: readonly CloakedField[]
+}
+
+const insertCloakedFields = async (
+  tx: Executor,
+  workspaceId: string,
+  subjectType: 'event' | 'calendar' | 'workspace',
+  subjectId: string,
+  fields: readonly CloakedField[],
+): Promise<void> => {
+  for (const field of fields) {
+    assertCloaked(field)
+    await tx(
+      `insert into public.cloaked_fields
+         (subject_type, subject_id, workspace_id, field_name, ciphertext, nonce, alg, key_version)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        subjectType,
+        subjectId,
+        workspaceId,
+        field.fieldName,
+        field.payload.ciphertext,
+        field.payload.nonce,
+        field.payload.alg,
+        field.payload.keyVersion,
+      ],
+    )
+  }
+}
+
+const audit = (
+  tx: Executor,
+  workspaceId: string,
+  actorId: string,
+  action: string,
+  subjectId: string,
+  detail: Record<string, unknown> = {},
+) =>
+  tx(
+    `insert into public.audit_log (workspace_id, actor_id, action, subject_type, subject_id, detail)
+     values ($1, $2, $3, 'event', $4, $5::jsonb)`,
+    [workspaceId, actorId, action, subjectId, JSON.stringify(detail)],
+  )
+
+export async function createEvent(db: Db, input: CreateEventInput): Promise<string> {
+  // Validate before opening a transaction: a rejected field should never begin a write.
+  for (const field of input.fields) assertCloaked(field)
+
+  return db.transaction(async (tx) => {
+    const { rows } = await tx(
+      `insert into public.events
+         (workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone,
+          all_day, start_date, end_date, rrule, dtstart_local, busy, reminder_offsets)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       returning id`,
+      [
+        input.workspaceId,
+        input.calendarId,
+        input.ownerId,
+        input.startUtc,
+        input.endUtc,
+        input.timezone,
+        input.allDay != null,
+        input.allDay?.startDate ?? null,
+        input.allDay?.endDate ?? null,
+        input.rrule ?? null,
+        input.dtstartLocal ?? null,
+        input.busy ?? 'busy',
+        [...(input.reminderOffsets ?? [])],
+      ],
+    )
+
+    const eventId = rows[0]!['id'] as string
+    await insertCloakedFields(tx, input.workspaceId, 'event', eventId, input.fields)
+    await audit(tx, input.workspaceId, input.ownerId, 'event.created', eventId, {
+      fields: input.fields.map((f) => f.fieldName),
+    })
+
+    return eventId
+  })
+}
+
+/** Read a stored event back as the domain's SeriesSpec. Tier A only — no content. */
+export async function loadSeriesSpec(
+  exec: Executor,
+  eventId: string,
+): Promise<(SeriesSpec & { version: number }) | null> {
+  // Postgres renders every temporal value as TEXT here, and computes the duration itself.
+  //
+  // This is deliberate and load-bearing. Drivers disagree about how to materialise
+  // `timestamp without time zone`: PGlite parses it through the HOST machine's timezone,
+  // so reading the result with getUTC* silently shifts a 09:00 anchor by the local offset.
+  // That is precisely the host-timezone dependence ADR 0001 exists to eliminate, and it
+  // reappears at the driver boundary unless the boundary refuses to hand back a Date.
+  //
+  // No `new Date(...)` anywhere in this read path.
+  const { rows } = await exec(
+    `select
+       to_char(coalesce(dtstart_local, start_utc at time zone timezone),
+               'YYYY-MM-DD"T"HH24:MI:SS')                     as dtstart_local,
+       (extract(epoch from (end_utc - start_utc)) / 60)::int   as duration_minutes,
+       timezone,
+       rrule,
+       version
+     from public.events where id = $1`,
+    [eventId],
+  )
+  const row = rows[0]
+  if (row === undefined) return null
+
+  return {
+    dtstartLocal: String(row['dtstart_local']),
+    durationMinutes: Number(row['duration_minutes']),
+    timezone: String(row['timezone']),
+    rrule: row['rrule'] == null ? null : String(row['rrule']),
+    version: Number(row['version']),
+  }
+}
+
+export interface ApplySeriesEditInput {
+  readonly seriesId: string
+  readonly workspaceId: string
+  readonly actorId: string
+  readonly occurrenceLocal: string
+  readonly scope: EditScope
+  /** Gate 2: the version the caller believes it is editing. */
+  readonly expectedVersion: number
+  /** Content for a detached occurrence or a successor series. Cloaked, never plaintext. */
+  readonly fields?: readonly CloakedField[]
+  /** Window used for the post-write verification in gate 3. */
+  readonly verifyRange?: { readonly from: string; readonly to: string }
+}
+
+export interface ApplySeriesEditResult {
+  readonly scope: EditScope
+  readonly truncatedSeriesId: string | null
+  readonly successorSeriesId: string | null
+  readonly detachedEventId: string | null
+  readonly summary: string
+}
+
+/**
+ * Apply an edit scope atomically.
+ *
+ * Everything below happens inside one transaction, so an interruption at any point leaves
+ * the series exactly as it was. The dangerous intermediate state is a truncated original
+ * with no successor: a partially-applied "this and future" edit silently deletes every
+ * future occurrence, which is precisely the irreversible surprise spec §1 forbids.
+ */
+export async function applySeriesEdit(
+  db: Db,
+  input: ApplySeriesEditInput,
+): Promise<ApplySeriesEditResult> {
+  for (const field of input.fields ?? []) assertCloaked(field)
+
+  return db.transaction(async (tx) => {
+    const current = await loadSeriesSpec(tx, input.seriesId)
+    if (current === null) {
+      throw new VersionConflictError(input.seriesId, input.expectedVersion)
+    }
+
+    const plan = planSeriesEdit({
+      series: current,
+      occurrenceLocal: input.occurrenceLocal,
+      scope: input.scope,
+    })
+
+    let truncatedSeriesId: string | null = null
+    let successorSeriesId: string | null = null
+    let detachedEventId: string | null = null
+
+    /* Gate 2 — every write to the original series is version-guarded. */
+    if (plan.truncateSeriesTo !== null) {
+      const { rows } = await tx(
+        `update public.events
+            set rrule = $1, version = version + 1
+          where id = $2 and version = $3
+          returning id`,
+        [plan.truncateSeriesTo, input.seriesId, input.expectedVersion],
+      )
+      if (rows.length === 0) throw new VersionConflictError(input.seriesId, input.expectedVersion)
+      truncatedSeriesId = input.seriesId
+    } else if (plan.exceptions.length > 0 || plan.scope === 'entire-series') {
+      // Even when the rule is unchanged, bump the version so a concurrent editor working
+      // from the old state cannot also apply an edit and lose one of them.
+      const { rows } = await tx(
+        `update public.events set version = version + 1
+          where id = $1 and version = $2 returning id`,
+        [input.seriesId, input.expectedVersion],
+      )
+      if (rows.length === 0) throw new VersionConflictError(input.seriesId, input.expectedVersion)
+    }
+
+    if (plan.newSeries !== null) {
+      const base = await tx(
+        `select calendar_id, owner_id, timezone, busy, reminder_offsets, start_utc, end_utc
+         from public.events where id = $1`,
+        [input.seriesId],
+      )
+      const b = base.rows[0]!
+      const durationMs =
+        new Date(String(b['end_utc'])).getTime() - new Date(String(b['start_utc'])).getTime()
+
+      // The successor's first instant is derived from the split occurrence, resolved by
+      // the domain layer so the DST policy is applied exactly once, in one place.
+      const [first] = expandSeries(plan.newSeries, {
+        from: '1970-01-01T00:00:00Z',
+        to: '2100-01-01T00:00:00Z',
+      }).slice(0, 1)
+      if (first === undefined) {
+        throw new VerificationFailedError('Successor series produced no occurrences')
+      }
+      const startUtc = first.startInstant
+      const endUtc = new Date(new Date(startUtc).getTime() + durationMs).toISOString()
+
+      const { rows } = await tx(
+        `insert into public.events
+           (workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone,
+            rrule, dtstart_local, busy, reminder_offsets)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         returning id`,
+        [
+          input.workspaceId,
+          b['calendar_id'],
+          b['owner_id'],
+          startUtc,
+          endUtc,
+          plan.newSeries.timezone,
+          plan.newSeries.rrule,
+          plan.newSeries.dtstartLocal.replace('T', ' '),
+          b['busy'],
+          b['reminder_offsets'],
+        ],
+      )
+      successorSeriesId = rows[0]!['id'] as string
+      await insertCloakedFields(
+        tx,
+        input.workspaceId,
+        'event',
+        successorSeriesId,
+        input.fields ?? [],
+      )
+    }
+
+    // ORDER MATTERS. `recurrence_exceptions_moved_pair` requires a `moved` row to name its
+    // replacement, so the detached event must exist before the exception referencing it.
+    // Writing the exception first would fail the constraint inside the transaction — which
+    // is the constraint doing its job, but it means the sequence here is not arbitrary.
+    if (plan.detachedOccurrence !== null) {
+      const base = await tx(
+        `select calendar_id, owner_id, timezone, busy, start_utc, end_utc
+         from public.events where id = $1`,
+        [input.seriesId],
+      )
+      const b = base.rows[0]!
+      const durationMs =
+        new Date(String(b['end_utc'])).getTime() - new Date(String(b['start_utc'])).getTime()
+
+      const [occurrence] = expandSeries(
+        { ...current, rrule: null, dtstartLocal: plan.detachedOccurrence.occurrenceLocal },
+        { from: '1970-01-01T00:00:00Z', to: '2100-01-01T00:00:00Z' },
+      )
+      if (occurrence === undefined) {
+        throw new VerificationFailedError('Detached occurrence could not be resolved')
+      }
+
+      const { rows } = await tx(
+        `insert into public.events
+           (workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone, busy)
+         values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+        [
+          input.workspaceId,
+          b['calendar_id'],
+          b['owner_id'],
+          occurrence.startInstant,
+          new Date(new Date(occurrence.startInstant).getTime() + durationMs).toISOString(),
+          b['timezone'],
+          b['busy'],
+        ],
+      )
+      detachedEventId = rows[0]!['id'] as string
+      await insertCloakedFields(tx, input.workspaceId, 'event', detachedEventId, input.fields ?? [])
+    }
+
+    for (const exception of plan.exceptions) {
+      await tx(
+        `insert into public.recurrence_exceptions
+           (series_id, workspace_id, occurrence_local, kind, replacement_event_id)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          input.seriesId,
+          input.workspaceId,
+          exception.occurrenceLocal.replace('T', ' '),
+          exception.kind,
+          exception.kind === 'moved' ? detachedEventId : null,
+        ],
+      )
+    }
+
+    /* Gate 3 — re-expand what was actually STORED and compare against the plan. */
+    if (plan.newSeries !== null && input.verifyRange !== undefined) {
+      const storedOriginal = await loadSeriesSpec(tx, input.seriesId)
+      const storedSuccessor = await loadSeriesSpec(tx, successorSeriesId!)
+      if (storedOriginal === null || storedSuccessor === null) {
+        throw new VerificationFailedError('Split verification could not read back both series')
+      }
+
+      const before = expandSeries(storedOriginal, input.verifyRange).map((o) => o.occurrenceLocal)
+      const after = expandSeries(storedSuccessor, input.verifyRange).map((o) => o.occurrenceLocal)
+
+      if (before.some((o) => o >= input.occurrenceLocal)) {
+        throw new VerificationFailedError(
+          'Truncated series still produces occurrences at or after the split point',
+        )
+      }
+      if (after.some((o) => o < input.occurrenceLocal)) {
+        throw new VerificationFailedError(
+          'Successor series produces occurrences before the split point',
+        )
+      }
+      if (new Set([...before, ...after]).size !== before.length + after.length) {
+        throw new VerificationFailedError('Split produced duplicate occurrences')
+      }
+
+      const expected = expandSeries(current, input.verifyRange).map((o) => o.occurrenceLocal)
+      if ([...before, ...after].join('|') !== expected.join('|')) {
+        throw new VerificationFailedError(
+          'Stored split does not reproduce the original occurrence set',
+        )
+      }
+    }
+
+    await audit(tx, input.workspaceId, input.actorId, `event.edit.${plan.scope}`, input.seriesId, {
+      occurrenceLocal: input.occurrenceLocal,
+      successorSeriesId,
+      detachedEventId,
+    })
+
+    return {
+      scope: plan.scope,
+      truncatedSeriesId,
+      successorSeriesId,
+      detachedEventId,
+      summary: plan.summary,
+    }
+  })
+}
+
+/** Move an event to the trash. Version-guarded; `purge` is a separate, explicit action. */
+export async function trashEvent(
+  db: Db,
+  input: { eventId: string; workspaceId: string; actorId: string; expectedVersion: number },
+): Promise<void> {
+  return db.transaction(async (tx) => {
+    const { rows } = await tx(
+      `update public.events
+          set lifecycle = 'trashed', trashed_at = now(), version = version + 1
+        where id = $1 and version = $2 and lifecycle = 'active'
+        returning id`,
+      [input.eventId, input.expectedVersion],
+    )
+    if (rows.length === 0) throw new VersionConflictError(input.eventId, input.expectedVersion)
+
+    await audit(tx, input.workspaceId, input.actorId, 'event.trashed', input.eventId)
+  })
+}

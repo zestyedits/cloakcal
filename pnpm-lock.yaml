@@ -31,6 +31,9 @@ importers:
       '@cloakcal/crypto':
         specifier: workspace:*
         version: link:../crypto
+      '@cloakcal/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       '@electric-sql/pglite':
         specifier: ^0.3.11
