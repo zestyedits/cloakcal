@@ -1,0 +1,13 @@
+{
+  "name": "@cloakcal/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
+    "rrule": "^2.8.1"
+  }
+}

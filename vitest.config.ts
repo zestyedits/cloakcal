@@ -30,6 +30,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'domain',
+          include: ['packages/domain/src/**/*.test.ts'],
+          environment: 'node',
+          testTimeout: 30_000,
+        },
+      },
+      {
+        test: {
           name: 'crypto',
           include: ['packages/crypto/src/**/*.test.ts'],
           environment: 'node',

@@ -44,5 +44,10 @@ jobs:
       - name: Privacy leakage
         run: pnpm test:leak
 
+      # Recurrence and DST correctness gate the whole calendar (ADR 0001), so they get a
+      # named check rather than hiding inside the aggregate run.
+      - name: Domain — recurrence, DST, edit scopes
+        run: pnpm test:domain
+
       - name: Unit and domain
         run: pnpm test

@@ -48,12 +48,22 @@ explicit choice; until it does, the default is fixed and documented rather than 
 
 ### Nonexistent times (spring forward — the hour does not occur)
 
-**Shift forward to the first valid local time**, and **show the adjustment** when the
-series is created or edited.
+**Shift forward by the length of the gap**, and **show the adjustment** when the series is
+created or edited.
 
-Rationale: silently dropping an occurrence loses a meeting. Silently moving it without
-telling anyone is the kind of unannounced change the product promises not to make
-(spec §1: "no silent overwrites, no irreversible surprises").
+Concretely: when 02:00–03:00 does not exist, an 02:30 occurrence lands at **03:30**, not
+03:00. This is `later` / `compatible` disambiguation in Temporal terms.
+
+> Amended after implementation (M1). This section originally read "shift forward to the
+> first valid local time", which would place the occurrence at 03:00. That was imprecise.
+> Shifting by the gap length is what RFC 5545 implementations and other calendar products
+> do, and since these events sync outward, matching them matters more than the marginally
+> tidier 03:00. The behaviour is asserted in `packages/domain/src/recurrence.test.ts`.
+
+Rationale for shifting at all: silently dropping an occurrence loses a meeting. Silently
+moving it without telling anyone is the kind of unannounced change the product promises not
+to make (spec §1: "no silent overwrites, no irreversible surprises"), so every adjusted
+occurrence is tagged `nonexistent-shifted` and surfaced in the UI.
 
 ### Exception keys
 
