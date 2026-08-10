@@ -1,0 +1,263 @@
+/*
+ * Mobile-first. The single-column stack is the design, not a fallback — the desktop
+ * sidebar appears only once there is room for it, matching the two reference screens.
+ * Every value comes from a token; no literal colours or spacing here.
+ */
+
+.shell {
+  display: grid;
+  grid-template-areas: 'header' 'main' 'nav';
+  grid-template-rows: auto 1fr auto;
+  min-height: 100dvh;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-accent);
+  box-shadow: var(--glow-accent);
+}
+
+.wordmark {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.wordmarkAccent {
+  color: var(--accent-text);
+}
+
+.range {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Hidden on mobile: the calendar list lives behind navigation on small screens. */
+.sidebar {
+  display: none;
+}
+
+.main {
+  grid-area: main;
+  padding: var(--space-4) var(--space-4) var(--space-12);
+  overflow-y: auto;
+}
+
+.agenda,
+.events,
+.calendarList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.day + .day {
+  margin-top: var(--space-8);
+}
+
+.dayHeading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.event {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  /* The calendar colour reads as a spine, not a fill: colour supports the grouping, it
+     never carries meaning on its own. */
+  border-left: 3px solid var(--event-color, var(--accent));
+  transition: transform var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.event + .event {
+  margin-top: var(--space-2);
+}
+
+.event:hover {
+  border-color: var(--border-default);
+  transform: translateX(2px);
+}
+
+.event[data-color='indigo'] {
+  --event-color: var(--brand-indigo);
+}
+.event[data-color='teal'] {
+  --event-color: var(--brand-teal);
+}
+.event[data-color='violet'] {
+  --event-color: var(--brand-violet);
+}
+.event[data-color='rose'] {
+  --event-color: var(--brand-rose);
+}
+
+.time {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.eventBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eventTitle {
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A DST adjustment is surfaced, never applied silently (ADR 0001). */
+.dstNote {
+  font-size: var(--text-xs);
+  color: var(--status-warning);
+}
+
+.busy {
+  font-size: var(--text-xs);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: var(--surface-overlay);
+}
+
+.busy[data-busy='free'] {
+  color: var(--status-success);
+  background: var(--privacy-full-quiet);
+}
+
+.nav {
+  grid-area: nav;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  position: sticky;
+  bottom: 0;
+}
+
+.navItem {
+  flex: 1;
+  min-height: var(--touch-min);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.navItem[aria-current='page'] {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
+.navItem:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calendarItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  font-size: var(--text-sm);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-indigo);
+  flex: none;
+}
+
+.swatch[data-color='teal'] {
+  background: var(--brand-teal);
+}
+.swatch[data-color='violet'] {
+  background: var(--brand-violet);
+}
+.swatch[data-color='rose'] {
+  background: var(--brand-rose);
+}
+
+.sidebarHeading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Desktop: sidebar appears, navigation moves out of the thumb zone. */
+@media (min-width: 900px) {
+  .shell {
+    grid-template-areas: 'header header' 'sidebar main' 'sidebar nav';
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .sidebar {
+    grid-area: sidebar;
+    display: block;
+    padding: var(--space-6) var(--space-4);
+    border-right: 1px solid var(--border-subtle);
+  }
+
+  .main {
+    padding: var(--space-6) var(--space-8) var(--space-8);
+  }
+
+  .nav {
+    position: static;
+    justify-content: flex-start;
+    gap: var(--space-2);
+  }
+
+  .navItem {
+    flex: 0 0 auto;
+    padding: 0 var(--space-5);
+  }
+}

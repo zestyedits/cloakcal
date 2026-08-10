@@ -39,6 +39,14 @@ jobs:
       - name: Database — schema, constraints, RLS isolation
         run: pnpm test:db
 
+      # The leak suite inspects the real production build — initial HTML, RSC/Flight
+      # payload and every emitted chunk — so the build must exist first. The test fails
+      # rather than skips when it does not.
+      - name: Build web
+        run: pnpm --filter @cloakcal/web build
+        env:
+          NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK: '1'
+
       # Kept as its own step, not folded into `pnpm test`, so a privacy leak is visible
       # as a distinctly named red check rather than one failure among many.
       - name: Privacy leakage

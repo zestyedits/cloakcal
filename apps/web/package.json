@@ -1,0 +1,25 @@
+{
+  "name": "@cloakcal/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "fixture": "node scripts/generate-fixture.ts"
+  },
+  "dependencies": {
+    "@cloakcal/cloak-store": "workspace:*",
+    "@cloakcal/crypto": "workspace:*",
+    "@cloakcal/domain": "workspace:*",
+    "@cloakcal/ui": "workspace:*",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7"
+  }
+}

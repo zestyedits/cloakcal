@@ -60,6 +60,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'web-client',
+          include: ['apps/web/test/**/*.client.test.ts'],
+          environment: 'jsdom',
+        },
+      },
+      {
+        test: {
           name: 'ui',
           include: ['packages/ui/src/**/*.test.ts'],
           environment: 'node',

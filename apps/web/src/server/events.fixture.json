@@ -1,0 +1,384 @@
+{
+  "note": "DEVELOPMENT FIXTURE. Tier A metadata plus real AES-256-GCM ciphertext. No plaintext.",
+  "timezone": "America/New_York",
+  "calendars": [
+    {
+      "id": "c0000000-0000-4000-8000-000000000001",
+      "colorToken": "indigo",
+      "fields": [
+        {
+          "fieldName": "display_name",
+          "ciphertext": "0bf6432741a83310d7ab49ec02fe5a5dba2cf4bb23578289",
+          "nonce": "4e56be975d3e57d5c3f8a7bf",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000002",
+      "colorToken": "teal",
+      "fields": [
+        {
+          "fieldName": "display_name",
+          "ciphertext": "d674cea8d67ca1130d63d76b166decbd13241776",
+          "nonce": "ed30587b4caa1f2f9a9e4a93",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000003",
+      "colorToken": "violet",
+      "fields": [
+        {
+          "fieldName": "display_name",
+          "ciphertext": "39dfa7192744b10e1c6421702cf5ff82712b766ff73896",
+          "nonce": "5e49c4dce3ff20a84b08152d",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000004",
+      "colorToken": "rose",
+      "fields": [
+        {
+          "fieldName": "display_name",
+          "ciphertext": "da414b6691ca42ff6d9bb22f4bcd2cc24e116a549f0a",
+          "nonce": "6affab1f28a736b8e10d0fa0",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000005",
+      "colorToken": "indigo",
+      "fields": [
+        {
+          "fieldName": "display_name",
+          "ciphertext": "2dacb909d576425cd6f13c702ed262bfd824cc12e03b47530677a379d4b32ed28d",
+          "nonce": "32868272e7780db6ff2da2b6",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "e0000000-0000-4000-8000-000000000001",
+      "calendarId": "c0000000-0000-4000-8000-000000000002",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-18T13:00:00.000Z",
+      "endUtc": "2026-05-18T13:15:00.000Z",
+      "durationMinutes": 15,
+      "dtstartLocal": "2026-05-18T09:00:00",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "4334c2ca585fa5504605bed87946f46d389dd917e089c943836d7bca",
+          "nonce": "d538a29d83306fb0c334eb03",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "377bf0cb42cf13bd981a24189e722ef2c96b33d4",
+          "nonce": "3ce9e5fb9fafc4771bf4c413",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000002",
+      "calendarId": "c0000000-0000-4000-8000-000000000002",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-19T13:00:00.000Z",
+      "endUtc": "2026-05-19T14:00:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "45d2826ed10142f9a667c473bb8a095f864303fb2f229e06b62f0f2a065a",
+          "nonce": "8001780351842f97ab4f84ed",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "eb156962cc40bfb463795d7fad550e9d2f6a14edd42e95afdc9a662c93a9fa1d7c",
+          "nonce": "17004fdb103b8c2f2f0c1377",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "notes",
+          "ciphertext": "8af96685d9ebb2602281c8db91f0191c210e04fbe830a2e5181986260fba0ce007e1095fa522ae4c479c156cd27e275cfa529757242cb6122f44f807",
+          "nonce": "66765647b1229bcb73f67ec9",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000003",
+      "calendarId": "c0000000-0000-4000-8000-000000000001",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-19T16:00:00.000Z",
+      "endUtc": "2026-05-19T17:00:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "6315cc930c897fa408a09cebd1b69474594115b81f2fa0dcbc5ac138d4dc2d36",
+          "nonce": "81ed7c03d35f76e6b31ee45d",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "973354451bc77bba4a82146152452e2cd74f4daae42ef0aa",
+          "nonce": "f208c242bb9214c9cffef994",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000004",
+      "calendarId": "c0000000-0000-4000-8000-000000000003",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-20T17:30:00.000Z",
+      "endUtc": "2026-05-20T18:30:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "46409060b4d798b3fdb211acccdaaee6fee6dd3974eb9829e087",
+          "nonce": "092c94ad4fae097da5eb40e8",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "notes",
+          "ciphertext": "8ea4d00cb9dd337fa923876f0e09ac22d90168f34498690e3e9b2d4fc0d5ba56831041f7111a7f5652c3562c0e895ae54821e09a9b6434b1f45127c87fd839d4",
+          "nonce": "5bf5658f8f667c6f32137bbd",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000005",
+      "calendarId": "c0000000-0000-4000-8000-000000000002",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-20T13:00:00.000Z",
+      "endUtc": "2026-05-20T14:00:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "2908e0aec0f6fc9317a43d5148c236d535ced95993406f832247f70c0738",
+          "nonce": "16948daf41bcee8687b6fa17",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "d92745630bd521b0387efa361ab1899254d25d5c",
+          "nonce": "cdb06e41d8b3fb9c9e21bf6f",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000006",
+      "calendarId": "c0000000-0000-4000-8000-000000000002",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-21T18:00:00.000Z",
+      "endUtc": "2026-05-21T19:00:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "4351a494c83fdd5fa48430a1a1f3b90d86af5b96a3ff7b282fa77f677c156ed7",
+          "nonce": "64b36c1d8ac53a20dac3ee9a",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "8b02cca204d96aee159ff022febc568c009d3f88f2c04eb03217b5a6b564ca11e6ceebc3",
+          "nonce": "a6c7925c5074e526acc284e0",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000007",
+      "calendarId": "c0000000-0000-4000-8000-000000000001",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-20T21:00:00.000Z",
+      "endUtc": "2026-05-20T22:00:00.000Z",
+      "durationMinutes": 60,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "free",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "68131b9827f27fba6e7bfd6dd9a31ed9382883",
+          "nonce": "893359708cdb20e17c60885d",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000008",
+      "calendarId": "c0000000-0000-4000-8000-000000000004",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-21T23:00:00.000Z",
+      "endUtc": "2026-05-22T00:30:00.000Z",
+      "durationMinutes": 90,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "73dddda37c376f424a91366fdbd2f636f7fd923fb20ed01ad4ab6d01b03a1bff19ba",
+          "nonce": "b60ffba698de79a1c4bf1005",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "c1411e7d5a447aff14a54ee9bc12d546b15be924",
+          "nonce": "610a9d9a298abb76fa5171a7",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000009",
+      "calendarId": "c0000000-0000-4000-8000-000000000002",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-22T15:00:00.000Z",
+      "endUtc": "2026-05-22T15:30:00.000Z",
+      "durationMinutes": 30,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "d2a8b1af22e8fb63b34708f0d9ab2e09f4e2ce1b57d99face92ffd7afe",
+          "nonce": "f115dd7133114aacb6a50c40",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "1ff8631920246dbaa96ce833d2b0350d145ab3b8",
+          "nonce": "031cb36704f411b9ab6056b0",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-00000000000b",
+      "calendarId": "c0000000-0000-4000-8000-000000000005",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-22T19:00:00.000Z",
+      "endUtc": "2026-05-22T19:45:00.000Z",
+      "durationMinutes": 45,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": null,
+      "busy": "busy",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "ee11544969b178ce49f097b5d38c014bf833d161db90262a76cd25ceef0edfde30e1c25d",
+          "nonce": "83485139d5f40ba03e8bd07f",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "location",
+          "ciphertext": "873833a5e18fe75e2f8d3332f08dccb7711f6805e454ad64606f57458ce10909",
+          "nonce": "ea75ebf0514088dddc22b8c3",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        },
+        {
+          "fieldName": "notes",
+          "ciphertext": "794e84dc62f4b186b8d1eef1ef2be3e092cd537649ab6c6994f0eded14af3761f060f7aae1f46e518710b47f3518f80dfa0e",
+          "nonce": "73788dcac46bb03f6d115a79",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    },
+    {
+      "id": "e0000000-0000-4000-8000-00000000000a",
+      "calendarId": "c0000000-0000-4000-8000-000000000001",
+      "timezone": "America/New_York",
+      "startUtc": "2026-05-23T04:00:00.000Z",
+      "endUtc": "2026-05-23T04:00:00.000Z",
+      "durationMinutes": 0,
+      "dtstartLocal": null,
+      "rrule": null,
+      "allDay": {
+        "startDate": "2026-05-23",
+        "endDate": "2026-05-24"
+      },
+      "busy": "free",
+      "fields": [
+        {
+          "fieldName": "title",
+          "ciphertext": "f0ddfe804a93ef75f6bb3db9baef3bb8860be9ce50f0ed",
+          "nonce": "eec27ab74115508b55f27128",
+          "alg": "aes-256-gcm-v1",
+          "keyVersion": 1
+        }
+      ]
+    }
+  ]
+}

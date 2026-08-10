@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:db": "vitest run --project db",
     "test:domain": "vitest run --project domain",
+    "test:web": "vitest run --project web-client",
     "test:e2e": "playwright test",
     "test:leak": "vitest run --project leak",
     "test:a11y": "playwright test --project=a11y",
@@ -30,6 +31,7 @@
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@cloakcal/crypto": "workspace:*"
   }
 }
