@@ -1,0 +1,30 @@
+{
+  "name": "cloakcal",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @cloakcal/web dev",
+    "build": "pnpm --filter @cloakcal/web build",
+    "typecheck": "tsc -p tsconfig.json --pretty",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "vitest run --project db",
+    "test:e2e": "playwright test",
+    "test:leak": "vitest run --project leak",
+    "test:a11y": "playwright test --project=a11y",
+    "test:visual": "playwright test --project=visual"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.11",
+    "@types/node": "^24.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

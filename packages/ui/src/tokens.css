@@ -1,0 +1,242 @@
+/*
+ * CloakCal design tokens.
+ *
+ * Source of truth: "Brand Info Concepts 2.png" (Visual Guide, Page 1 of 8), which is
+ * authoritative over "Brand Info Concepts.png" — the latter misprints two hex values
+ * (#GD5CFF, #0BOD14 with a letter O).
+ *
+ * Dark is the designed default; the brand board is dark throughout. Light exists from
+ * M0 because the spec requires theme customization and high-contrast accessibility, and
+ * retrofitting a light theme after components are built is materially harder than
+ * carrying two palettes from the start. Light is a documented extrapolation (plan D9) —
+ * it is not present in the supplied references.
+ *
+ * Only SEMANTIC tokens should be used in components. The raw brand ramp exists so the
+ * semantic layer has something to point at; reaching past it into --brand-* in a
+ * component is how a design system rots.
+ */
+
+:root {
+  /* ---------------------------------------------------------------------
+   * Brand ramp — literal values from the Visual Guide. Do not use directly.
+   * ------------------------------------------------------------------- */
+  --brand-deep-navy: #0b0d14;
+  --brand-charcoal: #161a25;
+  --brand-slate: #2a2f45;
+  --brand-indigo: #6d5cff;
+  --brand-violet: #7c3aed;
+  --brand-lavender: #b8b0ff;
+  --brand-teal: #22d3a6;
+  --brand-white: #f5f6fa;
+
+  /* Amber and rose are extrapolations: the references show a "Busy" chip in amber and a
+   * Family event in rose, but give no hex. Chosen to sit at the same perceived
+   * lightness as --brand-teal so privacy chips read as one family. */
+  --brand-amber: #f5a524;
+  --brand-rose: #f4577b;
+
+  --gradient-accent: linear-gradient(135deg, #7c3aed 0%, #6d5cff 100%);
+
+  /* ---------------------------------------------------------------------
+   * Typography — Inter, per the guide. Sizes use a 1.2 minor-third ramp;
+   * the guide fixes the family and weights, not the scale.
+   * ------------------------------------------------------------------- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --text-xs: 0.75rem;    /* 12px — chip labels, metadata */
+  --text-sm: 0.875rem;   /* 14px — secondary copy */
+  --text-base: 1rem;     /* 16px — body. Never smaller for reading text. */
+  --text-lg: 1.125rem;   /* 18px — subheads */
+  --text-xl: 1.5rem;     /* 24px — screen titles */
+  --text-2xl: 2rem;      /* 32px — display */
+  --text-3xl: 2.75rem;   /* 44px — marketing display */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --tracking-caps: 0.08em;
+
+  /* ---------------------------------------------------------------------
+   * Space — 4px base. Calendar grids depend on exact multiples, so the
+   * ramp stays strictly linear rather than modular.
+   * ------------------------------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ---------------------------------------------------------------------
+   * Radii & elevation — "rounded corners & soft glows", never harsh shadows
+   * (Visual Guide, DO / DON'T).
+   * ------------------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* ---------------------------------------------------------------------
+   * Motion. Durations are short enough to feel immediate; the spec requires
+   * motion to be quality, not decoration. Every one of these is overridden
+   * to 1ms under prefers-reduced-motion, at the bottom of this file.
+   * ------------------------------------------------------------------- */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 340ms;
+  --duration-cloak: 420ms; /* the cloak/reveal transition — the signature motion */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+  /* Minimum touch target — spec requires large touch targets; 44px is the
+   * WCAG 2.2 / iOS HIG floor and is treated as a hard minimum, not a goal. */
+  --touch-min: 44px;
+
+  --z-sheet: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+}
+
+/* -----------------------------------------------------------------------
+ * Semantic layer — dark (default)
+ * --------------------------------------------------------------------- */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --surface-base: var(--brand-deep-navy);
+  --surface-raised: var(--brand-charcoal);
+  --surface-overlay: #1c2130;
+  --surface-sunken: #070910;
+
+  --border-subtle: rgba(245, 246, 250, 0.08);
+  --border-default: rgba(245, 246, 250, 0.14);
+  --border-strong: var(--brand-slate);
+
+  --text-primary: var(--brand-white);
+  --text-secondary: rgba(245, 246, 250, 0.72);
+  --text-tertiary: rgba(245, 246, 250, 0.5);
+  --text-inverse: var(--brand-deep-navy);
+
+  --accent: var(--brand-indigo);
+  --accent-hover: #8071ff;
+  --accent-quiet: rgba(109, 92, 255, 0.16);
+  --accent-text: var(--brand-lavender);
+
+  --focus-ring: var(--brand-lavender);
+
+  --status-success: var(--brand-teal);
+  --status-warning: var(--brand-amber);
+  --status-danger: var(--brand-rose);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --glow-accent: 0 0 24px rgba(109, 92, 255, 0.28);
+}
+
+/* -----------------------------------------------------------------------
+ * Semantic layer — light (extrapolated, not in the supplied references)
+ * --------------------------------------------------------------------- */
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --surface-base: var(--brand-white);
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-sunken: #e9ebf2;
+
+  --border-subtle: rgba(11, 13, 20, 0.08);
+  --border-default: rgba(11, 13, 20, 0.14);
+  --border-strong: rgba(11, 13, 20, 0.26);
+
+  --text-primary: var(--brand-deep-navy);
+  --text-secondary: rgba(11, 13, 20, 0.68);
+  --text-tertiary: rgba(11, 13, 20, 0.48);
+  --text-inverse: var(--brand-white);
+
+  --accent: #5847e0; /* darkened from --brand-indigo: 4.5:1 on white, which #6D5CFF misses */
+  --accent-hover: #4a3ac9;
+  --accent-quiet: rgba(88, 71, 224, 0.1);
+  --accent-text: #4a3ac9;
+
+  --focus-ring: #4a3ac9;
+
+  --status-success: #0f9c78;
+  --status-warning: #a86a00;
+  --status-danger: #c8355b;
+
+  --shadow-sm: 0 1px 2px rgba(11, 13, 20, 0.06);
+  --shadow-md: 0 4px 16px rgba(11, 13, 20, 0.1);
+  --shadow-lg: 0 12px 40px rgba(11, 13, 20, 0.14);
+  --glow-accent: 0 0 24px rgba(88, 71, 224, 0.18);
+}
+
+/* -----------------------------------------------------------------------
+ * Privacy state tokens.
+ *
+ * These are the most important tokens in the product. A privacy level must look
+ * identical everywhere it appears — event chip, visibility sheet, View As banner,
+ * notification preview — because users learn these colors as meaning. Derived from the
+ * Event Visibility screen in the brand board.
+ *
+ * Colour is never the sole carrier of this meaning: every privacy state also has an
+ * icon and a text label. See docs/screen-inventory.md.
+ * --------------------------------------------------------------------- */
+
+:root {
+  --privacy-full: var(--status-success);
+  --privacy-full-quiet: rgba(34, 211, 166, 0.14);
+
+  --privacy-limited: var(--brand-indigo);
+  --privacy-limited-quiet: rgba(109, 92, 255, 0.16);
+
+  --privacy-busy: var(--status-warning);
+  --privacy-busy-quiet: rgba(245, 165, 36, 0.16);
+
+  --privacy-hidden: var(--brand-slate);
+  --privacy-hidden-quiet: rgba(42, 47, 69, 0.4);
+}
+
+/* -----------------------------------------------------------------------
+ * Reduced motion.
+ *
+ * Durations collapse rather than animations being removed, so state changes still
+ * settle correctly and nothing depends on a transitionend that never fires. The spec
+ * requires motion never be the only feedback — that is enforced in components, not here.
+ * --------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 1ms;
+    --duration-fast: 1ms;
+    --duration-base: 1ms;
+    --duration-slow: 1ms;
+    --duration-cloak: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

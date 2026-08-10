@@ -1,0 +1,15 @@
+{
+  "name": "@cloakcal/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cloakcal/crypto": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.11"
+  }
+}
