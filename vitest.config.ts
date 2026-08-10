@@ -45,6 +45,21 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'cloak-store-client',
+          include: ['packages/cloak-store/src/**/*.client.test.ts'],
+          environment: 'jsdom',
+        },
+      },
+      {
+        // Deliberately node: proves the store refuses to run where there is no browser.
+        test: {
+          name: 'cloak-store-server',
+          include: ['packages/cloak-store/src/**/*.server.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'ui',
           include: ['packages/ui/src/**/*.test.ts'],
           environment: 'node',
