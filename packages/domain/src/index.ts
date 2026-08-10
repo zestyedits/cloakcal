@@ -20,3 +20,10 @@ export {
   type PlanInput,
   type SeriesEditPlan,
 } from './edit-scope.js'
+
+export {
+  divergentOccurrences,
+  fromIcalSeries,
+  toIcalSeries,
+  type IcalSeries,
+} from './ical.js'

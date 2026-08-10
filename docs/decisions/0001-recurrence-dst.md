@@ -52,17 +52,40 @@ explicit choice; until it does, the default is fixed and documented rather than 
 created or edited.
 
 Concretely: when 02:00–03:00 does not exist, an 02:30 occurrence lands at **03:30**, not
-03:00. This is `later` / `compatible` disambiguation in Temporal terms.
+03:00. This preserves the intended 30-minute position within the skipped hour. It is
+`later` / `compatible` disambiguation in Temporal terms.
 
-> Amended after implementation (M1). This section originally read "shift forward to the
-> first valid local time", which would place the occurrence at 03:00. That was imprecise.
-> Shifting by the gap length is what RFC 5545 implementations and other calendar products
-> do, and since these events sync outward, matching them matters more than the marginally
-> tidier 03:00. The behaviour is asserted in `packages/domain/src/recurrence.test.ts`.
+### Relationship to RFC 5545 — stated precisely
+
+The two relevant sections of RFC 5545 do not say the same thing, and it would be wrong to
+claim the standard simply requires this behaviour.
+
+| Section | What it says | Our behaviour |
+|---|---|---|
+| **§3.3.5** (DATE-TIME) | A standalone TZID local time in a gap "is interpreted using the UTC offset before the gap", which yields **03:30**. An ambiguous local time "refers to the first occurrence". | **Matches.** Both the gap shift and the earlier-offset choice follow §3.3.5. |
+| **§3.3.10** (RECUR) | A *generated recurrence instance* whose local time does not exist "MUST be ignored and MUST NOT be counted as part of the recurrence set". | **Deliberate divergence.** We shift the instance rather than dropping it. |
+
+So: **ambiguous fall-back handling follows RFC 5545. Nonexistent spring-forward handling is
+CloakCal product policy that knowingly diverges from §3.3.10**, by extending §3.3.5's
+DATE-TIME interpretation to recurrence instances.
+
+**Why diverge.** §3.3.10's rule silently deletes a meeting once a year. For a weekly 02:30
+series that is a real appointment vanishing with no record, which contradicts spec §1's
+promise of no silent, irreversible surprises. Dropping it is defensible for a protocol that
+merely transports data; it is not defensible for the product a person relies on to show up.
+
+**Cost of diverging.** A strict §3.3.10 implementation on the other side of a sync will not
+generate that occurrence, so the two calendars disagree on exactly one instance per
+transition. That is a real interoperability seam, it is bounded, and it must be tested
+rather than assumed — see `packages/domain/src/ical.test.ts`, which asserts the divergence
+explicitly so it can never become an accidental discovery.
+
+> Amended after implementation (M1), twice. The section first read "shift forward to the
+> first valid local time" (which implies 03:00) and then over-claimed RFC 5545 as requiring
+> the shift. Both are corrected above.
 
 Rationale for shifting at all: silently dropping an occurrence loses a meeting. Silently
-moving it without telling anyone is the kind of unannounced change the product promises not
-to make (spec §1: "no silent overwrites, no irreversible surprises"), so every adjusted
+moving it without telling anyone is the same class of unannounced change, so every adjusted
 occurrence is tagged `nonexistent-shifted` and surfaced in the UI.
 
 ### Exception keys
