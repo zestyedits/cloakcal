@@ -95,6 +95,23 @@ export const config = {
   matcher: [
     // Everything except static assets and image optimisation, which carry no session and
     // would only add latency.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    //
+    // THE BRAND ASSETS HAVE TO BE REACHABLE SIGNED OUT, and getting that wrong is silent.
+    // A crawler or an unfurl bot is never signed in, so anything this matcher catches is
+    // answered with a 307 to /sign-in — and an empty social card looks like a design
+    // oversight rather than a redirect. Nothing in the test suite would show it either:
+    // dev and Playwright both run with NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1, which returns
+    // early above and never redirects at all.
+    //
+    // Two different mechanisms keep them out, and it is worth knowing which is which:
+    //   - `/icon.svg`, `/apple-icon.png`, `/opengraph-image.png` and `/icons/*` fall through
+    //     the extension list. They are STATIC files, which is why they have extensions to
+    //     fall through with. A generated `app/opengraph-image.tsx` would serve at
+    //     `/opengraph-image` with no extension and would be caught.
+    //   - `/favicon.ico`, `/manifest.webmanifest` and `/robots.txt` are named outright,
+    //     because `.ico`, `.webmanifest` and `.txt` are not in the extension list.
+    //
+    // `middleware-paths.server.test.ts` pins every one of these.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

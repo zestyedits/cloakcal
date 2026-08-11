@@ -1,0 +1,57 @@
+/* The brand lockup. Previously duplicated in auth.module.css and calendar-screen.module.css,
+   which is how the two drifted to different mark sizes without anyone deciding to. */
+
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mark {
+  display: block;
+  flex: none;
+  /* The glow is the board's "soft glow" rule, and it belongs on the wrapper rather than
+     inside the SVG: a filter baked into the file would also be baked into every rasterised
+     icon, where a launcher or a browser tab supplies its own background and a stray halo
+     reads as a compression artefact.
+
+     `--glow-accent` is authored as a box-shadow triple (x y blur colour), which drop-shadow
+     accepts unchanged — so the mark keeps exactly the halo the gradient square had. */
+  filter: drop-shadow(var(--glow-accent));
+}
+
+.mark > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wordmark {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
+}
+
+.lockup[data-size='sm'] .wordmark {
+  font-size: var(--text-lg);
+}
+
+.accent {
+  color: var(--accent-text);
+}
+
+.tagline {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}

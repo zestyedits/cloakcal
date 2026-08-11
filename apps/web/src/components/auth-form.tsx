@@ -11,6 +11,7 @@ import {
 } from '@/lib/cloak-session'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { RecoveryPhrase } from './recovery-phrase'
+import { CloakLockup } from './cloak-logo'
 import styles from './auth.module.css'
 
 /**
@@ -120,12 +121,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <form className={styles.card} onSubmit={submit}>
-      <div className={styles.brand}>
-        <span className={styles.mark} aria-hidden="true" />
-        <span className={styles.wordmark}>
-          Cloak<span className={styles.wordmarkAccent}>Cal</span>
-        </span>
-      </div>
+      <CloakLockup />
 
       <h1 className={styles.title}>
         {mode === 'sign-up' ? 'Create your calendar' : 'Welcome back'}

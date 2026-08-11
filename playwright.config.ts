@@ -16,6 +16,20 @@ function hasVisualBaselines(): boolean {
 }
 
 /**
+ * The escape hatch that makes bootstrapping a new platform possible at all.
+ *
+ * Without it the skip below is a closed loop: the visual project ignores itself until
+ * baselines for this platform exist, and the documented way to create them is to run the
+ * visual project. `pnpm test:visual --update-snapshots` answered "No tests found" on any
+ * machine that did not already have baselines — so the instructions in the comment below
+ * described a procedure that could never work, and nobody noticed because the only machine
+ * with baselines was the one that made them.
+ */
+function isBootstrappingSnapshots(): boolean {
+  return process.argv.includes('--update-snapshots') || process.argv.includes('-u')
+}
+
+/**
  * E2E, accessibility and visual-regression config.
  *
  * WHY THIS RUNS AGAINST THE DEV SERVER, DELIBERATELY.
@@ -95,15 +109,36 @@ export default defineConfig({
       //
       //   pnpm test:visual --update-snapshots
       //
-      // and commit the result. CI pins one platform, so regressions are still caught.
-      ...(hasVisualBaselines() ? {} : { testIgnore: /.*/ }),
+      // and commit the result.
+      //
+      // AN EARLIER VERSION OF THIS COMMENT ENDED "CI pins one platform, so regressions are
+      // still caught". That was false for the whole life of the file. Every committed
+      // baseline was `-win32`; CI runs ubuntu and development happens on darwin, so the skip
+      // fired on both and not one screenshot was ever compared — while the CI step carried
+      // the name "E2E, accessibility and visual". The word describing the missing coverage
+      // was sitting in the check name.
+      //
+      // Two things now keep it honest: `-darwin` baselines exist so the suite runs during
+      // development, and the `visual-baselines` workflow generates the `-linux` set CI needs.
+      // Until those are committed, CI still skips — see docs/brand.md.
+      ...(hasVisualBaselines() || isBootstrappingSnapshots() ? {} : { testIgnore: /.*/ }),
     },
   ],
 
   expect: {
     toHaveScreenshot: {
-      // Font rasterisation differs slightly across machines; this tolerates that without
-      // tolerating a layout change.
+      // Font rasterisation differs slightly between machines of the SAME platform (OS point
+      // releases, GPU), so some tolerance is needed. 2% of a 1280x900 page is ~23,000 pixels
+      // though, and that has a consequence worth stating rather than discovering:
+      //
+      //   THIS CATCHES LAYOUT, NOT SMALL COLOUR CHANGES. Repointing --brand-teal at red was
+      //   measured at about 0.04% of the page — a few thin card borders — and passed. A
+      //   background change failed all three specs immediately.
+      //
+      // Tightening the ratio does not fix that; no whole-page ratio can, because a small
+      // element is a small number of pixels however strict you are. Colour is covered
+      // separately and properly by CONTRAST_PAIRS in packages/ui/src/tokens.test.ts. Treat
+      // these screenshots as a guard against things MOVING.
       maxDiffPixelRatio: 0.02,
       animations: 'disabled',
     },

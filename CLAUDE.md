@@ -64,12 +64,16 @@ apps/web/                Next.js 15 App Router
   src/lib/               client-side: supabase clients, cloak-session (auth + keys)
   src/server/            server-only: events read path, policy application, week ranges
   src/components/        UI. Anything touching a key is 'use client'.
+    cloak-mark.ts        THE logo geometry, as a string. No JSX, no CSS import.
+    cloak-logo.tsx       <CloakLockup>, the only brand markup in the app.
+  src/app/fonts/         Inter v4.1, self-hosted. Checksum in docs/brand.md.
 packages/policy/         THE visibility engine + shared JSON vectors
 packages/crypto/         Cloak boundary: AES-GCM, HKDF, key wrapping, recovery, pairing
 packages/cloak-store/    Browser-only decryption store + IndexedDB key vault
 packages/domain/         Recurrence, DST, edit scopes, iCalendar. Pure, no I/O.
 packages/db/             Migrations + CRUD service, tested against PGlite (no Docker)
-tools/                   email-setup (Resend/Porkbun/Supabase), fixture generator
+tools/                   email-setup (Resend/Porkbun/Supabase), fixture generator,
+                         render-brand-assets (icons; output committed)
 ```
 
 ## Commands
@@ -77,10 +81,11 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 638 unit tests
+pnpm test                # 651 unit tests
 pnpm test:e2e            # 74 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
+pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
 ```
 
 **`pnpm build` comes before `pnpm test` on a fresh clone.** `build-output.leak.test.ts`
@@ -115,6 +120,13 @@ agenda and week views, week navigation, View As, and the full create / edit / de
 an event. Plus account recovery: `/recover` takes the phrase and a new password, `/account`
 changes a password deliberately, and both re-wrap the root key rather than re-encrypting
 anything. Verified in a browser, not just in tests.
+
+**The brand is real now.** There is an actual mark — a calendar tile with a cloak over its
+lower-right corner, where the dates under the cloak are ABSENT rather than dimmed — replacing
+the 32px gradient square that stood in for a logo, and the eleven lines of markup that were
+copy-pasted into four components. Favicon, `.ico`, apple icon, PWA tiles and a social card all
+generate from that one SVG. Inter is loaded for the first time. `docs/brand.md` records which
+parts of the mark the references specify and which are extrapolated.
 
 **Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
 `update_cloaked_event` (0011), `split_cloaked_event` (0013). All SECURITY INVOKER, so RLS
@@ -159,15 +171,84 @@ per-occurrence delete needs (0013 writes and migrates them); the UI has not been
 **Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
 native iOS. **Independent security review is a hard gate before public launch.**
 
+## Deployment, as of 2026-08-11
+
+**Vercel now auto-deploys `main`.** The project had no Git integration at all — every earlier
+deploy came from the CLI, from a `master` ref, and the live site sat 14 commits behind. It is
+connected now and a push to `main` produces a production deploy.
+
+Three things about that are worth knowing:
+
+- **CI does not gate it.** `ci.yml` has no deploy step and the Hobby plan has no required
+  checks, so they race. A red commit reaches production. Branch protection requiring the `CI`
+  check is the fix and is not yet turned on.
+- **`cloakcal.com` is registered and verified in the Vercel team but attached to NO project**,
+  so no certificate was ever issued and it fails its TLS handshake. Its DNS already points at
+  Vercel, so attaching it needs no DNS changes — but **decline any prompt to move the
+  nameservers to `vercel-dns.com`**, because the zone is on Porkbun and carries the Zoho MX
+  and every Resend record `pnpm email:setup` wrote.
+- **Everything is behind Vercel Authentication** (`all_except_custom_domains`), so every
+  `*.vercel.app` URL bounces a non-team-member to an SSO page. Attaching the apex is what
+  actually makes the site public, not a nicety.
+
+The two Supabase variables are typed **Sensitive** on Production and Preview, which is why
+`vercel env pull` returns `[SENSITIVE]` for them. Neither is secret. Retyping needs a delete
+and re-add.
+
 ---
 
 ## Things that will waste your time if you do not know them
 
 - **`next` is a root devDependency purely for Vercel's framework detection.** It is never
   executed from there. See `docs/deploy.md`.
-- **Visual baselines are per-platform.** The `visual` Playwright project skips itself on any
-  OS with no committed baselines. Generate with `pnpm test:visual --update-snapshots` and
-  commit them.
+- **Visual baselines are per-platform, and until 2026-08-11 the suite had never run
+  anywhere.** Every committed baseline was `-win32`; CI is ubuntu and development is darwin,
+  so the project skipped on both while the CI step was named "E2E, accessibility and visual".
+  The config comment claimed "CI pins one platform, so regressions are still caught" and that
+  was never true. Worse, the documented bootstrap — `pnpm test:visual --update-snapshots` —
+  **could not work**, because the project ignored itself until the baselines it was meant to
+  create already existed. `isBootstrappingSnapshots()` is the escape hatch that closes that
+  loop. `-darwin` baselines now exist; run the `Visual baselines (linux)` workflow and commit
+  its artifact to make CI check anything.
+- **These screenshots catch layout, not colour.** `maxDiffPixelRatio` is 0.02, and repointing
+  `--brand-teal` at red measured 0.04% of the page and passed; a background change failed all
+  three immediately. No whole-page ratio fixes that. Colour is covered by `CONTRAST_PAIRS` in
+  `packages/ui/src/tokens.test.ts` instead.
+- **Brand assets are generated and COMMITTED, from one SVG.** `apps/web/src/components/
+  cloak-mark.ts` is the only place the mark's geometry exists; `pnpm brand:assets` rasterises
+  the favicon, `.ico`, apple icon, PWA tiles and social card from it. Nothing in CI or on
+  Vercel runs it. See `docs/brand.md`.
+- **Never declare `metadata.icons`.** Next merges the `app/icon.*` and `app/apple-icon.*` file
+  conventions only when that key is undefined — the merge is guarded by
+  `if (!resolvedMetadata.icons)`. Setting it anywhere silently deletes every tag those files
+  would have emitted. `favicon.ico` is special-cased and survives, so the breakage looks
+  partial and random rather than total.
+- **A generated metadata route has no file extension, and `middleware.ts` excludes assets BY
+  extension.** `app/opengraph-image.tsx` serves at `/opengraph-image`, which the matcher
+  catches, so an unauthenticated request gets a 307 to `/sign-in` — and crawlers and
+  link-unfurl bots are never authenticated. The social card would be blank for exactly the
+  audience it exists for. **Nothing here would catch it**: dev and every Playwright project
+  run with `NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1`, which returns early before any redirect. That
+  is why every icon is a static file with a real extension, and why
+  `middleware-paths.server.test.ts` pins each path.
+- **The `/account` prerender trap runs in OPPOSITE directions on CI and Vercel.** CI has no
+  Supabase variables, so a server page missing `force-dynamic` throws during prerender and the
+  build dies loudly. Vercel *has* them, so the same page prerenders silently with an empty
+  session baked into static HTML. **Vercel is the permissive one; CI is the gate.** A green
+  Vercel build is not evidence that a page is dynamic.
+- **`.vercelignore` uses gitignore semantics, so a bare `*.png` matches at every depth.** It
+  did, and it would have stripped every icon out of a CLI deploy the moment they existed. It
+  now names the two brand boards outright.
+- **The font class goes on `<html>`, not `<body>`.** `globals.css` styles `html, body
+  { font-family: var(--font-sans) }` and `--font-sans` is declared on `:root`, so putting
+  `inter.variable` on `<body>` leaves `<html>` unable to resolve it and everything falls back
+  to the literal family name `'Inter'` — which names nothing once Next hashes it. The failure
+  looks exactly like a font that did not download. Inter was declared in the tokens from M0
+  and **never actually loaded** until 2026-08-11.
+- **`next build` has no `--webpack` flag in 15.5**, whatever `next.config.ts` used to claim.
+  Webpack is the default and Turbopack is opt-in, so the real rule is negative: do not add
+  `--turbopack`, because the `webpack()` hook is the only thing resolving workspace `./x.js`
+  specifiers to the `.ts` on disk. This becomes load-bearing at the Next 16 upgrade.
 - **PGlite parses `timestamp without time zone` using the host timezone.** The db tests ask
   Postgres for `to_char(...)` text instead. Do not "simplify" that back to a Date.
 - **Secrets do not travel between machines, by design.** On a fresh clone run

@@ -20,7 +20,8 @@
     "test:leak": "vitest run --project leak",
     "test:a11y": "playwright test --project=a11y",
     "test:visual": "playwright test --project=visual",
-    "email:setup": "tsx --env-file-if-exists=.env.email-setup tools/email-setup.ts"
+    "email:setup": "tsx --env-file-if-exists=.env.email-setup tools/email-setup.ts",
+    "brand:assets": "tsx tools/render-brand-assets.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -1,0 +1,53 @@
+name: Visual baselines (linux)
+
+# Generates the `-linux.png` baselines that CI needs and this repo has never had.
+#
+# Every committed baseline used to be `-win32`, so the visual project skipped itself on both
+# ubuntu (CI) and darwin (development) and not one screenshot was ever compared — while the
+# CI step was named "E2E, accessibility and visual". Development baselines can be made
+# locally; the linux set cannot, unless you have Docker.
+#
+# Run this by hand from the Actions tab, download the artifact, unzip it over
+# e2e/visual.spec.ts-snapshots/ and commit. After that the `visual` project stops skipping in
+# CI and starts doing its job.
+#
+# Deliberately NOT on push. Baselines are a decision — "the UI now looks like this, on
+# purpose" — and a job that regenerates them automatically would rubber-stamp every visual
+# regression it was supposed to catch.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  baselines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # --update-snapshots is also what lets the project run at all on a platform with no
+      # baselines yet; see isBootstrappingSnapshots() in playwright.config.ts.
+      - name: Generate
+        run: pnpm test:visual --update-snapshots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-linux
+          path: e2e/visual.spec.ts-snapshots/*-linux.png
+          if-no-files-found: error

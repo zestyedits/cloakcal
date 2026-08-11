@@ -10,6 +10,7 @@ import { WeekGrid } from './week-grid'
 import { NewEvent } from './new-event'
 import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
+import { CloakLockup } from './cloak-logo'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -94,12 +95,7 @@ export function CalendarScreen({
     <CloakProvider page={page} email={email}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <div className={styles.brand}>
-            <span className={styles.mark} aria-hidden="true" />
-            <span className={styles.wordmark}>
-              Cloak<span className={styles.wordmarkAccent}>Cal</span>
-            </span>
-          </div>
+          <CloakLockup size="sm" />
 
           {/* Real links, not buttons: a week is a location, so it should be shareable,
               bookmarkable and reachable with the back button. Server navigation also keeps

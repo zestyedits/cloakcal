@@ -10,6 +10,7 @@ import {
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { CloakLockup } from './cloak-logo'
 import styles from './auth.module.css'
 
 /**
@@ -128,12 +129,7 @@ export function RecoverForm() {
 
   return (
     <form className={styles.card} onSubmit={screen === 'reset' ? resetPassword : sendLink}>
-      <div className={styles.brand}>
-        <span className={styles.mark} aria-hidden="true" />
-        <span className={styles.wordmark}>
-          Cloak<span className={styles.wordmarkAccent}>Cal</span>
-        </span>
-      </div>
+      <CloakLockup />
 
       <h1 className={styles.title}>{screen === 'sent' ? 'Check your email' : 'Get back in'}</h1>
       <p className={styles.lede}>{LEDE[screen]}</p>

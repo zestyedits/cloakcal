@@ -3,4 +3,15 @@ test-results
 playwright-report
 e2e
 docs
-*.png
+
+# The two brand reference boards at the repo root, named rather than globbed.
+#
+# This was `*.png`, which uses gitignore semantics: unanchored, so it matched at EVERY depth.
+# The moment apps/web/public/icons/*.png and app/apple-icon.png existed, that one line would
+# have quietly stripped every icon out of the deploy — a favicon that works locally and is
+# absent in production, with nothing to point at.
+#
+# Only applies to CLI uploads anyway; a git-triggered build clones the whole repo. Kept
+# narrow so it cannot cause the same surprise twice.
+/Brand Info Concepts.png
+/Brand Info Concepts 2.png

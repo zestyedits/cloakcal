@@ -41,7 +41,14 @@
    * Typography — Inter, per the guide. Sizes use a 1.2 minor-third ramp;
    * the guide fixes the family and weights, not the scale.
    * ------------------------------------------------------------------- */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* `--font-inter` is supplied by whoever loads the font — in apps/web that is
+     `next/font/local`, which hashes the family name at build time and exposes it through a
+     custom property. The indirection is what keeps THIS package free of any dependency on
+     Next: the fallback chain lives here, the loading mechanism does not.
+     Unset, this resolves to the literal 'Inter' and then to the platform UI font, which is
+     what every screen silently rendered in until the font was actually loaded. */
+  --font-sans: var(--font-inter, 'Inter'), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
 
   --weight-regular: 400;
