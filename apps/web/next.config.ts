@@ -22,11 +22,22 @@ const config: NextConfig = {
   // so webpack must map that back to the .ts on disk. Without this every cross-file import
   // inside a workspace package fails to resolve.
   //
-  // THIS IS WHY `next build` PASSES `--webpack`. Turbopack is the default builder from
-  // 15.5 and would ignore the block below. It also currently panics compiling this app's
-  // middleware ("missing incrementalCacheHandler in template"), so the choice is not
-  // hypothetical. Revisit when that is fixed upstream; the resolution above is the only
-  // thing keeping us on webpack.
+  // THIS BLOCK ONLY RUNS UNDER WEBPACK, AND NOTHING IN THE REPO ENFORCES THAT.
+  //
+  // An earlier version of this comment claimed `next build` passes `--webpack`. It does not,
+  // and it cannot: there is no such flag on `next build` in 15.5 (`next build --help` lists
+  // only `--turbo`/`--turbopack`). Webpack is simply still the DEFAULT, and Turbopack is
+  // opt-in. So the real rule is the negative one:
+  //
+  //   *** DO NOT ADD `--turbopack` TO THE BUILD OR DEV SCRIPT. ***
+  //
+  // Turbopack ignores this hook, so every cross-file import inside a workspace package would
+  // fail to resolve. It also panics compiling this app's middleware ("missing
+  // incrementalCacheHandler in template"), so the choice is not hypothetical.
+  //
+  // This becomes load-bearing at the Next 16 upgrade, where Turbopack is the default and the
+  // opt-out has to be explicit. That upgrade must not be a version bump alone — check that
+  // `.js` → `.ts` resolution still happens before merging it.
   webpack: (config) => {
     config.resolve.extensionAlias = {
       ...config.resolve.extensionAlias,
