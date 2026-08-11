@@ -10,8 +10,10 @@
  *   pnpm email:setup            # do it
  *   pnpm email:setup --dry-run  # validate everything, write nothing
  *
- * IDEMPOTENT. Re-running is safe and is the intended way to resume after a failure. It
- * never deletes a DNS record and never overwrites one it did not recognise.
+ * IDEMPOTENT. Re-running is safe and is the intended way to resume after a failure.
+ *
+ * It writes exactly one kind of destructive change, and only under --merge-spf: collapsing
+ * multiple root SPF records into one. Nothing else is ever edited or removed.
  *
  * WHAT IT WILL NOT DO, and why:
  *
@@ -20,9 +22,16 @@
  *   paid mailboxes. Forwarding is a control-panel toggle. The script prints it as a manual
  *   step rather than pretending to have done it.
  *
- *   It also will not add a second SPF record. Two SPF TXT records at the same name is not
- *   "more SPF" — it is a permerror, and every receiver treats the domain as unauthenticated.
- *   If a root SPF record already exists, the script stops and shows the merged value to set.
+ *   It will not leave a domain with two SPF records. Two SPF TXT records at one name is not
+ *   "more SPF" — it is a permerror under RFC 7208, and every receiver then treats the domain
+ *   as having no SPF at all. Mail keeps sending and quietly lands in spam. Without
+ *   --merge-spf it refuses and prints the value to set; with it, it folds them into one.
+ *
+ * READ-MODIFY-WRITE, so it races with the control panel. It reads the zone, decides, then
+ * writes. Configuring a mail provider in another tab mid-run is how cloakcal.com ended up
+ * with two SPF records: the first run merged Porkbun's, Zoho's setup added its own, and the
+ * next run saw only the first. Re-running now repairs that, but the window is real — do not
+ * edit DNS by hand while this is running.
  */
 
 import { execFile } from 'node:child_process'
@@ -276,12 +285,38 @@ async function writeDnsRecords(config: Config, domain: ResendDomain): Promise<vo
   // to the first: RFC 7208 makes multiple SPF records a permerror, and receivers then treat
   // the domain as having no SPF at all. Mail keeps sending and quietly lands in spam.
   const resendSpf = domain.records.find((r) => r.record === 'SPF' && r.type === 'TXT')
-  const existingSpf = current.records.find(
+
+  // ALL of them, not the first. An earlier version used .find() here, which assumed a
+  // domain has at most one SPF record — exactly the broken state this code exists to
+  // detect. It cannot assume the thing it is checking for. Two records appeared on
+  // cloakcal.com when a mail provider was configured in another tab between two runs.
+  const existingSpfRecords = current.records.filter(
     (r) => r.type === 'TXT' && subdomainOf(r, config.domain) === '' && isSpfRecord(r.content),
   )
+  const existingSpf = existingSpfRecords[0]
 
-  if (resendSpf !== undefined && existingSpf !== undefined && existingSpf.content !== resendSpf.value) {
-    const merged = mergeSpf(existingSpf.content, resendSpf.value)
+  if (existingSpfRecords.length > 1) {
+    warn(`${existingSpfRecords.length} root SPF records found — this domain is currently a permerror`)
+    for (const record of existingSpfRecords) info(`  ${record.content}`)
+  }
+
+  // Fold every existing SPF record together with Resend's, so a domain that is already in
+  // the two-record broken state collapses to one correct record rather than staying broken.
+  const mergedSpf =
+    resendSpf === undefined || existingSpf === undefined
+      ? null
+      : existingSpfRecords
+          .map((r) => r.content)
+          .reduce((acc, content) => mergeSpf(acc, content), resendSpf.value)
+
+  // Already merged by a previous run. Comparing against the MERGED value rather than
+  // against Resend's raw one is what makes this idempotent: the stored record will never
+  // equal Resend's record once other senders are included, so a naive inequality check
+  // would try to rewrite it on every single run.
+  if (existingSpfRecords.length === 1 && existingSpf !== undefined && mergedSpf === existingSpf.content) {
+    info('SPF already includes Resend, left alone')
+  } else if (resendSpf !== undefined && existingSpf !== undefined && mergedSpf !== null) {
+    const merged = mergedSpf
 
     if (!config.mergeSpf) {
       throw new SetupError(
@@ -299,9 +334,28 @@ async function writeDnsRecords(config: Config, domain: ResendDomain): Promise<vo
     info(`merged SPF:   ${merged}`)
 
     if (!config.dryRun) {
-      // editByNameType rather than create: this REPLACES the record in place, which is the
-      // only safe operation here. Creating would leave two.
-      await porkbun(config, `/dns/editByNameType/${config.domain}/TXT/`, { content: merged, ttl: 600 })
+      // Edit by RECORD ID, replacing in place. Creating would leave two records, which is
+      // the failure this whole branch exists to avoid.
+      //
+      // Not editByNameType: that endpoint targets every record matching a (type,
+      // subdomain) pair, and for a root TXT the subdomain is empty — which both makes the
+      // path end in a bare slash and would sweep in any other root TXT record, such as a
+      // domain-verification token. It also simply returns "unable to edit" in that shape.
+      await porkbun(config, `/dns/edit/${config.domain}/${existingSpf.id}`, {
+        name: '',
+        type: 'TXT',
+        content: merged,
+        ttl: 600,
+      })
+
+      // Then remove the surplus. This is the ONE deletion this tool performs, it only ever
+      // touches records it just folded into the survivor, and it only runs under the
+      // explicit --merge-spf opt-in. Leaving them would mean the merge changed nothing:
+      // the domain would still have multiple SPF records and still be a permerror.
+      for (const surplus of existingSpfRecords.slice(1)) {
+        await porkbun(config, `/dns/delete/${config.domain}/${surplus.id}`)
+        ok(`removed surplus SPF record (${surplus.content})`)
+      }
     }
     ok(`${config.dryRun ? 'would merge' : 'merged'} SPF into one record`)
   }
@@ -398,6 +452,19 @@ async function createSendKey(config: Config): Promise<string> {
     body: { name: `${config.domain} sending`, permission: 'sending_access' },
   })
   ok('created a sending-only key')
+
+  // Resend returns a key's token only at creation, so a re-run cannot reuse the previous
+  // one and necessarily mints another. Say so, rather than letting dead keys pile up
+  // silently every time this is re-run to resume from a later failure.
+  const all = await resend<{ data: Array<{ id: string; name: string }> }>(config, '/api-keys')
+  const siblings = all.data?.filter((k) => k.name === `${config.domain} sending`) ?? []
+  if (siblings.length > 1) {
+    warn(
+      `${siblings.length} keys now share this name. Only the newest is in use — ` +
+        `revoke the rest at resend.com/api-keys.`,
+    )
+  }
+
   return key.token
 }
 
@@ -423,7 +490,11 @@ async function configureSupabaseSmtp(config: Config, sendKey: string): Promise<v
     smtp_host: 'smtp.resend.com',
     // 465 is implicit TLS. The STARTTLS ports (587/2587) are equally valid, but implicit
     // TLS cannot be downgraded by a middlebox that strips the STARTTLS capability.
-    smtp_port: 465,
+    //
+    // A STRING, not a number, despite Supabase's own documented example showing
+    // `"smtp_port": 587` unquoted. The live API rejects a number with
+    // "expected string, received number". Found by running it.
+    smtp_port: '465',
     smtp_user: 'resend',
     smtp_pass: sendKey,
     smtp_admin_email: config.senderAddress,
