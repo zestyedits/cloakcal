@@ -103,6 +103,7 @@ const MIGRATIONS = [
   '0010_lock_down_function_grants.sql',
   '0011_update_cloaked_event.sql',
   '0012_trash_event_hints.sql',
+  '0013_split_cloaked_event.sql',
 ] as const
 
 export interface QueryResult {

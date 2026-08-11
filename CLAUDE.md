@@ -92,6 +92,20 @@ a broken tree.
 To run the app with no account, using the committed fixture:
 `NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1 pnpm dev`
 
+**Testing auth or recovery against the live project needs a throwaway account, and email
+confirmation is ON, so signing up is not enough on its own.** Sign up through the UI with any
+`@cloakcal.test` address, then confirm it by hand:
+
+```sql
+update auth.users set email_confirmed_at = now() where email = '<the address>';
+```
+
+Sign in to run the key ceremony, and keep the 24 words the screen shows — recovery cannot be
+tested without them. Delete the account afterwards with
+`delete from auth.users where email like '%@cloakcal.test'`; the cascade takes its events,
+wraps and workspace with it. **Do not leave one lying around and do not commit its password.**
+A known credential on the production project is worth less than this recipe.
+
 ---
 
 ## Current state, honestly
