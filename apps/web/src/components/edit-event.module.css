@@ -1,0 +1,51 @@
+/*
+ * Edit event — only the parts the create sheet does not have. The shell and the fields come
+ * from event-sheet.module.css and event-fields.module.css.
+ */
+
+/* Stated rather than shown as a disabled control: a greyed-out date picker inside a form
+   reads as broken, where a sentence reads as unbuilt. */
+.note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+/*
+ * Amber, not red. A field that will not decrypt is not an error the user caused and not one
+ * they can fix here — it is a caution about what this save will and will not touch. Red
+ * would read as "your save failed", which is the opposite of what it says.
+ */
+.warning {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.refresh {
+  align-self: flex-start;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.refresh:hover {
+  background: var(--accent-quiet);
+}

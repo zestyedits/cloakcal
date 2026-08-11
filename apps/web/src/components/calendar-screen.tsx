@@ -9,6 +9,7 @@ import { ViewAsBar } from './view-as-bar'
 import { WeekGrid } from './week-grid'
 import { NewEvent } from './new-event'
 import { DeleteEvent } from './delete-event'
+import { EditableEvent } from './editable-event'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -196,7 +197,28 @@ export function CalendarScreen({
                     >
                       <span className={styles.time}>{timeOf(occurrence.start)}</span>
                       <span className={styles.eventBody}>
-                        {occurrence.time === 'busy' ? (
+                        {/* Owner-only, same guard as Delete below. For every other audience
+                            the body renders exactly as it always did — a non-owner has
+                            nothing to open, and nothing to be told about. */}
+                        {page.audience === 'owner' && occurrence.version !== undefined ? (
+                          <EditableEvent
+                            eventId={occurrence.eventId}
+                            version={occurrence.version}
+                            recurring={occurrence.recurring ?? false}
+                            timezone={timezone}
+                            start={occurrence.start}
+                            end={occurrence.end}
+                            label={`the event at ${timeOf(occurrence.start)}`}
+                          >
+                            <CloakedText
+                              className={styles.eventTitle}
+                              subjectType="event"
+                              subjectId={occurrence.eventId}
+                              fieldName="title"
+                              placeholder="Private event"
+                            />
+                          </EditableEvent>
+                        ) : occurrence.time === 'busy' ? (
                           // Nothing to reveal: the server sent no fields for this one.
                           <span className={styles.eventTitle}>Busy</span>
                         ) : (

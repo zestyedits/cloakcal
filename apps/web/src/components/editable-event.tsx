@@ -1,0 +1,83 @@
+'use client'
+
+import { useState, type ReactNode } from 'react'
+import { useCloakStore } from './cloak-provider'
+import { EditEvent } from './edit-event'
+import styles from './editable-event.module.css'
+
+/**
+ * Makes an agenda row open its edit sheet.
+ *
+ * WHY THE ROW AND NOT AN EDIT BUTTON. The row is already a four-column grid — time, title,
+ * busy pill, Delete — and a second 44px control beside Delete would squeeze the title
+ * column, which is the one that already collapses first on a phone. Tapping the event to
+ * open it is also what every calendar on every platform does, so it needs no affordance to
+ * teach.
+ *
+ * IT LIVES HERE, NOT IN calendar-screen.tsx, for a boring but load-bearing reason:
+ * CalendarScreen RENDERS CloakProvider, so its own hooks run outside that provider and
+ * `useCloakStore()` there would always be null. This component is a child, so it is inside.
+ *
+ * DISABLED, NOT ABSENT, WHEN LOCKED. Editing needs a key — the form is pre-filled from
+ * decrypted values. A row that silently stops responding reads as broken, so the control
+ * stays present and says why, and the title keeps full contrast rather than being greyed
+ * along with it.
+ */
+export function EditableEvent({
+  eventId,
+  version,
+  recurring,
+  timezone,
+  start,
+  end,
+  /** Describes the event without naming it — the title is encrypted and stays that way. */
+  label,
+  children,
+}: {
+  eventId: string
+  version: number
+  recurring: boolean
+  timezone: string
+  start: string
+  end: string
+  label: string
+  children: ReactNode
+}) {
+  const store = useCloakStore()
+  const [editing, setEditing] = useState(false)
+  const locked = store === null || !store.isUnlocked
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.trigger}
+        disabled={locked}
+        title={locked ? 'Unlock your calendar first' : undefined}
+        onClick={() => setEditing(true)}
+      >
+        {children}
+        {/* The accessible name is the decrypted title, or the placeholder when locked — no
+            aria-label is constructed anywhere, so nothing new can carry plaintext. This just
+            says what the control DOES. */}
+        <span className={styles.action}> — edit {label}</span>
+      </button>
+
+      {editing && (
+        // Keyed on the event so switching rows re-seeds the form. The sheet reads the store
+        // once on mount and never again; without the key, opening a different event would
+        // show the previous one's values.
+        <EditEvent
+          key={eventId}
+          eventId={eventId}
+          version={version}
+          recurring={recurring}
+          timezone={timezone}
+          start={start}
+          end={end}
+          onClose={() => setEditing(false)}
+        />
+      )}
+    </>
+  )
+}
