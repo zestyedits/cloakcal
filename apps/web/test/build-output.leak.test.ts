@@ -16,7 +16,9 @@ import { beforeAll, describe, expect, it } from 'vitest'
  */
 
 const WEB = fileURLToPath(new URL('..', import.meta.url))
-const BUILD = join(WEB, '.next')
+// The production output directory, kept separate from `next dev`'s .next — see the note
+// in next.config.ts.
+const BUILD = join(WEB, '.next-prod')
 
 /**
  * Plaintext from tools/generate-fixture.ts. If any appears anywhere the server emits,
@@ -75,7 +77,7 @@ beforeAll(async () => {
   )
   if (!exists) {
     throw new Error(
-      'No production build found at apps/web/.next. Run `pnpm --filter @cloakcal/web build` ' +
+      'No production build found at apps/web/.next-prod. Run `pnpm --filter @cloakcal/web build` ' +
         'first. This test fails rather than skips: a privacy gate that skips reports green ' +
         'while checking nothing.',
     )

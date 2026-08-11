@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cross-env NEXT_DIST_DIR=.next-prod next build",
     "start": "next start",
     "fixture": "node scripts/generate-fixture.ts"
   },

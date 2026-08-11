@@ -29,8 +29,15 @@ body {
   position: absolute;
   left: -9999px;
   top: var(--space-2);
+  /* Padding alone gave this 40px. The skip link is the FIRST thing a keyboard or screen
+     reader user reaches, so it is the last control that should miss the touch-target
+     floor. Caught by the a11y suite, not by review. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
   padding: var(--space-2) var(--space-4);
   background: var(--surface-raised);
+  color: var(--text-primary);
   border-radius: var(--radius-md);
   z-index: var(--z-toast);
 }

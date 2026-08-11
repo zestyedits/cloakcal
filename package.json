@@ -26,12 +26,15 @@
     ]
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@cloakcal/crypto": "workspace:*",
     "@electric-sql/pglite": "^0.3.11",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^24.9.2",
+    "cross-env": "^10.1.0",
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
-    "@cloakcal/crypto": "workspace:*"
+    "vitest": "^3.2.4"
   }
 }

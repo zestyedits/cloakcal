@@ -15,4 +15,6 @@ playwright-report/
 
 # Next build output
 apps/web/.next/
+apps/web/.next-prod/
 apps/web/next-env.d.ts
+/test-results/

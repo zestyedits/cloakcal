@@ -59,3 +59,23 @@ jobs:
 
       - name: Unit and domain
         run: pnpm test
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+
+      # E2E runs against the DEV server on purpose: the development key legitimately
+      # cannot unlock a production build, and relaxing that gate to suit a test would
+      # trade a real guarantee for a convenient one. Production artifacts are covered by
+      # the build-output leak suite above.
+      - name: E2E, accessibility and visual
+        run: npx playwright test
+        env:
+          NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK: '1'
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
