@@ -80,6 +80,7 @@ const MIGRATIONS = [
   '0003_private_schema.sql',
   '0004_m0_review_hardening.sql',
   '0005_route_token_128bit.sql',
+  '0006_root_key_wraps.sql',
 ] as const
 
 export interface QueryResult {

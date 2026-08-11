@@ -57,7 +57,7 @@ export interface CloakedPayload {
 const utf8 = new TextEncoder()
 const fromUtf8 = new TextDecoder()
 
-const subtle = (): SubtleCrypto => {
+export const subtle = (): SubtleCrypto => {
   const c = globalThis.crypto
   if (!c?.subtle) {
     throw new Error('WebCrypto unavailable. Cloak requires a secure context or Node >= 20.')
@@ -103,7 +103,7 @@ export function rootKeyFromSeedBytes(seed: Uint8Array): RootKey {
  * requiring an argument about whether a particular collision is currently reachable.
  * Raised in M0 review round 2.
  */
-function encodeCanonical(domain: string, parts: readonly string[]): CloakBytes {
+export function encodeCanonical(domain: string, parts: readonly string[]): CloakBytes {
   const encoded = [utf8.encode(domain), ...parts.map((p) => utf8.encode(p))]
   const total = 1 + encoded.reduce((n, b) => n + 4 + b.length, 0)
 

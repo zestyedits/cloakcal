@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/cloak.ts"
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@scure/bip39": "^2.3.0",
+    "hash-wasm": "^4.12.0"
   }
 }

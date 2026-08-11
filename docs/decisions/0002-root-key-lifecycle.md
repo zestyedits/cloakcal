@@ -1,7 +1,9 @@
 # ADR 0002 — Root key lifecycle
 
-**Status:** Accepted (M0 review round 2). Sections marked **M3** are specified but not built.
+**Status:** Accepted (M0 review round 2). **Amended at M3** — see "M3 amendments" below.
 **Implements:** plan decision D7 — recovery phrase + trusted device, no server escrow.
+**Implemented by:** `packages/crypto/src/{kdf,wrap,recovery,device}.ts`, tested in `keys.test.ts`;
+stored by `packages/db/migrations/0006_root_key_wraps.sql`.
 
 ## What the root key is
 
@@ -33,16 +35,80 @@ The server stores wrapped copies only, and only ones it cannot unwrap — see be
 | Server | **Wrapped copies only** | `devices.wrapped_root_key`. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
 | Backups / logs / telemetry | **Never** | Asserted by the leakage suite. |
 
-## The three wraps (M3)
+## The three wraps (M3 — built)
 
 The URK is wrapped independently three ways. Any one recovers it; losing all three is
 unrecoverable, by design.
 
 | Wrap | Key derivation | Purpose |
 |---|---|---|
-| Password | Argon2id over the account password, per-user random salt | Everyday unlock |
-| Recovery phrase | 24 words (BIP-39 wordlist), 256 bits, shown once at setup and confirmed | Password loss |
-| Device | Per-device X25519 keypair, private half non-extractable | New device, or phrase loss |
+| Password | Argon2id → HKDF split (see amendment 1), salt derived from the account email | Everyday unlock |
+| Recovery phrase | 24 words (BIP-39 English), 256 bits + checksum, shown once and confirmed | Password loss |
+| Device | Per-device ECDH P-256 keypair (amendment 2), private half non-extractable | New device, or phrase loss |
+
+All three produce the same shape — AES-256-GCM over the 32 URK bytes, with the **wrap kind
+bound into the AAD**. Without that binding a wrap made for one slot would open in another,
+so anyone able to write a row could file a device wrap as the password wrap and unlock the
+account with a key they already held.
+
+---
+
+## M3 amendments
+
+### 1. The password wrap is derived through a split, not from the password directly
+
+**What this ADR originally said:** "Argon2id over the account password".
+
+**Why that was wrong:** the account password is also the credential Supabase Auth receives.
+If the wrapping key were derived from it directly, CloakCal would hold the exact input to
+the KDF at every login. "We cannot read your events" would become a statement about our
+conduct rather than about the mathematics — precisely what D7 exists to prevent.
+
+**What is built instead:** one expensive derivation, two independent cheap outputs.
+
+```
+masterSecret = Argon2id(password, salt = canonical(normalized email), 64 MiB / t=3 / p=1)
+  ├── authSecret = HKDF(masterSecret, info = "cloakcal.auth.v1")  → sent as the Supabase password
+  └── wrapKey    = HKDF(masterSecret, info = "cloakcal.wrap.v1")  → never leaves the device
+```
+
+HKDF is one-way and the labels differ, so the authSecret — which CloakCal stores, bcrypted,
+and which anyone stealing the database obtains — yields nothing about the wrapKey.
+`keys.test.ts` asserts this directly: it builds every key an attacker could construct from
+the authSecret and shows the wrap does not open.
+
+**Deterministic salt, stated plainly.** The salt comes from the email rather than a random
+per-user value, because deriving the authSecret is a *precondition* of logging in and a
+random salt would have to be fetched first — turning "does this account exist" into an
+unauthenticated oracle. The email is unique per account and the salt is domain-tagged,
+which is what defeats cross-service rainbow tables. Same trade Bitwarden and 1Password make.
+
+**Parameter downgrade is refused, not trusted.** Parameters travel with the wrap so they can
+be raised later. That means they arrive *from the server*, and a server that could lower
+them could make every derivation cheap to attack. The client enforces its own floor
+(19 MiB / t=2, OWASP's Argon2id minimum) and refuses anything weaker, so stored parameters
+can only ever make a derivation more expensive.
+
+**Raising parameters later** uses version probing, not a pre-login endpoint: a new client
+attempts the current parameters, and on auth failure retries the previous set and rewraps
+on success. This costs one extra derivation during a migration window and adds no
+account-existence oracle.
+
+### 2. Device pairing uses ECDH P-256, not X25519
+
+X25519 reached WebCrypto in Chrome 137, Firefox 132 and Safari 18.4. P-256 has been
+universal for a decade, including in the mobile webviews CloakCal targets. Pairing is the
+recovery path a user reaches for when their other options have already failed, so
+discovering a browser gap at that moment is the worst possible outcome. Both provide
+roughly 128-bit security. The construction is ECIES — ephemeral keypair per wrap, HKDF over
+the shared secret, **both public keys bound into the HKDF info** so a substituted recipient
+key derives a different key rather than opening the wrap.
+
+### 3. `devices.wrapped_root_key` is superseded by `root_key_wraps`
+
+The original column predated the ephemeral public key an ECIES wrap requires, and left two
+possible homes for a device wrap. Migration 0006 drops it and moves all three wrap kinds
+into one table with own-row-only RLS.
 
 **No server escrow.** CloakCal holds no wrap it can open. This is the difference between
 "we cannot read your events" being a mathematical property and being a policy promise, and
