@@ -127,6 +127,32 @@ export function occurrenceInstant(occurrenceLocal: string, timezone: string): st
   return zoned.toInstant().toString()
 }
 
+/**
+ * How many occurrences the rule produces strictly before a local wall time.
+ *
+ * Lives here rather than in edit-scope.ts because it has to count in the SAME floating
+ * convention expansion uses — encoding local fields into a Date's UTC fields. A second
+ * implementation that reached for real instants would drift from expandSeries across a DST
+ * boundary and disagree about how many occurrences a split consumes.
+ *
+ * Counting, not expanding: no zone resolution happens, so `COUNT` arithmetic stays a
+ * question about the RULE rather than about the calendar it lands on.
+ */
+export function countOccurrencesBefore(spec: SeriesSpec, beforeLocal: string): number {
+  if (spec.rrule === null) return 0
+
+  const dtstart = toFloatingDate(Temporal.PlainDateTime.from(spec.dtstartLocal))
+  const before = toFloatingDate(Temporal.PlainDateTime.from(beforeLocal))
+  if (before <= dtstart) return 0
+
+  const options = RRule.parseString(spec.rrule)
+  const rule = new RRule({ ...options, dtstart })
+
+  // `between` is inclusive at both ends when inc is true, so the upper bound is filtered
+  // back off: an occurrence AT the split belongs to the successor, not to what came before.
+  return rule.between(dtstart, before, true).filter((date) => date < before).length
+}
+
 /** Local candidates, before zone resolution and before exceptions. */
 function localCandidates(spec: SeriesSpec, windowFrom: Date, windowTo: Date): Date[] {
   const dtstart = toFloatingDate(Temporal.PlainDateTime.from(spec.dtstartLocal))

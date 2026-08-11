@@ -1,5 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill'
 import { RRule } from 'rrule'
+import { countOccurrencesBefore } from './recurrence.js'
 import type { ExceptionSpec, SeriesSpec } from './recurrence.js'
 
 /**
@@ -54,6 +55,48 @@ const formatUntilLocal = (local: Temporal.PlainDateTime): string =>
     String(local.second).padStart(2, '0'),
     'Z',
   ].join('')
+
+export class ImpossibleSplitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ImpossibleSplitError'
+  }
+}
+
+/**
+ * Carry a bounded series' remaining COUNT onto the successor.
+ *
+ * THE BUG THIS FIXES. `truncateRrule` correctly strips COUNT from the truncated series
+ * (UNTIL replaces it), but the successor used to inherit `series.rrule` verbatim — COUNT and
+ * all. `FREQ=WEEKLY;COUNT=10` split at the 4th occurrence produced 3 + 10 = 13 occurrences,
+ * silently manufacturing three meetings that were never scheduled. A windowed verification
+ * misses it whenever the window ends before the phantom tail.
+ *
+ * Unbounded rules pass through untouched: there is no budget to divide.
+ */
+function rewriteSuccessorCount(rrule: string, consumed: number): string {
+  const parts = rrule.split(';').map((p) => p.trim()).filter((p) => p.length > 0)
+  const index = parts.findIndex((p) => /^count=/i.test(p))
+  if (index === -1) return parts.join(';')
+
+  const total = Number(parts[index]!.slice('count='.length))
+  const remaining = total - consumed
+
+  if (!Number.isInteger(total) || total < 1) {
+    throw new ImpossibleSplitError(`Series has an unusable COUNT: ${parts[index]}`)
+  }
+  if (remaining < 1) {
+    // The split point is at or past the end of a bounded series, so the successor would own
+    // nothing. COUNT=0 is not expressible in RFC 5545, and inventing an occurrence to keep
+    // the rule valid would be worse than refusing: it would add a meeting nobody scheduled.
+    throw new ImpossibleSplitError(
+      `Splitting here leaves the new series empty: all ${total} occurrences fall before the split point`,
+    )
+  }
+
+  parts[index] = `COUNT=${remaining}`
+  return parts.join(';')
+}
 
 /** Replace or append UNTIL, and drop COUNT — the two are mutually exclusive in RFC 5545. */
 export function truncateRrule(rrule: string, untilLocal: Temporal.PlainDateTime): string {
@@ -121,7 +164,12 @@ export function planSeriesEdit(input: PlanInput): SeriesEditPlan {
           dtstartLocal: occurrenceLocal,
           durationMinutes: series.durationMinutes,
           timezone: series.timezone,
-          rrule: series.rrule,
+          // NOT `series.rrule` verbatim. A bounded series has to divide its COUNT budget
+          // between the two halves, or the split conjures occurrences out of nothing.
+          rrule: rewriteSuccessorCount(
+            series.rrule,
+            countOccurrencesBefore(series, occurrenceLocal),
+          ),
         },
         detachedOccurrence: null,
         summary:

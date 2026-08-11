@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { cloakField, rootKeyFromSeedBytes } from '@cloakcal/crypto'
 import { expandSeries } from '@cloakcal/domain'
@@ -42,6 +43,15 @@ const field = async (eventIdOrNull: string, name: string, value: string) => ({
 /** Payload bound to a placeholder subject — fine where the test never decrypts it. */
 const anyField = (name: string, value: string) =>
   field('00000000-0000-4000-8000-000000000001', name, value)
+
+/**
+ * A new event id, generated the way a browser must generate it.
+ *
+ * Successor and detached events take their id from the CALLER, because the caller has to
+ * seal content against that id before the row exists — the AEAD binds ciphertext to it. Any
+ * test that lets the id be a surprise is testing a code path no real client can use.
+ */
+const freshId = () => randomUUID()
 
 const dbFor = (user: string): Db => ({
   query: (sql, params) => db.as(user, sql, params),
@@ -188,6 +198,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
       actorId: USER_A,
       occurrenceLocal: '2026-03-10T09:00:00',
       scope: 'this-and-future',
+      newEventId: freshId(),
       expectedVersion: 1,
       fields: [await anyField('title', 'Weekly Sync v2')],
       verifyRange: VERIFY_RANGE,
@@ -211,6 +222,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
       actorId: USER_A,
       occurrenceLocal: '2026-03-10T09:00:00',
       scope: 'this-and-future',
+      newEventId: freshId(),
       expectedVersion: 1,
       fields: [await anyField('title', 'v2')],
       verifyRange: VERIFY_RANGE,
@@ -233,7 +245,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
 
     const result = await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: splitAt,
-      scope: 'this-and-future', expectedVersion: 1,
+      scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
       fields: [await anyField('title', 'v2')], verifyRange: VERIFY_RANGE,
     })
 
@@ -251,7 +263,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
     const seriesId = await makeSeries(USER_A, wsA, calA)
     await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-03-10T09:00:00',
-      scope: 'this-and-future', expectedVersion: 1,
+      scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
       fields: [await anyField('title', 'Weekly Sync v2')], verifyRange: VERIFY_RANGE,
     })
 
@@ -266,7 +278,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
 
     const result = await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-02-10T09:00:00',
-      scope: 'this', expectedVersion: 1, fields: [await anyField('title', 'Moved one')],
+      scope: 'this', newEventId: freshId(), expectedVersion: 1, fields: [await anyField('title', 'Moved one')],
     })
 
     expect(result.detachedEventId).toBeTruthy()
@@ -290,7 +302,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
     const result = await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A,
       occurrenceLocal: '2026-03-11T09:00:00', // a Wednesday; the series is Tuesdays
-      scope: 'this-and-future', expectedVersion: 1,
+      scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
       fields: [await anyField('title', 'v2')], verifyRange: VERIFY_RANGE,
     })
 
@@ -311,7 +323,7 @@ describe('gate 1 + 3: a split is atomic and verified against what was stored', (
       applySeriesEdit(dbFor(USER_A), {
         seriesId, workspaceId: wsA, actorId: USER_A,
         occurrenceLocal: '2026-03-10T10:00:00', // right weekday, wrong hour
-        scope: 'this-and-future', expectedVersion: 1,
+        scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
         fields: [await anyField('title', 'v2')], verifyRange: VERIFY_RANGE,
       }),
     ).rejects.toThrow(VerificationFailedError)
@@ -332,6 +344,7 @@ describe('gate 3 cannot be skipped', () => {
     actorId: USER_A,
     occurrenceLocal: '2026-03-10T09:00:00',
     expectedVersion: 1,
+    newEventId: freshId(),
   })
 
   it('rejects a split with no verification range at all', async () => {
@@ -342,6 +355,7 @@ describe('gate 3 cannot be skipped', () => {
       applySeriesEdit(dbFor(USER_A), {
         ...base(seriesId),
         scope: 'this-and-future',
+        newEventId: freshId(),
       } as never),
     ).rejects.toThrow(InvalidVerifyRangeError)
   })
@@ -352,6 +366,7 @@ describe('gate 3 cannot be skipped', () => {
       applySeriesEdit(dbFor(USER_A), {
         ...base(seriesId),
         scope: 'this-and-future',
+        newEventId: freshId(),
         verifyRange: { from: 'not-a-date', to: '2026-12-31T00:00:00Z' },
       } as never),
     ).rejects.toThrow(/ISO instants/)
@@ -418,6 +433,7 @@ describe('gate 3 cannot be skipped', () => {
       actorId: USER_A,
       occurrenceLocal: '2026-02-10T09:00:00',
       expectedVersion: 1,
+      newEventId: freshId(),
       fields: [await anyField('title', 'one-off')],
     })
     expect(result.detachedEventId).toBeTruthy()
@@ -432,7 +448,7 @@ describe('gate 2: optimistic concurrency', () => {
 
     await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-03-10T09:00:00',
-      scope: 'this-and-future', expectedVersion: 1,
+      scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
       fields: [await anyField('title', 'v2')], verifyRange: VERIFY_RANGE,
     })
 
@@ -440,7 +456,7 @@ describe('gate 2: optimistic concurrency', () => {
     await expect(
       applySeriesEdit(dbFor(USER_A), {
         seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-02-10T09:00:00',
-        scope: 'this-and-future', expectedVersion: 1,
+        scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
         fields: [await anyField('title', 'v3')], verifyRange: VERIFY_RANGE,
       }),
     ).rejects.toThrow(VersionConflictError)
@@ -450,7 +466,7 @@ describe('gate 2: optimistic concurrency', () => {
     const seriesId = await makeSeries(USER_A, wsA, calA)
     await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-03-10T09:00:00',
-      scope: 'this-and-future', expectedVersion: 1,
+      scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
       fields: [await anyField('title', 'v2')], verifyRange: VERIFY_RANGE,
     })
     const countAfterFirst = await db.as(USER_A, 'select count(*)::int as n from public.events')
@@ -458,7 +474,7 @@ describe('gate 2: optimistic concurrency', () => {
     await expect(
       applySeriesEdit(dbFor(USER_A), {
         seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-02-10T09:00:00',
-        scope: 'this-and-future', expectedVersion: 1,
+        scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
         fields: [await anyField('title', 'v3')], verifyRange: VERIFY_RANGE,
       }),
     ).rejects.toThrow(VersionConflictError)
@@ -473,7 +489,7 @@ describe('gate 2: optimistic concurrency', () => {
 
     await applySeriesEdit(dbFor(USER_A), {
       seriesId, workspaceId: wsA, actorId: USER_A, occurrenceLocal: '2026-02-10T09:00:00',
-      scope: 'this', expectedVersion: 1, fields: [await anyField('title', 'one-off')],
+      scope: 'this', newEventId: freshId(), expectedVersion: 1, fields: [await anyField('title', 'one-off')],
     })
     expect((await loadSeriesSpec(dbFor(USER_A).query, seriesId))!.version).toBe(2)
   })
@@ -548,7 +564,7 @@ describe('gate 5: cross-workspace CRUD is denied and rolls back cleanly', () => 
     await expect(
       applySeriesEdit(dbFor(USER_B), {
         seriesId, workspaceId: wsB, actorId: USER_B, occurrenceLocal: '2026-03-10T09:00:00',
-        scope: 'this-and-future', expectedVersion: 1,
+        scope: 'this-and-future', newEventId: freshId(), expectedVersion: 1,
         fields: [await anyField('title', 'hijack')], verifyRange: VERIFY_RANGE,
       }),
     ).rejects.toThrow()

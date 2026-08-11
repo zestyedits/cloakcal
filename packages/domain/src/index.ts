@@ -1,4 +1,5 @@
 export {
+  countOccurrencesBefore,
   expandSeries,
   expandAllDay,
   occurrenceInstant,
@@ -13,6 +14,7 @@ export {
 } from './recurrence.js'
 
 export {
+  ImpossibleSplitError,
   isValidRrule,
   planOccurrenceDelete,
   planSeriesEdit,

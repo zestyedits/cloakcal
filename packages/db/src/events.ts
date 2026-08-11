@@ -266,10 +266,31 @@ export interface SeriesEditBase {
  * The union makes `this-and-future` without a range a COMPILE error. `assertVerifyRange`
  * covers the rest — values arriving over an API boundary or through `any`.
  */
+/**
+ * `newEventId` is supplied by the CALLER, and it has to be.
+ *
+ * THE BUG THIS FIXES. Both `this` and `this-and-future` create a new event row and file the
+ * caller's sealed fields against it. The id used to come back from Postgres (`returning
+ * id`), which meant the caller had sealed those fields before the id existed — and the
+ * AEAD's additional data binds ciphertext to the subject id (packages/crypto buildAad), as
+ * does the per-field key derivation. So the successor's content could never be decrypted by
+ * anyone, ever. It read as "Private event" forever, indistinguishable from a lost key.
+ *
+ * No test caught it because the fixtures seal against a placeholder and never decrypt.
+ * `edit-event.aad.test.ts` now does the round trip.
+ *
+ * The caller generates a UUID, seals against it, and passes it here. `entire-series` creates
+ * no row, so it needs no id — and the union makes supplying one a compile error rather than
+ * a silently ignored argument.
+ */
 export type SeriesEditCommand =
-  | (SeriesEditBase & { readonly scope: 'this' })
+  | (SeriesEditBase & { readonly scope: 'this'; readonly newEventId: string })
   | (SeriesEditBase & { readonly scope: 'entire-series'; readonly verifyRange?: VerifyRange })
-  | (SeriesEditBase & { readonly scope: 'this-and-future'; readonly verifyRange: VerifyRange })
+  | (SeriesEditBase & {
+      readonly scope: 'this-and-future'
+      readonly newEventId: string
+      readonly verifyRange: VerifyRange
+    })
 
 export class InvalidVerifyRangeError extends Error {
   constructor(message: string) {
@@ -427,16 +448,25 @@ export async function applySeriesEdit(
       const startUtc = first.startInstant
       const endUtc = new Date(new Date(startUtc).getTime() + durationMs).toISOString()
 
-      const { rows } = await tx(
+      // The id is the CALLER's, not Postgres's — the fields below were sealed against it and
+      // cannot be decrypted against any other. See SeriesEditCommand.
+      successorSeriesId = (input as { newEventId: string }).newEventId
+
+      await tx(
         `insert into public.events
-           (workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone,
+           (id, workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone,
             rrule, dtstart_local, busy, reminder_offsets)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-         returning id`,
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
+          successorSeriesId,
           input.workspaceId,
           b['calendar_id'],
-          b['owner_id'],
+          // The ACTOR, not a copy of the original's owner. RLS on `events` has
+          // `with check (... and owner_id = auth.uid())`, so copying only works while owner
+          // and editor are the same person. The day a workspace has a second member, copying
+          // fails with an opaque row-level-security error. A successor is a new event created
+          // by whoever split the series, so the editor owns it.
+          input.actorId,
           startUtc,
           endUtc,
           plan.newSeries.timezone,
@@ -446,13 +476,28 @@ export async function applySeriesEdit(
           b['reminder_offsets'],
         ],
       )
-      successorSeriesId = rows[0]!['id'] as string
       await insertCloakedFields(
         tx,
         input.workspaceId,
         'event',
         successorSeriesId,
         input.fields ?? [],
+      )
+
+      // MOVE THE FUTURE EXCEPTIONS ACROSS. Without this, every cancelled or moved occurrence
+      // at or after the split keeps pointing at the original series — which no longer
+      // produces those occurrences, while the successor that does has never heard of them.
+      // A cancelled future occurrence silently comes back. That is exactly the "cancellation
+      // resurrects" failure ADR 0001 keys exceptions by local wall time to prevent, arriving
+      // by a different route.
+      //
+      // Runs after the successor INSERT because `series_id` is a foreign key.
+      await tx(
+        `update public.recurrence_exceptions
+            set series_id = $1
+          where series_id = $2
+            and occurrence_local >= $3`,
+        [successorSeriesId, input.seriesId, input.occurrenceLocal.replace('T', ' ')],
       )
     }
 
@@ -478,21 +523,25 @@ export async function applySeriesEdit(
         throw new VerificationFailedError('Detached occurrence could not be resolved')
       }
 
-      const { rows } = await tx(
+      // Caller's id, and the caller's own user id as owner — same two reasons as the
+      // successor insert above.
+      detachedEventId = (input as { newEventId: string }).newEventId
+
+      await tx(
         `insert into public.events
-           (workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone, busy)
-         values ($1,$2,$3,$4,$5,$6,$7) returning id`,
+           (id, workspace_id, calendar_id, owner_id, start_utc, end_utc, timezone, busy)
+         values ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
+          detachedEventId,
           input.workspaceId,
           b['calendar_id'],
-          b['owner_id'],
+          input.actorId,
           occurrence.startInstant,
           new Date(new Date(occurrence.startInstant).getTime() + durationMs).toISOString(),
           b['timezone'],
           b['busy'],
         ],
       )
-      detachedEventId = rows[0]!['id'] as string
       await insertCloakedFields(tx, input.workspaceId, 'event', detachedEventId, input.fields ?? [])
     }
 
@@ -591,7 +640,7 @@ export async function trashEvent(
  */
 export function editSingleOccurrence(
   db: Db,
-  input: SeriesEditBase,
+  input: SeriesEditBase & { readonly newEventId: string },
 ): Promise<ApplySeriesEditResult> {
   return applySeriesEdit(db, { ...input, scope: 'this' })
 }
@@ -613,7 +662,7 @@ export function editEntireSeries(
  */
 export function editThisAndFuture(
   db: Db,
-  input: SeriesEditBase & { readonly verifyRange: VerifyRange },
+  input: SeriesEditBase & { readonly newEventId: string; readonly verifyRange: VerifyRange },
 ): Promise<ApplySeriesEditResult> {
   return applySeriesEdit(db, { ...input, scope: 'this-and-future' })
 }

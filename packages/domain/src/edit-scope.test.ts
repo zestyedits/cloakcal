@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
 import { Temporal } from '@js-temporal/polyfill'
-import { isValidRrule, planSeriesEdit, planOccurrenceDelete, truncateRrule } from './edit-scope.js'
-import { expandSeries, type SeriesSpec } from './recurrence.js'
+import {
+  ImpossibleSplitError,
+  isValidRrule,
+  planSeriesEdit,
+  planOccurrenceDelete,
+  truncateRrule,
+} from './edit-scope.js'
+import { countOccurrencesBefore, expandSeries, type SeriesSpec } from './recurrence.js'
 
 /**
  * M1 gate — the three recurrence edit scopes (spec §3).
@@ -254,5 +260,67 @@ describe('properties', () => {
       ),
       { numRuns: 30 },
     )
+  })
+})
+
+/**
+ * A bounded series has a fixed number of occurrences, and a split has to DIVIDE that budget
+ * between the two halves. It used to hand the whole budget to each: `truncateRrule` dropped
+ * COUNT from the truncated series (correct — UNTIL replaces it), while the successor
+ * inherited `series.rrule` verbatim, COUNT and all.
+ *
+ * The result was a calendar that manufactured meetings. Splitting a 10-occurrence series
+ * after the 3rd produced 3 + 10 = 13. Nobody scheduled the last three.
+ *
+ * These tests are the reason to trust the fix: the first fails outright before it, and the
+ * second is the losslessness property stated over the series' FULL extent rather than a
+ * window that happens to end before the phantom tail.
+ */
+describe('a bounded series divides its COUNT across a split', () => {
+  const bounded = series({ rrule: 'FREQ=WEEKLY;BYDAY=TU;COUNT=10' })
+  // 2026-01-06 is the first Tuesday, so this is the 4th occurrence.
+  const splitAt = '2026-01-27T09:00:00'
+
+  const plan = planSeriesEdit({ series: bounded, occurrenceLocal: splitAt, scope: 'this-and-future' })
+
+  it('gives the successor only what the truncated series did not consume', () => {
+    expect(countOccurrencesBefore(bounded, splitAt)).toBe(3)
+    expect(plan.newSeries?.rrule).toBe('FREQ=WEEKLY;BYDAY=TU;COUNT=7')
+  })
+
+  it('drops COUNT from the truncated half, which UNTIL now bounds', () => {
+    expect(plan.truncateSeriesTo).not.toMatch(/count=/i)
+    expect(plan.truncateSeriesTo).toMatch(/UNTIL=/)
+  })
+
+  it('still totals ten occurrences, not thirteen', () => {
+    // Deliberately wide enough to contain every occurrence of BOTH halves. A window that
+    // stopped earlier would pass even with the bug, which is what let it survive.
+    const wide = { from: '2026-01-01T00:00:00Z', to: '2027-01-01T00:00:00Z' }
+    const before = expandSeries({ ...bounded, rrule: plan.truncateSeriesTo }, wide)
+    const after = expandSeries(plan.newSeries!, wide)
+
+    expect(before).toHaveLength(3)
+    expect(after).toHaveLength(7)
+    expect([...before, ...after].map((o) => o.occurrenceLocal)).toEqual(
+      expandSeries(bounded, wide).map((o) => o.occurrenceLocal),
+    )
+  })
+
+  it('refuses a split that would leave the new series empty', () => {
+    // Past the 10th occurrence. COUNT=0 is not expressible, and inventing an occurrence to
+    // keep the rule valid would add a meeting nobody scheduled.
+    expect(() =>
+      planSeriesEdit({ series: bounded, occurrenceLocal: '2026-06-02T09:00:00', scope: 'this-and-future' }),
+    ).toThrow(ImpossibleSplitError)
+  })
+
+  it('leaves an unbounded series alone — there is no budget to divide', () => {
+    const unbounded = planSeriesEdit({
+      series: series(),
+      occurrenceLocal: splitAt,
+      scope: 'this-and-future',
+    })
+    expect(unbounded.newSeries?.rrule).toBe('FREQ=WEEKLY;BYDAY=TU')
   })
 })

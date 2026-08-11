@@ -136,3 +136,48 @@ describe('RLS coverage cannot regress', () => {
     expect(rows.map((r) => r['policy'])).toEqual([])
   })
 })
+
+/**
+ * Nothing in CloakCal is readable without a session, so no RPC should be reachable without
+ * one either. This is the assertion whose absence let 0007 and 0008 ship with an `anon`
+ * grant they believed they had revoked.
+ *
+ * It is a sweep rather than a per-function check on purpose: the failure mode is somebody
+ * adding a function and forgetting, and a test that has to be extended alongside the thing
+ * it guards is a test that will not be extended.
+ */
+describe('no RPC is reachable without a session', () => {
+  it('leaves no function in public executable by anon', async () => {
+    const { rows } = await db.raw(`
+      select p.proname
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and has_function_privilege('anon', p.oid, 'execute')
+      order by 1
+    `)
+    expect(rows.map((r) => r['proname'])).toEqual([])
+  })
+
+  it('is load-bearing, because a bare CREATE FUNCTION is still anon-reachable', async () => {
+    // The sweep above is the ONLY thing standing between this project and an open RPC, and
+    // this is why. Postgres grants EXECUTE to PUBLIC on every function at creation, `anon`
+    // inherits through PUBLIC, and that default cannot be switched off:
+    // `alter default privileges ... revoke execute on functions from public` is a silent
+    // no-op, because the built-in grant is implicit rather than a stored default. Confirmed
+    // against the live Supabase project as well as here.
+    //
+    // So "we revoked the default, new functions are safe now" — 0009's claim — is false, and
+    // will stay false. Every function needs its own revoke, and this test exists so nobody
+    // reads the green sweep as evidence that the platform is handling it.
+    await db.raw(`create function public.posture_canary() returns integer
+                  language sql immutable as $$ select 1 $$`)
+    try {
+      const { rows } = await db.raw(
+        `select has_function_privilege('anon', 'public.posture_canary()', 'execute') as anon_can_call`,
+      )
+      expect(rows[0]!['anon_can_call']).toBe(true)
+    } finally {
+      await db.raw('drop function public.posture_canary()')
+    }
+  })
+})

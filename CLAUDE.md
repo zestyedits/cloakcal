@@ -153,13 +153,22 @@ native iOS. **Independent security review is a hard gate before public launch.**
   `docs/deploy.md`) and can always be re-sourced from the Supabase dashboard.
 - **`supabase.auth.getClaims()`, not `getSession()`, on the server.** The session cookie is
   client-writable; getClaims verifies the JWT signature.
-- **`revoke ... from public` does NOT lock a function to signed-in callers.** Supabase runs
-  `alter default privileges ... grant all on functions to anon, authenticated, service_role`,
-  so every new function carries an EXPLICIT grant to `anon` that a revoke from `PUBLIC` does
-  not touch. 0007 and 0008 both got this wrong; 0009 fixes them and revokes the default, so
-  new functions are safe by default. The db harness now creates a real `anon` role — use
-  `db.asUnauthenticated(...)`, not `db.asAnon(...)`, for privilege assertions. `asAnon` is
-  the `authenticated` role without a subject, which is a different thing entirely.
+- **Every new function is reachable by logged-out callers, and there is no way to change the
+  default.** Two separate grants of `EXECUTE` exist and each hides the other. Supabase runs
+  `alter default privileges ... grant all on functions to anon, ...` — an explicit `anon`
+  grant that `revoke ... from public` does not touch, and the hole 0007 and 0008 shipped
+  with. Postgres *separately* grants `EXECUTE` to `PUBLIC` on every function at creation, and
+  `anon` inherits through `PUBLIC`. **The second one cannot be turned off**: `alter default
+  privileges ... revoke execute on functions from public` looks like the fix and is a silent
+  no-op, because the built-in grant is implicit rather than a stored default. Verified on the
+  live project, not inferred. So 0009's claim that it made new functions "safe by default"
+  was wrong and will stay wrong. Write **both** `revoke all on function ... from public` and
+  `... from anon` on every new function, and trust the sweep in
+  `packages/db/test/security-posture.test.ts` — it fails if any function in `public` is
+  executable by `anon` — rather than trusting your reasoning about grants. It already caught
+  one (`touch_updated_at`, fixed in 0010). Use `db.asUnauthenticated(...)`, not
+  `db.asAnon(...)`, for privilege assertions: `asAnon` is the `authenticated` role without a
+  subject, which is a different thing entirely.
 
 ## Working style
 
