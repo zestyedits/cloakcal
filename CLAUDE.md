@@ -76,12 +76,18 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
-pnpm test                # 490 unit tests
+pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
+pnpm test                # 502 unit tests
 pnpm test:e2e            # 51 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
-pnpm build               # production build to .next-prod
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 ```
+
+**`pnpm build` comes before `pnpm test` on a fresh clone.** `build-output.leak.test.ts`
+inspects the prerendered HTML and RSC payloads in `apps/web/.next-prod`, and with no build
+present it FAILS rather than skips — deliberately, because a privacy gate that skips reports
+green while checking nothing. One failed suite on a clean checkout is that gate working, not
+a broken tree.
 
 To run the app with no account, using the committed fixture:
 `NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1 pnpm dev`
@@ -91,16 +97,26 @@ To run the app with no account, using the committed fixture:
 ## Current state, honestly
 
 **Works:** sign up, sign in, first-run key ceremony with a 24-word recovery phrase, unlock,
-agenda and week views, week navigation, View As, creating an encrypted event. Verified end
-to end in a browser against the live Supabase project, not just in tests.
+agenda and week views, week navigation, View As, creating an encrypted event, deleting one.
+Verified end to end in a browser against the live Supabase project, not just in tests.
 
-**The biggest gap:** `packages/db` is imported by nothing. The CRUD service — five enforced
-gates, three edit scopes, atomic series splits, optimistic concurrency, unskippable
-post-write verification — is fully tested against PGlite and wired to no UI. The app's only
-event write is the `create_cloaked_event` RPC.
+**The biggest gap:** `packages/db` is still imported by nothing. The CRUD service — five
+enforced gates, three edit scopes, atomic series splits, optimistic concurrency, unskippable
+post-write verification — is fully tested against PGlite and wired to no UI. It is being
+ported to Supabase RPCs one mutation at a time.
 
-**So: you can create an event but not edit or delete one.** Porting that service to Supabase
-RPCs is the top job.
+**Ported so far:** `create_cloaked_event` (0007) and `trash_cloaked_event` (0008). Both are
+SECURITY INVOKER, so RLS decides what they can touch. Trash is version-guarded, soft (the row
+and its cloaked fields survive), and audited without naming anything.
+
+**So: you can create and delete an event, but not edit one.** Editing is the top job, and it
+is the hard part — three scopes, atomic series splits, post-write verification. Follow the
+shape 0008 established: one RPC, invoker rights, an expected version in, a distinguishable
+error out.
+
+**Delete is whole-series.** A recurring event is one row, so trashing it removes every
+occurrence, and the confirmation says so. Per-occurrence deletion needs the
+`recurrence_exceptions` path from `packages/db`, which lands with the edit port.
 
 **Then, in order:**
 1. Password change / rewrap. Changing a Supabase password today leaves the old wrap in place
@@ -127,8 +143,23 @@ native iOS. **Independent security review is a hard gate before public launch.**
   Postgres for `to_char(...)` text instead. Do not "simplify" that back to a Date.
 - **Secrets do not travel between machines, by design.** On a fresh clone run
   `vercel env pull apps/web/.env.local`. `.env.email-setup` is setup-only.
+- **`vercel env pull` can succeed and still give you nothing usable.** It targets the
+  *development* environment by default, and it renders any variable typed `Sensitive` on
+  Vercel as the literal string `[SENSITIVE]` rather than its value — while still printing
+  `✓ Created` and exiting 0. That is worse than failing: `supabaseBrowser()` only throws when
+  a variable is `undefined`, so a `[SENSITIVE]` placeholder sails past the loud-failure guard
+  and surfaces later as an inexplicable network error. If `.env.local` looks wrong, read it
+  before trusting the exit code. Both Supabase values are public by design (see
+  `docs/deploy.md`) and can always be re-sourced from the Supabase dashboard.
 - **`supabase.auth.getClaims()`, not `getSession()`, on the server.** The session cookie is
   client-writable; getClaims verifies the JWT signature.
+- **`revoke ... from public` does NOT lock a function to signed-in callers.** Supabase runs
+  `alter default privileges ... grant all on functions to anon, authenticated, service_role`,
+  so every new function carries an EXPLICIT grant to `anon` that a revoke from `PUBLIC` does
+  not touch. 0007 and 0008 both got this wrong; 0009 fixes them and revokes the default, so
+  new functions are safe by default. The db harness now creates a real `anon` role — use
+  `db.asUnauthenticated(...)`, not `db.asAnon(...)`, for privilege assertions. `asAnon` is
+  the `authenticated` role without a subject, which is a different thing entirely.
 
 ## Working style
 
