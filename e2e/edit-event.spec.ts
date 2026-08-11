@@ -78,15 +78,38 @@ test('treats a whitespace-only edit as no edit', async ({ page }) => {
   await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
 })
 
-test('offers no timing controls on a repeating event, and says why', async ({ page }) => {
-  // Stated rather than disabled. A greyed-out date picker reads as broken; a sentence reads
-  // as unbuilt, which is the truth — retiming a series needs the exception migration.
+test('asks a repeating event which occurrences to change', async ({ page }) => {
   const dialog = await openSheet(page, RECURRING)
-  await expect(dialog.getByLabel('Day')).toHaveCount(0)
-  await expect(dialog.getByLabel('Starts')).toHaveCount(0)
-  await expect(dialog.getByText(/This event repeats/)).toBeVisible()
-  // Content is still editable, which is most of what the feature is for.
+  for (const choice of ['Only this event', 'This and all following', 'All events']) {
+    await expect(dialog.getByRole('radio', { name: choice })).toBeVisible()
+  }
+  // Least destructive by default, which is also what every other calendar does.
+  await expect(dialog.getByRole('radio', { name: 'Only this event' })).toBeChecked()
   await expect(dialog.getByLabel('What is it')).toHaveValue('Team Standup')
+})
+
+test('says what each scope will do, in words', async ({ page }) => {
+  // The sentence that stops somebody changing forty meetings when they meant one. The
+  // already-happened clause is the part people are surprised by, so it is asserted.
+  const dialog = await openSheet(page, RECURRING)
+  await expect(dialog.getByText(/Just this occurrence changes/)).toBeVisible()
+
+  await dialog.getByRole('radio', { name: 'This and all following' }).check()
+  await expect(dialog.getByText(/every one after it changes/)).toBeVisible()
+
+  await dialog.getByRole('radio', { name: 'All events' }).check()
+  await expect(dialog.getByText(/including ones that have already happened/)).toBeVisible()
+})
+
+test('offers timing on a split scope, and withdraws it for the whole series', async ({ page }) => {
+  // Retiming a whole series would move the anchor and strand every exception on the old wall
+  // time, so the RPC refuses it — the form must not offer what the server will reject.
+  const dialog = await openSheet(page, RECURRING)
+  await expect(dialog.getByLabel('Day')).toBeVisible()
+
+  await dialog.getByRole('radio', { name: 'All events' }).check()
+  await expect(dialog.getByLabel('Day')).toHaveCount(0)
+  await expect(dialog.getByText(/time cannot be changed for the whole series/)).toBeVisible()
 })
 
 test('discards changes when cancelled', async ({ page }) => {

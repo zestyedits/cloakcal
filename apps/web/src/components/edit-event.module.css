@@ -49,3 +49,49 @@
 .refresh:hover {
   background: var(--accent-quiet);
 }
+
+/*
+ * The scope picker.
+ *
+ * Full-width 44px rows rather than a bare radio beside a label. The a11y sweep measures
+ * `button, a[href]` and would not catch a 16px radio — the floor is honoured because a
+ * control you have to aim at on a phone is a bad control, not because a test forces it.
+ */
+.scope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scopeLegend {
+  padding: 0;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.scopeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+.scopeRow:hover {
+  background: var(--surface-overlay);
+}
+
+.scopeRow input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--accent);
+}

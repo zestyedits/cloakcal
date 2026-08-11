@@ -71,21 +71,23 @@ export function getFixturePage(): CalendarPage {
           // version is a placeholder rather than a real row version.
           version: 1,
           recurring: event.rrule !== null,
+          series: null,
         })
       }
       continue
     }
 
-    for (const occurrence of expandSeries(
-      {
-        // Some fixture rows predate the local anchor and carry only a UTC instant.
-        dtstartLocal: event.dtstartLocal ?? isoLocalFromUtc(event.startUtc, event.timezone),
-        durationMinutes: event.durationMinutes,
-        timezone: event.timezone,
-        rrule: event.rrule,
-      },
-      range,
-    )) {
+    // Hoisted so the occurrence and its series spec cannot drift, and so the union of
+    // fixture row shapes is narrowed once rather than inside a conditional.
+    const spec = {
+      // Some fixture rows predate the local anchor and carry only a UTC instant.
+      dtstartLocal: event.dtstartLocal ?? isoLocalFromUtc(event.startUtc, event.timezone),
+      durationMinutes: event.durationMinutes,
+      timezone: event.timezone,
+      rrule: event.rrule,
+    }
+
+    for (const occurrence of expandSeries(spec, range)) {
       occurrences.push({
         eventId: event.id,
         calendarId: event.calendarId,
@@ -99,6 +101,10 @@ export function getFixturePage(): CalendarPage {
         fields: event.fields,
         version: 1,
         recurring: event.rrule !== null,
+        series:
+          spec.rrule === null
+            ? null
+            : { dtstartLocal: spec.dtstartLocal, rrule: spec.rrule, durationMinutes: spec.durationMinutes },
       })
     }
   }

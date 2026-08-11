@@ -77,8 +77,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 605 unit tests
-pnpm test:e2e            # 70 Playwright tests, runs its own dev server
+pnpm test                # 638 unit tests
+pnpm test:e2e            # 74 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 ```
@@ -117,23 +117,37 @@ changes a password deliberately, and both re-wrap the root key rather than re-en
 anything. Verified in a browser, not just in tests.
 
 **Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
-`update_cloaked_event` (0011). All SECURITY INVOKER, so RLS decides what they can touch; all
-version-guarded; all audited without naming anything. Follow that shape for the next one —
+`update_cloaked_event` (0011), `split_cloaked_event` (0013). All SECURITY INVOKER, so RLS
+decides what they can touch; all version-guarded; all audited without naming anything. Follow that shape for the next one —
 one RPC per user action, an expected version in, a distinguishable slug out.
 
-**The biggest gap is now the SERIES SPLITS.** `packages/db/src/events.ts` still holds the
-only implementation of "just this occurrence" and "this and future", and it is imported by
-nothing. Editing today is whole-event: a change to a repeating event hits every occurrence,
-and the sheet says so rather than pretending otherwise.
+**Series splits work.** Editing a repeating event asks which occurrences to change — this
+one, this and all following, or all of them. The first two go through `split_cloaked_event`;
+the third is the ordinary update. Retiming is offered under a split scope and withheld for
+the whole series, because moving a series anchor would strand every `recurrence_exceptions`
+row on the old wall time (`update_cloaked_event` still refuses it, loudly).
 
-Three things fall out of that, and they are all the same job:
-- **Retiming a repeating event is refused** by `update_cloaked_event`, deliberately and
-  loudly. Moving `dtstart_local` would strand every `recurrence_exceptions` row on the old
-  wall time and resurrect cancelled occurrences. The fix is to shift them by the same delta,
-  which belongs with the split work.
-- **Deleting is whole-series** for the same reason.
-- The reference implementation in `packages/db` is now correct on all three defects that
-  made splits unsafe (see the 0010-era commit) — but it is still not wired up.
+**How split verification is split in two, and why.** `packages/db`'s gate 3 re-expands the
+STORED series and compares occurrence sets. The RPC cannot: that needs an RFC 5545 engine,
+Postgres has none, and a second implementation in plpgsql would disagree with the first on a
+DST boundary. So `apps/web/src/lib/split-plan.ts` proves the PLAN is lossless before the call
+(3a) and 0013 proves what was STORED is that plan, byte for byte, inside the transaction
+(3b). Together: `expand(stored) == expand(original)`. Do not "simplify" either half away —
+3a alone reasons about a plan that may not have survived the trip, 3b alone faithfully
+stores a bad idea.
+
+**A retiming split cannot check the occurrence set**, since moving the event is the point.
+It checks two weaker things instead, and the non-obvious one is that the successor must
+START where the user put it: move a `BYDAY=TU` series to a Wednesday and rrule keeps
+generating Tuesdays, so the stored anchor disagrees with the dates that render. The
+occurrence COUNT is unchanged, so only the start check can see it.
+
+**Known wart:** splitting at the FIRST occurrence of a series leaves the original truncated
+to nothing — a row that produces no occurrences. Lossless and harmless, but it should
+collapse into a plain whole-series edit instead of leaving a dead row behind.
+
+**Deleting is still whole-series.** `recurrence_exceptions` now has everything a
+per-occurrence delete needs (0013 writes and migrates them); the UI has not been wired.
 
 **Then, in order:**
 1. Read `visibility_rules` from the database. `apps/web/src/server/audience.ts` uses

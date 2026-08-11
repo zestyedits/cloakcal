@@ -213,6 +213,8 @@ export function CalendarScreen({
                             eventId={occurrence.eventId}
                             version={occurrence.version}
                             recurring={occurrence.recurring ?? false}
+                            series={occurrence.series ?? null}
+                            occurrenceLocal={occurrence.occurrenceLocal}
                             timezone={timezone}
                             start={occurrence.start}
                             end={occurrence.end}

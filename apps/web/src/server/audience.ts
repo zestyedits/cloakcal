@@ -45,6 +45,7 @@ export interface RedactedOccurrence extends RedactedEvent {
    */
   readonly version?: number
   readonly recurring?: boolean
+  readonly series?: OccurrenceView['series']
 }
 
 /** Demo audiences for M2. Real contacts and groups arrive with CRM-lite. */
@@ -147,7 +148,14 @@ export function redactPage(page: CalendarPage, audience: AudienceId, now: string
       // Spread last and only for the owner, so a future edit to the engine cannot
       // accidentally start leaking these to an audience by widening `event`.
       ...(audience === 'owner'
-        ? { version: occurrence.version, recurring: occurrence.recurring }
+        ? {
+            version: occurrence.version,
+            recurring: occurrence.recurring,
+            // A rule and an anchor say WHEN, never what — but "every Tuesday 09:00 until
+            // March" is still the shape of somebody's life, and only the owner has a split
+            // to plan with it.
+            series: occurrence.series,
+          }
         : {}),
     })
   }

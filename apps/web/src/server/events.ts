@@ -60,6 +60,15 @@ export interface OccurrenceView {
   readonly version: number
   /** True when this occurrence came from an rrule, so delete can say what it will remove. */
   readonly recurring: boolean
+  /**
+   * The series definition behind this occurrence, for planning a split. Null when the event
+   * does not repeat.
+   *
+   * Tier A throughout — a recurrence rule and an anchor say WHEN, never what. Still
+   * owner-only (see audience.ts): "every Tuesday at 09:00 until March" is a shape of
+   * somebody's life, and no other audience has a split to plan.
+   */
+  readonly series: { readonly dtstartLocal: string; readonly rrule: string; readonly durationMinutes: number } | null
 }
 
 export interface CalendarPage {
@@ -230,6 +239,7 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
           fields,
           version: event.version,
           recurring: event.rrule !== null,
+          series: null,
         })
       }
       continue
@@ -261,6 +271,10 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
         fields,
         version: event.version,
         recurring: event.rrule !== null,
+        series:
+          event.rrule === null
+            ? null
+            : { dtstartLocal, rrule: event.rrule, durationMinutes },
       })
     }
   }

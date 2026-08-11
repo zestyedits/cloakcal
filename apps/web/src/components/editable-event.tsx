@@ -27,6 +27,8 @@ export function EditableEvent({
   eventId,
   version,
   recurring,
+  series,
+  occurrenceLocal,
   timezone,
   start,
   end,
@@ -37,6 +39,8 @@ export function EditableEvent({
   eventId: string
   version: number
   recurring: boolean
+  series: { dtstartLocal: string; rrule: string; durationMinutes: number } | null
+  occurrenceLocal: string
   timezone: string
   start: string
   end: string
@@ -68,10 +72,12 @@ export function EditableEvent({
         // once on mount and never again; without the key, opening a different event would
         // show the previous one's values.
         <EditEvent
-          key={eventId}
+          key={`${eventId}:${occurrenceLocal}`}
           eventId={eventId}
           version={version}
           recurring={recurring}
+          series={series}
+          occurrenceLocal={occurrenceLocal}
           timezone={timezone}
           start={start}
           end={end}

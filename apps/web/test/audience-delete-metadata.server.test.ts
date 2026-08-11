@@ -17,6 +17,9 @@ import type { CalendarPage, OccurrenceView } from '../src/server/events.js'
  */
 
 const occurrence = (id: string, version: number, recurring: boolean): OccurrenceView => ({
+  series: recurring
+    ? { dtstartLocal: '2026-05-19T09:00:00', rrule: 'FREQ=WEEKLY', durationMinutes: 30 }
+    : null,
   eventId: id,
   calendarId: 'cal-1',
   occurrenceLocal: '2026-05-19T09:00:00',
@@ -70,10 +73,15 @@ describe('delete metadata is owner-only', () => {
       for (const shown of redacted.occurrences) {
         expect(shown.version).toBeUndefined()
         expect(shown.recurring).toBeUndefined()
+        expect(shown.series).toBeUndefined()
         // `undefined` is not enough on its own: an explicitly-present key set to undefined
         // still serialises into the RSC payload as a key. It must not be there at all.
         expect(Object.hasOwn(shown, 'version')).toBe(false)
         expect(Object.hasOwn(shown, 'recurring')).toBe(false)
+        // The recurrence RULE is the newest of these and the easiest to leak by accident:
+        // it is Tier A, so nothing in the engine objects to it travelling. "Every Tuesday
+        // 09:00 until March" is still a shape of somebody's week.
+        expect(Object.hasOwn(shown, 'series')).toBe(false)
       }
     },
   )
