@@ -58,6 +58,30 @@ export type FieldSnapshot =
 const MISSING: FieldSnapshot = Object.freeze({ status: 'missing' })
 const LOCKED: FieldSnapshot = Object.freeze({ status: 'locked' })
 
+/**
+ * Do two records carry the same sealed bytes?
+ *
+ * Nonce first, because it is the cheap discriminator: AES-GCM draws a fresh random nonce on
+ * every seal, so re-encrypting the same plaintext still produces a different record. Two
+ * records agreeing on nonce AND ciphertext are the same seal, not merely the same content —
+ * and the store cannot know the plaintext matches without decrypting, which is the work
+ * this comparison exists to avoid.
+ *
+ * `keyVersion` is included because a rewrapped field can decrypt to the same string under a
+ * new key: the cached VALUE would still be right, but the cached RECORD would not be.
+ */
+const sameCiphertext = (a: EncryptedFieldRecord, b: EncryptedFieldRecord): boolean =>
+  a.keyVersion === b.keyVersion &&
+  a.alg === b.alg &&
+  sameBytes(a.nonce, b.nonce) &&
+  sameBytes(a.ciphertext, b.ciphertext)
+
+const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false
+  return true
+}
+
 export class ServerDecryptionError extends Error {
   constructor() {
     super(
@@ -128,10 +152,32 @@ export class CloakStore {
     return this.#rootKey !== null
   }
 
-  /** Accept ciphertext from the server and decrypt it, if unlocked. */
+  /**
+   * Accept ciphertext from the server and decrypt it, if unlocked.
+   *
+   * INGEST IS AUTHORITATIVE, and that took a fix. `#decryptAll` deliberately skips a field
+   * that is already `ready`, so unlocking does not redo work — but that skip also meant the
+   * store showed the FIRST ciphertext it ever saw for a key and silently ignored every later
+   * one. Re-ingesting an edited event left the old title on screen.
+   *
+   * Nothing caught it because CloakProvider throws the whole store away and builds a new one
+   * whenever the page object changes, so nothing ever re-ingested into a live store. That
+   * makes correctness rest on object identity in a dependency array: memoize `page`, adopt
+   * useOptimistic, or move to a partial refresh, and stale content returns with no test to
+   * notice.
+   *
+   * So invalidation belongs here rather than in the skip. A record whose bytes differ from
+   * the cached one drops the decrypted value first and `#decryptAll` re-derives it;
+   * identical bytes are still skipped, so the optimisation survives.
+   */
   async ingest(records: readonly EncryptedFieldRecord[]): Promise<void> {
     for (const record of records) {
-      this.#ciphertext.set(fieldKey(record.subjectType, record.subjectId, record.fieldName), record)
+      const key = fieldKey(record.subjectType, record.subjectId, record.fieldName)
+      const previous = this.#ciphertext.get(key)
+      if (previous !== undefined && !sameCiphertext(previous, record)) {
+        this.#values.delete(key)
+      }
+      this.#ciphertext.set(key, record)
     }
     if (this.#rootKey !== null) {
       await this.#decryptAll()

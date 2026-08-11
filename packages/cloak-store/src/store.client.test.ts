@@ -227,3 +227,76 @@ describe('writes re-encrypt before leaving the client', () => {
     })
   })
 })
+
+/**
+ * Editing an event re-seals its fields, so the same key gets NEW ciphertext. The store has
+ * to show the new value.
+ *
+ * This is not obvious from the code: `#decryptAll` skips a key that is already `ready`, on
+ * purpose, so unlocking does not redo work. That skip used to mean the store showed the
+ * first ciphertext it ever saw for a key and silently ignored every later one — an edited
+ * title stayed stale on screen.
+ *
+ * It went unnoticed because CloakProvider discards the entire store whenever the page object
+ * changes, so nothing ever re-ingested into a live store. That makes the whole edit feature
+ * depend on object identity in a dependency array, which is not a guarantee. These two tests
+ * make it one, and pin the optimisation at the same time so the fix cannot be "delete the
+ * skip".
+ */
+describe('re-ingesting updated ciphertext', () => {
+  it('shows the new value, not the one it decrypted first', async () => {
+    await store.unlock(KEY)
+    await store.ingest([await record('title', 'Weekly Sync')])
+
+    const key = fieldKey('event', EVENT_ID, 'title')
+    expect(store.getSnapshot(key)).toEqual({ status: 'ready', value: 'Weekly Sync' })
+
+    await store.ingest([await record('title', 'Weekly Sync, revised')])
+    expect(store.getSnapshot(key)).toEqual({ status: 'ready', value: 'Weekly Sync, revised' })
+  })
+
+  it('tells subscribers, so a rendered component actually repaints', async () => {
+    await store.unlock(KEY)
+    await store.ingest([await record('title', 'Weekly Sync')])
+
+    const key = fieldKey('event', EVENT_ID, 'title')
+    const listener = vi.fn()
+    store.subscribe(key, listener)
+
+    await store.ingest([await record('title', 'Weekly Sync, revised')])
+    expect(listener).toHaveBeenCalled()
+  })
+
+  it('does not re-decrypt when the bytes are unchanged', async () => {
+    // The skip is a real optimisation: a week navigation re-ingests every field on the page,
+    // and redoing AES-GCM for all of them each time would be pure waste. Asserted so the
+    // invalidation above cannot quietly turn into "always re-decrypt".
+    await store.unlock(KEY)
+    const same = await record('title', 'Weekly Sync')
+    await store.ingest([same])
+
+    const key = fieldKey('event', EVENT_ID, 'title')
+    const listener = vi.fn()
+    store.subscribe(key, listener)
+
+    await store.ingest([same])
+    expect(listener).not.toHaveBeenCalled()
+    expect(store.getSnapshot(key)).toEqual({ status: 'ready', value: 'Weekly Sync' })
+  })
+
+  it('treats a re-seal of the SAME text as new bytes, because it is', async () => {
+    // AES-GCM draws a fresh nonce on every seal, so identical plaintext still produces a
+    // different record. Comparing decrypted values rather than bytes would be both slower
+    // and wrong — the store cannot know the plaintext matches without decrypting first.
+    await store.unlock(KEY)
+    await store.ingest([await record('title', 'Weekly Sync')])
+
+    const key = fieldKey('event', EVENT_ID, 'title')
+    const listener = vi.fn()
+    store.subscribe(key, listener)
+
+    await store.ingest([await record('title', 'Weekly Sync')])
+    expect(listener).toHaveBeenCalled()
+    expect(store.getSnapshot(key)).toEqual({ status: 'ready', value: 'Weekly Sync' })
+  })
+})
