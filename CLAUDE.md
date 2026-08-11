@@ -182,6 +182,18 @@ native iOS. **Independent security review is a hard gate before public launch.**
   `docs/deploy.md`) and can always be re-sourced from the Supabase dashboard.
 - **`supabase.auth.getClaims()`, not `getSession()`, on the server.** The session cookie is
   client-writable; getClaims verifies the JWT signature.
+- **A page that reads the session needs `export const dynamic = 'force-dynamic'`, and your
+  machine will not tell you.** `supabaseServer()` reaches `cookies()`, which opts a route out
+  of static generation — so on any machine with `apps/web/.env.local` the page is dynamic and
+  the build passes. CI has no Supabase variables, so `supabaseServer()` throws its
+  "not configured" error during PRERENDER instead and the whole build dies on a page that
+  should never have been prerendered. `/account` shipped this way and broke CI twice. `/` is
+  immune only because it takes `searchParams`, which forces it dynamic for unrelated reasons.
+  Reproduce a CI build before pushing a new server page:
+
+  ```bash
+  mv apps/web/.env.local /tmp/ && NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1 pnpm build; mv /tmp/.env.local apps/web/
+  ```
 - **The account email is the KDF salt, so changing it is as destructive as changing a
   password.** `deriveMasterSecret` salts with the normalized email, which means a new address
   derives a different wrap key and the existing wrap stops opening — with no error that says
