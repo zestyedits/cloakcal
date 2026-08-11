@@ -61,6 +61,14 @@
   line-height: var(--leading-relaxed);
 }
 
+/* Sits under a control rather than above the form, so it is smaller than .lede. */
+.hint {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -267,4 +275,43 @@
   border-radius: var(--radius-xl);
   background: var(--surface-raised);
   box-shadow: var(--shadow-lg);
+}
+
+/*
+ * Radio group for "prove it is you with…".
+ *
+ * Full-width 44px rows rather than a bare radio and a label beside it. The a11y sweep
+ * measures `button, a[href]` and would not catch a 16px radio, so the floor is honoured here
+ * because it is right, not because a test forces it — a radio you have to aim at on a phone
+ * is the same failure as a button you have to aim at.
+ */
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choiceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.choiceRow:hover {
+  background: var(--surface-overlay);
+}
+
+.choiceRow input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--accent);
 }

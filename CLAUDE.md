@@ -77,7 +77,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 582 unit tests
+pnpm test                # 605 unit tests
 pnpm test:e2e            # 70 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -98,7 +98,9 @@ To run the app with no account, using the committed fixture:
 
 **Works:** sign up, sign in, first-run key ceremony with a 24-word recovery phrase, unlock,
 agenda and week views, week navigation, View As, and the full create / edit / delete loop on
-an event. Verified in a browser, not just in tests.
+an event. Plus account recovery: `/recover` takes the phrase and a new password, `/account`
+changes a password deliberately, and both re-wrap the root key rather than re-encrypting
+anything. Verified in a browser, not just in tests.
 
 **Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
 `update_cloaked_event` (0011). All SECURITY INVOKER, so RLS decides what they can touch; all
@@ -120,13 +122,11 @@ Three things fall out of that, and they are all the same job:
   made splits unsafe (see the 0010-era commit) — but it is still not wired up.
 
 **Then, in order:**
-1. Password change / rewrap. Changing a Supabase password today leaves the old wrap in place
-   and locks the user out permanently. Actively dangerous; must land before any real user.
-2. Read `visibility_rules` from the database. `apps/web/src/server/audience.ts` uses
+1. Read `visibility_rules` from the database. `apps/web/src/server/audience.ts` uses
    hardcoded demo rules, so View As currently demonstrates the engine rather than
    controlling anything.
-3. Device pairing UI. The crypto and schema are done and tested; there is no flow.
-4. Day and month views — currently disabled controls, honestly labelled.
+2. Device pairing UI. The crypto and schema are done and tested; there is no flow.
+3. Day and month views — currently disabled controls, honestly labelled.
 
 **Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
 native iOS. **Independent security review is a hard gate before public launch.**
@@ -154,6 +154,20 @@ native iOS. **Independent security review is a hard gate before public launch.**
   `docs/deploy.md`) and can always be re-sourced from the Supabase dashboard.
 - **`supabase.auth.getClaims()`, not `getSession()`, on the server.** The session cookie is
   client-writable; getClaims verifies the JWT signature.
+- **The account email is the KDF salt, so changing it is as destructive as changing a
+  password.** `deriveMasterSecret` salts with the normalized email, which means a new address
+  derives a different wrap key and the existing wrap stops opening — with no error that says
+  so. There is no email-change UI, and adding one without re-wrapping first would lock every
+  user who used it out of their own content. The password wrap's `kdf` jsonb now records the
+  `saltEmail` it was derived under, so a mismatch can be diagnosed rather than guessed at.
+  `packages/crypto/src/rewrap.test.ts` pins the consequence.
+- **Two path lists in `middleware.ts`, and they are not the same question.** `PUBLIC_PATHS`
+  is "reachable without a session"; `SIGNED_IN_ELSEWHERE` is "pointless once you have one".
+  `/recover` is in the first and deliberately NOT the second, because the emailed recovery
+  link works by CREATING a session and landing back on `/recover` — a blanket "signed in? go
+  home" redirected the user away a fraction of a second before they could type their phrase,
+  making recovery unreachable in exactly the case it exists for while looking correct signed
+  out. Caught in a browser, never by a test; `middleware-paths.server.test.ts` now guards it.
 - **Send temporal values to an RPC as TEXT, never as `timestamp`.** Postgres silently drops a
   timezone offset when parsing into `timestamp without time zone`, so a client that sent
   `zoned.toString()` instead of `local.toString()` would store an anchor hours off with no

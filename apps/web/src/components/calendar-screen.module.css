@@ -280,7 +280,10 @@
 
   .sidebar {
     grid-area: sidebar;
-    display: block;
+    /* Flex column so the account link can sit at the bottom via `margin-top: auto`.
+       Children are full-width blocks either way, so nothing else moves. */
+    display: flex;
+    flex-direction: column;
     padding: var(--space-6) var(--space-4);
     border-right: 1px solid var(--border-subtle);
   }
@@ -293,6 +296,10 @@
     position: static;
     justify-content: flex-start;
     gap: var(--space-2);
+  }
+
+  .account {
+    margin-top: auto;
   }
 
   .navItem {
@@ -353,4 +360,32 @@
 
 .event[data-color='slate'] {
   --event-color: var(--brand-slate);
+}
+
+/*
+ * The account link. Pushed to the bottom of the sidebar because it is the least-used thing
+ * in it, and sized to the 44px floor because on a phone the sidebar collapses into a strip
+ * where a text link is easy to miss and hard to hit.
+ */
+.account {
+  /* On mobile the sidebar is a short row in normal flow, so the link simply follows View As.
+     `margin-top: auto` only bites inside the desktop flex column, where it pins the link to
+     the bottom. */
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account:hover {
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
 }

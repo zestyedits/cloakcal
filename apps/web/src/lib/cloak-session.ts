@@ -9,6 +9,7 @@ import {
   deriveRecoveryWrapKey,
   deriveWrapKey,
   generateRecoveryPhrase,
+  normalizeAccountEmail,
   unwrapRootKey,
   wrapRootKey,
   type CloakedPayload,
@@ -53,6 +54,39 @@ export class WrongPasswordError extends Error {
   constructor() {
     super('That password did not open your calendar.')
     this.name = 'WrongPasswordError'
+  }
+}
+
+export class WrongRecoveryPhraseError extends Error {
+  constructor() {
+    super('That recovery phrase did not open your calendar. Check for a mistyped word.')
+    this.name = 'WrongRecoveryPhraseError'
+  }
+}
+
+/** The new wrap failed its own round-trip check, so nothing was written. */
+export class RewrapVerificationError extends Error {
+  constructor() {
+    super('Your password was not changed. Nothing was altered, so your old one still works.')
+    this.name = 'RewrapVerificationError'
+  }
+}
+
+/**
+ * The new wrap was stored but the account password was not updated.
+ *
+ * The honest and useful thing to say, because the user can act on it: their OLD password
+ * still signs them in, but it will no longer open their calendar, and retrying the change
+ * fixes it. The recovery phrase works throughout. This is the deliberately-chosen half of
+ * the two possible failures — see rewrapPasswordWrap.
+ */
+export class RewrapHalfAppliedError extends Error {
+  constructor() {
+    super(
+      'Your calendar key was updated but the new password did not save. Sign in with your ' +
+        'OLD password and try again — your events are safe, and your recovery phrase still works.',
+    )
+    this.name = 'RewrapHalfAppliedError'
   }
 }
 
@@ -198,6 +232,50 @@ export async function initializeCloak(
   return { session: await finishUnlock(userId, email, rootKey), recoveryPhrase }
 }
 
+/** Load one of this user's wraps. Requires a session — RLS keys the row to auth.uid(). */
+async function loadWrap(kind: 'password' | 'recovery'): Promise<StoredWrap> {
+  const { data, error } = await supabaseBrowser()
+    .from('root_key_wraps')
+    .select('kind, kdf, wrapped, nonce, alg')
+    .eq('kind', kind)
+    .maybeSingle<StoredWrap>()
+  if (error !== null) throw error
+  if (data === null) throw new CloakSetupRequiredError()
+  return data
+}
+
+/** Open the root key with the recovery phrase. Does not unlock a session on its own. */
+export async function rootKeyFromRecoveryPhrase(phrase: string): Promise<RootKey> {
+  const wrap = await loadWrap('recovery')
+  try {
+    return await unwrapRootKey(
+      {
+        kind: 'recovery',
+        wrapped: fromPgBytea(wrap.wrapped),
+        nonce: fromPgBytea(wrap.nonce),
+        alg: 'aes-256-gcm-v1',
+      },
+      await deriveRecoveryWrapKey(phrase),
+    )
+  } catch {
+    throw new WrongRecoveryPhraseError()
+  }
+}
+
+/**
+ * Open the root key with the account password, for an ALREADY SIGNED-IN user.
+ *
+ * Separate from signInAndUnlock because changing your password must not depend on being
+ * able to sign in again first — and because a resumed session cannot do this at all: the
+ * key persisted at last unlock is non-extractable by design, and rewrapping needs the raw
+ * bytes. That is why the account page asks for something you know rather than reusing the
+ * session you already have.
+ */
+export async function rootKeyFromPassword(email: string, password: string): Promise<RootKey> {
+  const wrap = await loadWrap('password')
+  return unwrapWithPassword(password, email, wrap.kdf ?? CURRENT_KDF_PARAMS, wrap)
+}
+
 /** Recovery path: the phrase opens the key, then the user sets a new password. */
 export async function unlockWithRecoveryPhrase(
   email: string,
@@ -207,26 +285,99 @@ export async function unlockWithRecoveryPhrase(
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError !== null) throw userError
 
-  const { data: wrap, error } = await supabase
-    .from('root_key_wraps')
-    .select('kind, kdf, wrapped, nonce, alg')
-    .eq('kind', 'recovery')
-    .maybeSingle<StoredWrap>()
-  if (error !== null) throw error
-  if (wrap === null) throw new CloakSetupRequiredError()
-
-  const rootKey = await unwrapRootKey(
-    {
-      kind: 'recovery',
-      wrapped: fromPgBytea(wrap.wrapped),
-      nonce: fromPgBytea(wrap.nonce),
-      alg: 'aes-256-gcm-v1',
-    },
-    await deriveRecoveryWrapKey(phrase),
-  )
-
+  const rootKey = await rootKeyFromRecoveryPhrase(phrase)
   return finishUnlock(userData.user.id, email, rootKey)
 }
+
+/**
+ * Re-wrap the root key under a new password, and set that password on the account.
+ *
+ * THE ROOT KEY DOES NOT CHANGE. Only the wrapper around it does, so nothing is re-encrypted:
+ * every event, every calendar name, every field key still derives from the same URK. A user
+ * changing their password should not have to wait for their calendar to be rewritten, and a
+ * design that required it would make rotation something people avoid.
+ *
+ * THE ORDER OF THE LAST TWO STEPS IS THE SAFETY ARGUMENT. Postgres and GoTrue are two
+ * systems with no shared transaction, so one of them can succeed while the other fails and
+ * there is no way to make that window vanish. There is a choice about WHICH half-state you
+ * get left in:
+ *
+ *   wrap first, then auth  → if auth fails, the OLD password still signs you in. You are
+ *                            stuck at unlock, the recovery phrase still works, and you can
+ *                            simply try again. Recoverable with what the user already has.
+ *   auth first, then wrap  → if the wrap fails, the old password is already gone. You can
+ *                            sign in with the new one, but nothing opens your calendar
+ *                            except the phrase.
+ *
+ * So the wrap is written first. The irreversible step goes last, which is the general rule
+ * this happens to be an instance of.
+ *
+ * The recovery and device wraps are untouched — they wrap the same unchanged URK — so the
+ * phrase keeps working across any number of password changes.
+ */
+export async function rewrapPasswordWrap(
+  rootKey: RootKey,
+  email: string,
+  newPassword: string,
+): Promise<void> {
+  const supabase = supabaseBrowser()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError !== null) throw userError
+
+  const master = await deriveMasterSecret(newPassword, email, CURRENT_KDF_PARAMS)
+  const authSecret = await deriveAuthSecret(master)
+  const wrapKey = await deriveWrapKey(master)
+  const wrapped = await wrapRootKey(rootKey, wrapKey, 'password')
+
+  // Open it again, here, before anything is written.
+  //
+  // Cheap — one AES-GCM decrypt against a key already in hand — and it is the difference
+  // between a bug that fails now and a bug that fails the next time this person tries to
+  // sign in, by which point the old wrap is gone and the only way back is the phrase. A
+  // wrap that cannot be opened must never reach the database.
+  // Both failure shapes mean the same thing to the user — nothing was written, the old
+  // password still works — so both become RewrapVerificationError. Letting the raw
+  // RootKeyUnwrapError through would put "wrong key, tampered data, or a wrap made for a
+  // different purpose" in front of someone who only tried to change their password.
+  let verified = false
+  try {
+    const check = await unwrapRootKey(wrapped, wrapKey)
+    verified = sameBytes(check.bytes, rootKey.bytes)
+  } catch {
+    verified = false
+  }
+  if (!verified) throw new RewrapVerificationError()
+
+  const { data: updated, error: updateError } = await supabase
+    .from('root_key_wraps')
+    .update({
+      // The email is the KDF salt, so which address derived this wrap is part of how to
+      // open it. Recorded so a later mismatch can say "set up under a different email"
+      // rather than "wrong password". See the salt note in CLAUDE.md.
+      kdf: { ...CURRENT_KDF_PARAMS, saltEmail: normalizeAccountEmail(email) },
+      wrapped: toPgBytea(wrapped.wrapped),
+      nonce: toPgBytea(wrapped.nonce),
+      alg: wrapped.alg,
+    })
+    .eq('user_id', userData.user.id)
+    .eq('kind', 'password')
+    .select('id')
+  if (updateError !== null) throw updateError
+
+  // A silent zero-row update is the dangerous outcome: the auth change below would then
+  // land against a wrap keyed to the old password, which is precisely the lockout this
+  // whole function exists to prevent. RLS returns no rows rather than an error when the
+  // row is not yours, so "no error" is not the same as "it worked".
+  if (updated === null || updated.length !== 1) {
+    throw new RewrapVerificationError()
+  }
+
+  const { error: authError } = await supabase.auth.updateUser({ password: authSecret })
+  if (authError !== null) throw new RewrapHalfAppliedError()
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((byte, i) => byte === b[i])
 
 /** Resume without a password, from the non-extractable key persisted at last unlock. */
 export async function resumeSession(): Promise<CloakSession | null> {

@@ -146,4 +146,117 @@ describe('root_key_wraps', () => {
     )
     expect(rows.map((r) => r.column_name)).not.toContain('wrapped_root_key')
   })
+
+  /**
+   * Changing a password rewrites exactly one row, and that row is the one thing standing
+   * between a user and their calendar. These cover the write itself.
+   *
+   * The zero-row case is the one worth having. RLS does not raise on an UPDATE that matches
+   * nothing — it silently affects no rows — so "no error" is not the same as "it worked". The
+   * application half sets the new account password immediately afterwards, and if the wrap
+   * write had quietly done nothing, that pair would lock the user out completely. The client
+   * asks for the updated rows back and refuses to continue unless exactly one comes.
+   */
+  describe('rewrapping the password wrap', () => {
+    const REWRAP = `update public.root_key_wraps
+         set wrapped = $1, nonce = $2, kdf = $3::jsonb
+       where user_id = $4 and kind = 'password'
+       returning id`
+
+    it('replaces the sealed bytes in place', async () => {
+      const user = '00000000-0000-4000-8000-0000000000c1'
+      await db.createUser(user, 'c1@example.com')
+      await db.as(user, INSERT, [user, 'password', KDF, null, null, wrapped(1), nonce()])
+
+      const { rows } = await db.as(user, REWRAP, [wrapped(2), nonce(), KDF, user])
+      expect(rows).toHaveLength(1)
+
+      const after = await db.as(
+        user,
+        `select get_byte(wrapped, 0) as first from public.root_key_wraps
+          where user_id = $1 and kind = 'password'`,
+        [user],
+      )
+      expect(after.rows[0]!['first']).toBe(2)
+    })
+
+    it('still allows exactly one password wrap afterwards', async () => {
+      // An UPDATE cannot fork the account the way a second INSERT would, but assert it rather
+      // than assume it: the partial unique index is what makes "the password wrap" singular,
+      // and a rewrap that appended instead of replacing would leave the retired password
+      // still opening the calendar.
+      const user = '00000000-0000-4000-8000-0000000000c1'
+      const { rows } = await db.as(
+        user,
+        `select count(*)::int as n from public.root_key_wraps where user_id = $1 and kind = 'password'`,
+        [user],
+      )
+      expect(rows[0]!['n']).toBe(1)
+    })
+
+    it('touches updated_at, so a rewrap is visible in the row itself', async () => {
+      const user = '00000000-0000-4000-8000-0000000000c2'
+      await db.createUser(user, 'c2@example.com')
+      await db.as(user, INSERT, [user, 'password', KDF, null, null, wrapped(1), nonce()])
+
+      await db.raw(
+        `update public.root_key_wraps set updated_at = now() - interval '1 day'
+          where user_id = $1 and kind = 'password'`,
+        [user],
+      )
+      await db.as(user, REWRAP, [wrapped(3), nonce(), KDF, user])
+
+      const { rows } = await db.as(
+        user,
+        `select updated_at > created_at as touched from public.root_key_wraps
+          where user_id = $1 and kind = 'password'`,
+        [user],
+      )
+      expect(rows[0]!['touched']).toBe(true)
+    })
+
+    it('affects nothing when the row belongs to someone else', async () => {
+      // Not an error — no rows. That silence is exactly why the client checks the row count
+      // instead of only checking for an error.
+      const victim = '00000000-0000-4000-8000-0000000000c3'
+      await db.createUser(victim, 'c3@example.com')
+      await db.as(victim, INSERT, [victim, 'password', KDF, null, null, wrapped(9), nonce()])
+
+      const { rows } = await db.as(USER_B, REWRAP, [wrapped(4), nonce(), KDF, victim])
+      expect(rows).toEqual([])
+
+      const after = await db.as(
+        victim,
+        `select get_byte(wrapped, 0) as first from public.root_key_wraps
+          where user_id = $1 and kind = 'password'`,
+        [victim],
+      )
+      expect(after.rows[0]!['first']).toBe(9)
+    })
+
+    it('cannot be reassigned to another user', async () => {
+      // WITH CHECK governs what the row may BECOME. Without it, an update could hand your
+      // wrap to somebody else's account.
+      const user = '00000000-0000-4000-8000-0000000000c4'
+      await db.createUser(user, 'c4@example.com')
+      await db.as(user, INSERT, [user, 'password', KDF, null, null, wrapped(1), nonce()])
+
+      await expect(
+        db.as(user, `update public.root_key_wraps set user_id = $1 where user_id = $2`, [
+          USER_B,
+          user,
+        ]),
+      ).rejects.toThrow(/row-level security/i)
+    })
+
+    it('is not rewritable by an unauthenticated caller', async () => {
+      const { rows } = await db.asUnauthenticated(REWRAP, [
+        wrapped(5),
+        nonce(),
+        KDF,
+        '00000000-0000-4000-8000-0000000000c1',
+      ]).catch(() => ({ rows: [] as unknown[] }))
+      expect(rows).toEqual([])
+    })
+  })
 })

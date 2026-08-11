@@ -18,7 +18,22 @@ import { NextResponse, type NextRequest } from 'next/server'
  * itself, and D2 exists to stop exactly that.
  */
 
-const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/recover']
+/** Reachable without a session. */
+export const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/recover']
+
+/**
+ * Public paths a signed-in user has no business on, and gets bounced home from.
+ *
+ * `/recover` is deliberately NOT here, and the distinction is the whole recovery flow. The
+ * emailed link works by CREATING a session and landing back on /recover, so a blanket
+ * "signed in? go home" would redirect the user away a fraction of a second before they could
+ * type their phrase — the feature would be unreachable in exactly the situation it exists
+ * for, while looking fine to anyone testing it signed out.
+ *
+ * It is also the page a signed-in user with a working password but a broken wrap needs,
+ * which is precisely the state a half-applied change leaves behind.
+ */
+export const SIGNED_IN_ELSEWHERE = ['/sign-in', '/sign-up']
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -63,7 +78,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirect)
   }
 
-  if (signedIn && isPublic) {
+  const bouncesWhenSignedIn = SIGNED_IN_ELSEWHERE.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  )
+  if (signedIn && bouncesWhenSignedIn) {
     const redirect = request.nextUrl.clone()
     redirect.pathname = '/'
     redirect.search = ''

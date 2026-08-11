@@ -149,6 +149,14 @@ export function CalendarScreen({
               </ul>
             </>
           )}
+
+          {/* Only when there is a real account behind it. The dev fixture has no session, so
+              linking to a page that immediately redirects to sign-in would be a dead end. */}
+          {email !== undefined && email !== '' && (
+            <Link className={styles.account} href="/account">
+              {email}
+            </Link>
+          )}
         </aside>
 
         <main id="main" className={styles.main}>

@@ -199,6 +199,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
         ) : (
           <>
             No account yet? <Link href="/sign-up">Create one</Link>
+            {/* Until this existed, the 24-word phrase we make people write down at signup
+                had nowhere to be typed unless they were already signed in — which is the
+                one situation where they do not need it. */}
+            <br />
+            <Link href="/recover">Forgot your password?</Link>
           </>
         )}
       </p>
