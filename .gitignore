@@ -20,3 +20,14 @@ apps/web/next-env.d.ts
 /test-results/
 .env*
 .playwright-mcp/
+
+# iCloud Drive collision copies. This repo lives under ~/Documents, which iCloud syncs, and
+# iCloud resolves a sync race by writing a byte-identical sibling named "thing 2.sql".
+# Two of those reached a commit before this rule existed. A duplicate MIGRATION is the
+# dangerous case: anything that globs the directory would apply it twice.
+*\ [0-9].sql
+*\ [0-9].ts
+*\ [0-9].tsx
+*\ [0-9].css
+*\ [0-9].json
+*\ [0-9].md

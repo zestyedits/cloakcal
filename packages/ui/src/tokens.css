@@ -133,9 +133,17 @@
   --text-tertiary: rgba(245, 246, 250, 0.5);
   --text-inverse: var(--brand-deep-navy);
 
-  --accent: var(--brand-indigo);
-  --accent-hover: #8071ff;
-  --accent-quiet: rgba(109, 92, 255, 0.16);
+  /* Darkened from --brand-indigo (#6D5CFF), which carries white label text at only 4.20:1
+     and misses AA. The brand indigo itself is unchanged; this is the shade that sits UNDER
+     text, and it has to clear 4.5:1 with --brand-white. 5.04:1 here, and still 3.57:1
+     against the base surface so the button reads as a shape in its own right. */
+  --accent: #6152e6;
+  /* Hover DARKENS, which looks backwards on a dark surface until you remember the label is
+     white: brightening a purple toward white is exactly what destroys the contrast. The
+     light theme already darkens on hover for the same reason. #8071FF, the old value, was
+     3.40:1 — worse in hover than at rest, which is the state nobody thinks to check. */
+  --accent-hover: #5a4cd8;
+  --accent-quiet: rgba(97, 82, 230, 0.16);
   --accent-text: var(--brand-lavender);
 
   --focus-ring: var(--brand-lavender);
@@ -147,7 +155,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
-  --glow-accent: 0 0 24px rgba(109, 92, 255, 0.28);
+  --glow-accent: 0 0 24px rgba(97, 82, 230, 0.28);
 }
 
 /* -----------------------------------------------------------------------

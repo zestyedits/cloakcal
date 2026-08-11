@@ -80,7 +80,8 @@ const DARK = {
   surfaceRaised: '#161a25',
   textPrimary: '#f5f6fa',
   textSecondary: '#b4b7c4', // rgba(245,246,250,0.72) composited on --surface-raised
-  accent: '#6d5cff',
+  accent: '#6152e6',
+  accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
   success: '#22d3a6',
   warning: '#f5a524',
@@ -93,6 +94,7 @@ const LIGHT = {
   textPrimary: '#0b0d14',
   textSecondary: '#5a5d68', // rgba(11,13,20,0.68) composited on white
   accent: '#5847e0',
+  accentHover: '#4a3ac9',
   accentText: '#4a3ac9',
   success: '#0f9c78',
   warning: '#a86a00',
@@ -105,6 +107,21 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/accent text on raised', foreground: DARK.accentText, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/accent as UI on base', foreground: DARK.accent, background: DARK.surfaceBase, minimum: 3 },
+  /*
+   * Text ON the accent — the filled-button case, and the gap that let a real AA failure
+   * ship. The pair above checks the accent as a SHAPE against the page (3:1, correct for a
+   * non-text element); nothing checked the label sitting on top of it, so white-on-#6D5CFF
+   * sat at 4.20:1 on the Save button and the New event FAB until anyone thought to look.
+   *
+   * Hover is asserted separately because it was the worse of the two: the old dark hover
+   * brightened toward white and landed at 3.40:1. A state nobody screenshots is exactly the
+   * state a token test should own.
+   *
+   * `DARK.textPrimary` is the foreground in the light pairs too, and that is not a slip:
+   * filled buttons carry white labels in BOTH themes, because the accent is dark in both.
+   */
+  { name: 'dark/label on accent', foreground: DARK.textPrimary, background: DARK.accent, minimum: 4.5 },
+  { name: 'dark/label on accent hover', foreground: DARK.textPrimary, background: DARK.accentHover, minimum: 4.5 },
   { name: 'dark/success chip on raised', foreground: DARK.success, background: DARK.surfaceRaised, minimum: 3 },
   { name: 'dark/warning chip on raised', foreground: DARK.warning, background: DARK.surfaceRaised, minimum: 3 },
   { name: 'dark/danger chip on raised', foreground: DARK.danger, background: DARK.surfaceRaised, minimum: 3 },
@@ -114,6 +131,8 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/secondary on raised', foreground: LIGHT.textSecondary, background: LIGHT.surfaceRaised, minimum: 4.5 },
   { name: 'light/accent text on raised', foreground: LIGHT.accentText, background: LIGHT.surfaceRaised, minimum: 4.5 },
   { name: 'light/accent as UI on base', foreground: LIGHT.accent, background: LIGHT.surfaceBase, minimum: 3 },
+  { name: 'light/label on accent', foreground: DARK.textPrimary, background: LIGHT.accent, minimum: 4.5 },
+  { name: 'light/label on accent hover', foreground: DARK.textPrimary, background: LIGHT.accentHover, minimum: 4.5 },
   { name: 'light/success chip on raised', foreground: LIGHT.success, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/warning chip on raised', foreground: LIGHT.warning, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/danger chip on raised', foreground: LIGHT.danger, background: LIGHT.surfaceRaised, minimum: 3 },
