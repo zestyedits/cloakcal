@@ -1,0 +1,37 @@
+# Line endings, settled once.
+#
+# Without this, every file authored on Windows is stored with CRLF, and the moment the repo
+# is opened on macOS git reports every one of them as entirely rewritten. Diffs become
+# useless and merges conflict on whitespace. `text=auto eol=lf` stores LF in the repository
+# and checks out LF everywhere — which is also what Node, pnpm and every tool in this stack
+# expect.
+#
+# Applied to the existing history with `git add --renormalize .`, so the 19 files already
+# stored with CRLF are fixed rather than left as a trap for the first Mac checkout.
+
+* text=auto eol=lf
+
+# Shell scripts must keep LF regardless of platform: a CRLF shebang line makes the kernel
+# look for an interpreter with a trailing carriage return and fail with a baffling error.
+*.sh text eol=lf
+
+# Binaries. Marking these explicitly stops git from ever attempting line-ending conversion
+# on them, which silently corrupts the file.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.pdf  binary
+
+# Generated. Collapsed in diffs and excluded from language statistics — reviewing a
+# lockfile line by line is never the point.
+pnpm-lock.yaml linguist-generated=true -diff
+
+# Playwright visual baselines are platform-specific renderings, not source. Never diffed.
+e2e/**/*-snapshots/** binary linguist-generated=true

@@ -1,4 +1,19 @@
+import { existsSync, readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
+
+/**
+ * Does this platform have visual baselines committed?
+ *
+ * Playwright names snapshots with the platform suffix, so a Windows-generated baseline and
+ * a macOS run never meet. Checking for the suffix is how the visual project knows whether
+ * it can run here at all — see the `visual` project below.
+ */
+function hasVisualBaselines(): boolean {
+  const dir = fileURLToPath(new URL('e2e/visual.spec.ts-snapshots/', import.meta.url))
+  if (!existsSync(dir)) return false
+  return readdirSync(dir).some((file) => file.endsWith(`-${process.platform}.png`))
+}
 
 /**
  * E2E, accessibility and visual-regression config.
@@ -68,6 +83,20 @@ export default defineConfig({
       name: 'visual',
       testMatch: /visual\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
+      // Baselines are committed per platform (`-win32.png`, `-darwin.png`, `-linux.png`)
+      // because font rasterisation genuinely differs between operating systems — the same
+      // page is not the same pixels on Windows and macOS, and no tolerance setting closes
+      // that gap honestly.
+      //
+      // So this project is SKIPPED on any platform that has no baselines committed yet.
+      // The alternative was a suite that fails on a second machine for reasons that have
+      // nothing to do with the code, which trains everyone to ignore it. Generate them on
+      // a new platform with:
+      //
+      //   pnpm test:visual --update-snapshots
+      //
+      // and commit the result. CI pins one platform, so regressions are still caught.
+      ...(hasVisualBaselines() ? {} : { testIgnore: /.*/ }),
     },
   ],
 
