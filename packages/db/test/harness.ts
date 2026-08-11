@@ -101,6 +101,8 @@ const MIGRATIONS = [
   '0008_trash_cloaked_event.sql',
   '0009_revoke_rpc_from_anon.sql',
   '0010_lock_down_function_grants.sql',
+  '0011_update_cloaked_event.sql',
+  '0012_trash_event_hints.sql',
 ] as const
 
 export interface QueryResult {

@@ -147,15 +147,19 @@ describe('RLS coverage cannot regress', () => {
  * it guards is a test that will not be extended.
  */
 describe('no RPC is reachable without a session', () => {
-  it('leaves no function in public executable by anon', async () => {
+  it('leaves no function executable by anon, in either schema we own', async () => {
+    // `private` is included because the first version of this sweep checked only `public`
+    // and shipped while private.assert_cloaked_subject_matches was still granted to anon.
+    // That one was unreachable for a second reason — anon has no USAGE on the schema — but
+    // "safe by accident of a different mechanism" is not what this test is here to assert.
     const { rows } = await db.raw(`
-      select p.proname
+      select n.nspname || '.' || p.proname as fn
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public'
+      where n.nspname in ('public', 'private')
         and has_function_privilege('anon', p.oid, 'execute')
       order by 1
     `)
-    expect(rows.map((r) => r['proname'])).toEqual([])
+    expect(rows.map((r) => r['fn'])).toEqual([])
   })
 
   it('is load-bearing, because a bare CREATE FUNCTION is still anon-reachable', async () => {

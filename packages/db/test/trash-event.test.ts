@@ -200,4 +200,36 @@ describe('trash_cloaked_event', () => {
     )
     expect(rows).toEqual([{ prosecdef: false }])
   })
+
+  /**
+   * The UI discriminates failures by a stable slug in the exception HINT rather than by
+   * matching message prose, so the slugs are part of the contract and get asserted like one.
+   * Rewording a message must stay a free action; changing a slug must not.
+   */
+  describe('failures carry a stable slug the UI can match on', () => {
+    const hintOf = async (fn: () => Promise<unknown>): Promise<string | undefined> => {
+      try {
+        await fn()
+        return undefined
+      } catch (error) {
+        return (error as { hint?: string }).hint
+      }
+    }
+
+    it('says event_not_found for a missing event', async () => {
+      expect(await hintOf(() => db.as(USER_A, TRASH, [uuid(404), 1]))).toBe('event_not_found')
+    })
+
+    it('says version_conflict for a stale version', async () => {
+      const id = await seed(10)
+      expect(await hintOf(() => db.as(USER_A, TRASH, [id, 99]))).toBe('version_conflict')
+    })
+
+    it('says event_trashed for one already gone', async () => {
+      const id = await seed(11)
+      await db.as(USER_A, TRASH, [id, 1])
+      expect(await hintOf(() => db.as(USER_A, TRASH, [id, 2]))).toBe('event_trashed')
+    })
+  })
+
 })

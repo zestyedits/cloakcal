@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { rpcErrorMessage } from '@/lib/rpc-error'
 import styles from './delete-event.module.css'
 
 /**
@@ -60,15 +61,10 @@ export function DeleteEvent({
       router.refresh()
     } catch (caught) {
       // The RPC distinguishes its failure modes deliberately, so say which one happened
-      // instead of collapsing them into "something went wrong".
-      const message = caught instanceof Error ? caught.message : String(caught)
-      setError(
-        /changed by someone else/u.test(message)
-          ? 'This event changed somewhere else. Reload the page and try again.'
-          : /already trashed/u.test(message)
-            ? 'This event was already deleted. Reload the page.'
-            : message,
-      )
+      // instead of collapsing them into "something went wrong". Matched on the slug the RPC
+      // puts in `hint`, not on its message text — this used to regex the prose, which made
+      // the wording of a `raise exception` into an interface nobody knew they were bound by.
+      setError(rpcErrorMessage(caught))
       setBusy(false)
     }
   }
