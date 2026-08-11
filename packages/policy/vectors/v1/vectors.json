@@ -1,0 +1,770 @@
+{
+  "note": "Shared policy vectors. Executed by BOTH the server suite and the client View As suite. `visibleFields` is the DECISION — every field the engine decides is visible, including ones this test payload does not happen to carry. The delivered payload is asserted separately as the intersection with the fields the event actually has. Do not duplicate these into either suite.",
+  "policyVersion": "v1",
+  "payload": {
+    "eventId": "e1",
+    "calendarId": "cal-work",
+    "start": "2026-05-19T09:00:00-04:00",
+    "end": "2026-05-19T10:00:00-04:00",
+    "timezone": "America/New_York",
+    "allDay": false,
+    "busy": "busy",
+    "fields": [
+      {
+        "fieldName": "title",
+        "ciphertext": "aa",
+        "nonce": "bb",
+        "alg": "aes-256-gcm-v1",
+        "keyVersion": 1
+      },
+      {
+        "fieldName": "location",
+        "ciphertext": "cc",
+        "nonce": "dd",
+        "alg": "aes-256-gcm-v1",
+        "keyVersion": 1
+      },
+      {
+        "fieldName": "notes",
+        "ciphertext": "ee",
+        "nonce": "ff",
+        "alg": "aes-256-gcm-v1",
+        "keyVersion": 1
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "name": "owner-sees-all",
+      "viewer": {
+        "kind": "owner"
+      },
+      "eventRules": [],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title",
+          "location",
+          "attendees",
+          "notes",
+          "videoLink",
+          "attachments"
+        ]
+      }
+    },
+    {
+      "name": "public-unauthenticated-denied",
+      "viewer": {
+        "kind": "unauthenticated"
+      },
+      "eventRules": [],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "individual-overrides-group",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah",
+        "groupIds": [
+          "team"
+        ]
+      },
+      "eventRules": [
+        {
+          "id": "r-ind",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        },
+        {
+          "id": "r-grp",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "team",
+          "groupPriority": 1,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "workspace-individual-beats-event-group",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah",
+        "groupIds": [
+          "team"
+        ]
+      },
+      "eventRules": [
+        {
+          "id": "r-grp",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "team",
+          "groupPriority": 1,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [
+        {
+          "id": "r-ind",
+          "scope": "workspace",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "two-groups-priority-tiebreak",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah",
+        "groupIds": [
+          "a",
+          "b"
+        ]
+      },
+      "eventRules": [
+        {
+          "id": "r-b",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "b",
+          "groupPriority": 5,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        },
+        {
+          "id": "r-a",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "a",
+          "groupPriority": 1,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "two-groups-restrictive-tiebreak",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah",
+        "groupIds": [
+          "a",
+          "b"
+        ]
+      },
+      "eventRules": [
+        {
+          "id": "r-a",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "a",
+          "groupPriority": 1,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible",
+            "location": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        },
+        {
+          "id": "r-b",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "b",
+          "groupPriority": 1,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "event-default-over-workspace",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r-pub-event",
+          "scope": "event",
+          "audience": "public",
+          "audienceRef": null,
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [
+        {
+          "id": "r-pub-ws",
+          "scope": "workspace",
+          "audience": "public",
+          "audienceRef": null,
+          "groupPriority": null,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "busy-only-hides-title",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "busy",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "busy",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "hidden-hides-existence",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "hidden",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "limited-shows-title-time-only",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "cloak-one-tap-defaults",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "busy",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "delayed-reveal-before",
+      "now": "2026-05-01T00:00:00Z",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": "2026-05-18T00:00:00Z",
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "delayed-reveal-after",
+      "now": "2026-05-19T00:00:00Z",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": "2026-05-18T00:00:00Z",
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "temp-access-expired",
+      "now": "2026-06-01T00:00:00Z",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": "2026-05-20T00:00:00Z"
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "expiry-reverts-to-workspace-default",
+      "now": "2026-06-01T00:00:00Z",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "workspaceTimeVis": "busy",
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": "2026-05-20T00:00:00Z"
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "busy",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "custom-field-unknown-denied",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "customFields": [
+        "custom:case_number"
+      ],
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "custom-field-explicitly-visible",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "customFields": [
+        "custom:case_number"
+      ],
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "custom:case_number": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "custom:case_number"
+        ]
+      }
+    },
+    {
+      "name": "trashed-event-invisible",
+      "lifecycle": "trashed",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "trashed-event-still-visible-to-owner",
+      "lifecycle": "trashed",
+      "viewer": {
+        "kind": "owner"
+      },
+      "eventRules": [],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "exact",
+        "visibleFields": [
+          "title",
+          "location",
+          "attendees",
+          "notes",
+          "videoLink",
+          "attachments"
+        ]
+      }
+    },
+    {
+      "name": "public-viewer-gets-public-rule-only",
+      "viewer": {
+        "kind": "public"
+      },
+      "eventRules": [
+        {
+          "id": "r-pub",
+          "scope": "event",
+          "audience": "public",
+          "audienceRef": null,
+          "groupPriority": null,
+          "timeVis": "busy",
+          "fields": {},
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "busy",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "public-viewer-ignores-workspace-default",
+      "viewer": {
+        "kind": "public"
+      },
+      "workspaceTimeVis": "exact",
+      "eventRules": [],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "unknown-individual-falls-back-to-workspace-default",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "stranger"
+      },
+      "workspaceTimeVis": "busy",
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": true,
+        "time": "busy",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "malformed-rule-denies",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah",
+        "groupIds": [
+          "a"
+        ]
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "group",
+          "audienceRef": "a",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    },
+    {
+      "name": "invalid-now-denies",
+      "now": "not-a-date",
+      "viewer": {
+        "kind": "individual",
+        "contactId": "sarah"
+      },
+      "eventRules": [
+        {
+          "id": "r",
+          "scope": "event",
+          "audience": "individual",
+          "audienceRef": "sarah",
+          "groupPriority": null,
+          "timeVis": "exact",
+          "fields": {
+            "title": "visible"
+          },
+          "revealAt": null,
+          "expiresAt": null
+        }
+      ],
+      "workspaceRules": [],
+      "expect": {
+        "eventVisible": false,
+        "time": "hidden",
+        "visibleFields": []
+      }
+    }
+  ]
+}

@@ -38,6 +38,28 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'policy',
+          include: ['packages/policy/src/**/*.test.ts'],
+          environment: 'node',
+          testTimeout: 30_000,
+        },
+      },
+      {
+        test: {
+          name: 'policy-vectors-server',
+          include: ['packages/policy/test/**/*.server.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
+          name: 'policy-vectors-client',
+          include: ['packages/policy/test/**/*.client.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'crypto',
           include: ['packages/crypto/src/**/*.test.ts'],
           environment: 'node',

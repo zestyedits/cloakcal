@@ -57,6 +57,11 @@ jobs:
       - name: Domain — recurrence, DST, edit scopes
         run: pnpm test:domain
 
+      # Named separately: if server redaction and client View As ever diverge, that is a
+      # privacy failure and should read as one in the checks list, not as "unit tests red".
+      - name: Policy vectors (server and client must agree)
+        run: pnpm test:vectors
+
       - name: Unit and domain
         run: pnpm test
 
