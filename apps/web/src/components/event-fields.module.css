@@ -1,0 +1,71 @@
+/*
+ * The event form's fields. Moved verbatim from new-event.module.css — same markup, same
+ * class names, same rules — so that extracting them changed nothing a user or a screenshot
+ * could see.
+ */
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.input {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-base);
+  width: 100%;
+}
+
+.input:disabled {
+  opacity: 0.55;
+}
+
+.textarea {
+  composes: input;
+  min-height: 6rem;
+  padding: var(--space-3);
+  resize: vertical;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.disclose {
+  align-self: flex-start;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.disclose:hover {
+  background: var(--accent-quiet);
+}

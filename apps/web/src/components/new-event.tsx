@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Temporal } from '@js-temporal/polyfill'
 import { useCloakStore } from './cloak-provider'
+import { EventSheet } from './event-sheet'
+import { EventFields, Field, eventFieldStyles, type EventFieldValues } from './event-fields'
+import { sealFields } from '@/lib/cloaked-fields'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import styles from './new-event.module.css'
 
@@ -24,9 +27,11 @@ import styles from './new-event.module.css'
  * PROGRESSIVE DISCLOSURE. Title, day, time. Everything else is behind "Add details",
  * because the common case is a thing at a time and asking for eight fields to record it is
  * how calendars become chores.
+ *
+ * The modal shell and the fields live in EventSheet and EventFields, which the edit sheet
+ * also uses. Only the create-specific parts are here: resolving the target calendar, the
+ * repeat rule, and the create RPC.
  */
-
-const DURATIONS = [15, 30, 45, 60, 90, 120] as const
 
 const REPEATS = [
   { value: '', label: 'Does not repeat' },
@@ -40,19 +45,24 @@ interface Target {
   readonly calendarId: string
 }
 
+const EMPTY = (defaultDate: string): EventFieldValues => ({
+  title: '',
+  date: defaultDate,
+  time: '09:00',
+  duration: 30,
+  location: '',
+  notes: '',
+})
+
 export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultDate: string }) {
   const store = useCloakStore()
   const router = useRouter()
+  const repeatId = useId()
 
   const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<Target | null>(null)
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState(defaultDate)
-  const [time, setTime] = useState('09:00')
-  const [duration, setDuration] = useState<number>(30)
+  const [values, setValues] = useState<EventFieldValues>(() => EMPTY(defaultDate))
   const [repeat, setRepeat] = useState('')
-  const [location, setLocation] = useState('')
-  const [notes, setNotes] = useState('')
   const [detailed, setDetailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,26 +117,15 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
       // anything is written. The AAD binds ciphertext to that id, so it has to exist first.
       const eventId = globalThis.crypto.randomUUID()
 
-      const local = Temporal.PlainDateTime.from(`${date}T${time}:00`)
+      const local = Temporal.PlainDateTime.from(`${values.date}T${values.time}:00`)
       const zoned = local.toZonedDateTime(timezone, { disambiguation: 'earlier' })
-      const end = zoned.add({ minutes: duration })
+      const end = zoned.add({ minutes: values.duration })
 
-      const content: Array<[string, string]> = [['title', title.trim()]]
-      if (location.trim() !== '') content.push(['location', location.trim()])
-      if (notes.trim() !== '') content.push(['notes', notes.trim()])
+      const content: Array<[string, string]> = [['title', values.title.trim()]]
+      if (values.location.trim() !== '') content.push(['location', values.location.trim()])
+      if (values.notes.trim() !== '') content.push(['notes', values.notes.trim()])
 
-      const fields = await Promise.all(
-        content.map(async ([fieldName, value]) => {
-          const sealed = await store.seal('event', eventId, fieldName, value)
-          return {
-            field_name: fieldName,
-            ciphertext: toHex(sealed.ciphertext),
-            nonce: toHex(sealed.nonce),
-            alg: sealed.alg,
-            key_version: sealed.keyVersion,
-          }
-        }),
-      )
+      const fields = await sealFields(store, eventId, content)
 
       const { error: rpcError } = await supabaseBrowser().rpc('create_cloaked_event', {
         p_event_id: eventId,
@@ -144,9 +143,7 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
       if (rpcError !== null) throw rpcError
 
       setOpen(false)
-      setTitle('')
-      setLocation('')
-      setNotes('')
+      setValues(EMPTY(defaultDate))
       setDetailed(false)
       router.refresh()
     } catch (caught) {
@@ -174,156 +171,38 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
   }
 
   return (
-    <div className={styles.sheetScrim} role="dialog" aria-modal="true" aria-labelledby="new-event-title">
-      <form className={styles.sheet} onSubmit={submit}>
-        <h2 id="new-event-title" className={styles.sheetTitle}>
-          New event
-        </h2>
-
-        {error !== null && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="event-title">
-            What is it
-          </label>
-          <input
-            id="event-title"
-            className={styles.input}
-            required
-            autoFocus
-            maxLength={200}
+    <EventSheet
+      title="New event"
+      error={error}
+      busy={busy}
+      submitLabel={busy ? 'Encrypting and saving' : 'Save'}
+      onSubmit={submit}
+      onClose={() => setOpen(false)}
+    >
+      <EventFields
+        values={values}
+        onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+        disabled={busy}
+        detailed={detailed}
+        onDisclose={() => setDetailed(true)}
+        titleHint="Encrypted on this device before it is saved."
+      >
+        <Field label="Repeats" htmlFor={repeatId}>
+          <select
+            id={repeatId}
+            className={eventFieldStyles.input}
             disabled={busy}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <p className={styles.hint}>Encrypted on this device before it is saved.</p>
-        </div>
-
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="event-date">
-              Day
-            </label>
-            <input
-              id="event-date"
-              className={styles.input}
-              type="date"
-              required
-              disabled={busy}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="event-time">
-              Starts
-            </label>
-            <input
-              id="event-time"
-              className={styles.input}
-              type="time"
-              required
-              disabled={busy}
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="event-duration">
-              For
-            </label>
-            <select
-              id="event-duration"
-              className={styles.input}
-              disabled={busy}
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-            >
-              {DURATIONS.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes < 60 ? `${minutes} min` : `${minutes / 60} hr`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="event-repeat">
-              Repeats
-            </label>
-            <select
-              id="event-repeat"
-              className={styles.input}
-              disabled={busy}
-              value={repeat}
-              onChange={(e) => setRepeat(e.target.value)}
-            >
-              {REPEATS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {detailed ? (
-          <>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="event-location">
-                Where
-              </label>
-              <input
-                id="event-location"
-                className={styles.input}
-                disabled={busy}
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="event-notes">
-                Notes
-              </label>
-              <textarea
-                id="event-notes"
-                className={styles.textarea}
-                disabled={busy}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-          </>
-        ) : (
-          <button type="button" className={styles.disclose} onClick={() => setDetailed(true)}>
-            Add where and notes
-          </button>
-        )}
-
-        <div className={styles.actions}>
-          <button type="button" className={styles.cancel} disabled={busy} onClick={() => setOpen(false)}>
-            Cancel
-          </button>
-          <button type="submit" className={styles.save} disabled={busy}>
-            {busy ? 'Encrypting and saving' : 'Save'}
-          </button>
-        </div>
-      </form>
-    </div>
+            value={repeat}
+            onChange={(e) => setRepeat(e.target.value)}
+          >
+            {REPEATS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </EventFields>
+    </EventSheet>
   )
-}
-
-function toHex(bytes: Uint8Array): string {
-  let out = ''
-  for (const byte of bytes) out += byte.toString(16).padStart(2, '0')
-  return out
 }
