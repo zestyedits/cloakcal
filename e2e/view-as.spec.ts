@@ -42,9 +42,13 @@ test('a colleague sees busy blocks with no content at all', async ({ page }) => 
 
 test('the public sees nothing, and is told so plainly', async ({ page }) => {
   await page.goto('/?as=public')
-  await expect(page.getByText(/every event in this week is hidden/i)).toBeVisible({
+  // The count is stated, not implied. "Nothing here" alone would leave a reviewer unable
+  // to tell "this audience sees nothing" apart from "this week is empty" — which are very
+  // different claims to be checking.
+  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
     timeout: 15_000,
   })
+  await expect(page.getByText(/\d+ events are hidden from them entirely/i).first()).toBeVisible()
 
   const html = await page.content()
   expect(CANARIES.filter((c) => html.includes(c))).toEqual([])
@@ -61,9 +65,9 @@ test('the withheld count is stated, not implied', async ({ page }) => {
   await page.goto('/?as=public')
   // Two elements legitimately say this — the View As note and the empty state — so scope
   // to the first rather than loosening the matcher.
-  await expect(
-    page.getByText(/hidden from them entirely|every event in this week/i).first(),
-  ).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
+    timeout: 15_000,
+  })
 })
 
 test('server responses for a restricted audience carry no withheld ciphertext', async ({ page }) => {

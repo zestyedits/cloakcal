@@ -1,0 +1,37 @@
+- generic [active] [ref=f2e1]:
+  - link "Skip to calendar" [ref=f2e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f2e3]:
+    - banner [ref=f2e4]:
+      - generic [ref=f2e5]: CloakCal
+      - navigation "Change week" [ref=f2e8]:
+        - link "Previous week" [ref=f2e9] [cursor=pointer]:
+          - /url: /?week=2026-08-02&as=contact%3Aalex
+          - text: ‹
+        - paragraph [ref=f2e10]: August 9 – 15, 2026
+        - link "Next week" [ref=f2e11] [cursor=pointer]:
+          - /url: /?week=2026-08-16&as=contact%3Aalex
+          - text: ›
+    - complementary "Calendars" [ref=f2e12]:
+      - generic [ref=f2e13]:
+        - generic [ref=f2e14]: Viewing as
+        - combobox "Viewing as" [ref=f2e15]:
+          - option "Me"
+          - option "Sarah (client)"
+          - option "Alex (colleague)" [selected]
+          - option "Anyone with the link"
+        - paragraph [ref=f2e16]: They can see every event below.
+    - main [ref=f2e17]:
+      - list [ref=f2e18]:
+        - listitem [ref=f2e19]:
+          - heading "Wednesday, August 12" [level=2] [ref=f2e20]
+          - list [ref=f2e21]:
+            - listitem [ref=f2e22]:
+              - generic [ref=f2e23]: 09:30
+              - generic [ref=f2e24]: Busy
+              - generic [ref=f2e26]: Busy
+    - navigation "Calendar views" [ref=f2e27]:
+      - button "Day" [disabled] [ref=f2e28]
+      - button "Week" [ref=f2e29] [cursor=pointer]
+      - button "Agenda" [ref=f2e30] [cursor=pointer]
+      - button "Month" [disabled] [ref=f2e31]

@@ -134,7 +134,13 @@ export function redactPage(page: CalendarPage, audience: AudienceId, now: string
 
   // A busy block must not disclose which calendar it belongs to, so the calendar list is
   // withheld from any audience that cannot see calendar ids on events.
-  const disclosesCalendars = occurrences.some((o) => o.calendarId !== undefined)
+  //
+  // The owner is exempt, and has to be. Deriving disclosure from the occurrences alone
+  // meant an owner with an empty week saw no calendars at all — a brand-new account looked
+  // like it had failed to create one. There is nothing to protect the owner from here:
+  // their calendar list is theirs.
+  const disclosesCalendars =
+    audience === 'owner' || occurrences.some((o) => o.calendarId !== undefined)
 
   return {
     timezone: page.timezone,

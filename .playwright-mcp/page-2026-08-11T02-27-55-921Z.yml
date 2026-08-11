@@ -1,0 +1,22 @@
+- generic [active] [ref=f1e1]:
+  - link "Skip to calendar" [ref=f1e2] [cursor=pointer]:
+    - /url: "#main"
+  - main [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]: CloakCal
+      - heading "Welcome back" [level=1] [ref=f1e8]
+      - paragraph [ref=f1e9]: Your password unlocks your events here in the browser. We never receive it.
+      - alert [ref=f1e20]: Database error querying schema
+      - generic [ref=f1e10]:
+        - generic [ref=f1e11]:
+          - generic [ref=f1e12]: Email
+          - textbox "Email" [ref=f1e13]: m3check@cloakcal.dev
+        - generic [ref=f1e14]:
+          - generic [ref=f1e15]: Password
+          - textbox "Password" [ref=f1e16]: quarrystone-marchpane-42
+        - button "Sign in" [ref=f1e21] [cursor=pointer]
+      - paragraph [ref=f1e18]:
+        - text: No account yet?
+        - link "Create one" [ref=f1e19] [cursor=pointer]:
+          - /url: /sign-up
+  - alert [ref=f1e22]

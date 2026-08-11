@@ -150,9 +150,19 @@ export function CalendarScreen({
         </aside>
 
         <main id="main" className={styles.main}>
+          {/* Two different facts, and conflating them was wrong. "Everything is hidden from
+              this audience" is a privacy statement; an owner looking at a quiet week is not
+              being told anything about privacy, and a fresh account read the old copy as a
+              failure to load. withheldCount distinguishes them exactly. */}
           {days.length === 0 && (
             <p className={styles.empty}>
-              Nothing here for this audience. Every event in this week is hidden from them.
+              {page.withheldCount > 0
+                ? `Nothing here for this audience. ${page.withheldCount} ${
+                    page.withheldCount === 1 ? 'event is' : 'events are'
+                  } hidden from them entirely.`
+                : page.audience === 'owner'
+                  ? 'Nothing scheduled this week.'
+                  : 'Nothing in this week for this audience.'}
             </p>
           )}
 
