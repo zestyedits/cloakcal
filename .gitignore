@@ -19,3 +19,4 @@ apps/web/.next-prod/
 apps/web/next-env.d.ts
 /test-results/
 .env*
+.playwright-mcp/
