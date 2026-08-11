@@ -50,6 +50,9 @@ importers:
       '@cloakcal/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@cloakcal/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
       '@cloakcal/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -99,6 +102,8 @@ importers:
       rrule:
         specifier: ^2.8.1
         version: 2.8.1
+
+  packages/policy: {}
 
   packages/ui: {}
 

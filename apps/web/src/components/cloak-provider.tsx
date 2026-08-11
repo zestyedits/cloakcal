@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createCloakStore, type CloakStore, type EncryptedFieldRecord } from '@cloakcal/cloak-store'
 import { getDevRootKey, isDevUnlockEnabled } from '@/lib/dev-key'
-import type { CalendarPage } from '@/server/events'
+import type { RedactedPage } from '@/server/audience'
 
 /**
  * The hydration boundary.
@@ -20,7 +20,7 @@ const toBytes = (hex: string): Uint8Array =>
   Uint8Array.from(hex.match(/.{2}/g) ?? [], (byte) => Number.parseInt(byte, 16))
 
 /** Flatten a page's ciphertext into the records the store ingests. */
-function toRecords(page: CalendarPage): EncryptedFieldRecord[] {
+function toRecords(page: RedactedPage): EncryptedFieldRecord[] {
   const records: EncryptedFieldRecord[] = []
 
   for (const calendar of page.calendars) {
@@ -59,7 +59,7 @@ function toRecords(page: CalendarPage): EncryptedFieldRecord[] {
   return records
 }
 
-export function CloakProvider({ page, children }: { page: CalendarPage; children: ReactNode }) {
+export function CloakProvider({ page, children }: { page: RedactedPage; children: ReactNode }) {
   // Created lazily inside an effect-free initializer that only runs client-side. The store
   // constructor throws off-browser, which is the behaviour we want if this ever renders
   // during SSR by mistake — but useState's initializer does run during SSR, so it is

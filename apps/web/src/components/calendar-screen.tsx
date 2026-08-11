@@ -1,18 +1,18 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import type { CalendarPage, OccurrenceView } from '@/server/events'
+import { Suspense, useMemo, useState } from 'react'
+import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import { CloakProvider } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
+import { ViewAsBar } from './view-as-bar'
 import styles from './calendar-screen.module.css'
 
 /**
- * The M1 shell: agenda view, plus the navigation frame.
+ * The M1/M2 shell: agenda view, navigation frame, and View As.
  *
- * Agenda and week are the two screens the brand board actually specifies, so they come
- * first; day and month are documented extrapolations and arrive after. Only agenda is
- * implemented here — the nav shows the others as disabled rather than as buttons that do
- * nothing, per spec §10: a control that does not work is not shipped.
+ * Everything rendered here has already been through the policy engine server-side. A
+ * `busy` occurrence arrives with no fields and no calendar id at all — there is nothing
+ * for this component to withhold, which is the point.
  */
 
 const NAV = [
@@ -29,11 +29,10 @@ const DAY_LABEL = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 
-/** Wall-clock time as rendered by the server, sliced rather than re-parsed. */
-const timeOf = (iso: string) => iso.slice(11, 16)
+const timeOf = (iso: string) => (iso.includes('T') ? iso.slice(11, 16) : 'All day')
 
-function groupByDay(occurrences: readonly OccurrenceView[]) {
-  const days = new Map<string, OccurrenceView[]>()
+function groupByDay(occurrences: readonly RedactedOccurrence[]) {
+  const days = new Map<string, RedactedOccurrence[]>()
   for (const occurrence of occurrences) {
     const day = occurrence.occurrenceLocal.slice(0, 10)
     const bucket = days.get(day)
@@ -43,13 +42,20 @@ function groupByDay(occurrences: readonly OccurrenceView[]) {
   return [...days.entries()].sort(([a], [b]) => a.localeCompare(b))
 }
 
-export function CalendarScreen({ page }: { page: CalendarPage }) {
+export function CalendarScreen({
+  page,
+  audiences,
+}: {
+  page: RedactedPage
+  audiences: ReadonlyArray<{ id: string; label: string }>
+}) {
   const [view, setView] = useState<string>('agenda')
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
 
   const colorFor = useMemo(() => {
     const map = new Map(page.calendars.map((c) => [c.id, c.colorToken]))
-    return (calendarId: string) => map.get(calendarId) ?? 'indigo'
+    return (calendarId: string | undefined) =>
+      calendarId === undefined ? 'slate' : (map.get(calendarId) ?? 'indigo')
   }, [page.calendars])
 
   return (
@@ -66,27 +72,45 @@ export function CalendarScreen({ page }: { page: CalendarPage }) {
         </header>
 
         <aside className={styles.sidebar} aria-label="Calendars">
-          <h2 className={styles.sidebarHeading}>My calendars</h2>
-          <ul className={styles.calendarList}>
-            {page.calendars.map((calendar) => (
-              <li key={calendar.id} className={styles.calendarItem}>
-                <span
-                  className={styles.swatch}
-                  data-color={calendar.colorToken}
-                  aria-hidden="true"
-                />
-                <CloakedText
-                  subjectType="calendar"
-                  subjectId={calendar.id}
-                  fieldName="display_name"
-                  placeholder="Calendar"
-                />
-              </li>
-            ))}
-          </ul>
+          <Suspense fallback={null}>
+            <ViewAsBar
+              audiences={audiences}
+              current={page.audience}
+              withheldCount={page.withheldCount}
+            />
+          </Suspense>
+
+          {page.calendars.length > 0 && (
+            <>
+              <h2 className={styles.sidebarHeading}>My calendars</h2>
+              <ul className={styles.calendarList}>
+                {page.calendars.map((calendar) => (
+                  <li key={calendar.id} className={styles.calendarItem}>
+                    <span
+                      className={styles.swatch}
+                      data-color={calendar.colorToken}
+                      aria-hidden="true"
+                    />
+                    <CloakedText
+                      subjectType="calendar"
+                      subjectId={calendar.id}
+                      fieldName="display_name"
+                      placeholder="Calendar"
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </aside>
 
         <main id="main" className={styles.main}>
+          {days.length === 0 && (
+            <p className={styles.empty}>
+              Nothing here for this audience. Every event in this week is hidden from them.
+            </p>
+          )}
+
           <ol className={styles.agenda}>
             {days.map(([day, occurrences]) => (
               <li key={day} className={styles.day}>
@@ -99,18 +123,22 @@ export function CalendarScreen({ page }: { page: CalendarPage }) {
                       key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
                       className={styles.event}
                       data-color={colorFor(occurrence.calendarId)}
+                      data-time={occurrence.time}
                     >
-                      <span className={styles.time}>
-                        {occurrence.allDay ? 'All day' : timeOf(occurrence.start)}
-                      </span>
+                      <span className={styles.time}>{timeOf(occurrence.start)}</span>
                       <span className={styles.eventBody}>
-                        <CloakedText
-                          className={styles.eventTitle}
-                          subjectType="event"
-                          subjectId={occurrence.eventId}
-                          fieldName="title"
-                          placeholder="Private event"
-                        />
+                        {occurrence.time === 'busy' ? (
+                          // Nothing to reveal: the server sent no fields for this one.
+                          <span className={styles.eventTitle}>Busy</span>
+                        ) : (
+                          <CloakedText
+                            className={styles.eventTitle}
+                            subjectType="event"
+                            subjectId={occurrence.eventId}
+                            fieldName="title"
+                            placeholder="Private event"
+                          />
+                        )}
                         {occurrence.dst !== 'none' && (
                           <span className={styles.dstNote}>
                             {occurrence.dst === 'nonexistent-shifted'
@@ -119,7 +147,7 @@ export function CalendarScreen({ page }: { page: CalendarPage }) {
                           </span>
                         )}
                       </span>
-                      <span className={styles.busy} data-busy={occurrence.busy}>
+                      <span className={styles.busy} data-busy={occurrence.busy ?? 'busy'}>
                         {occurrence.busy === 'free' ? 'Free' : 'Busy'}
                       </span>
                     </li>
@@ -137,8 +165,6 @@ export function CalendarScreen({ page }: { page: CalendarPage }) {
               type="button"
               className={styles.navItem}
               aria-current={view === item.id ? 'page' : undefined}
-              // Not yet built. Disabled and labelled, rather than a control that silently
-              // does nothing when tapped.
               disabled={!item.ready}
               title={item.ready ? undefined : 'Coming in a later milestone'}
               onClick={() => setView(item.id)}

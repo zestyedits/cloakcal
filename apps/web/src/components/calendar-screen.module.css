@@ -6,8 +6,8 @@
 
 .shell {
   display: grid;
-  grid-template-areas: 'header' 'main' 'nav';
-  grid-template-rows: auto 1fr auto;
+  grid-template-areas: 'header' 'sidebar' 'main' 'nav';
+  grid-template-rows: auto auto 1fr auto;
   min-height: 100dvh;
 }
 
@@ -54,6 +54,15 @@
 
 /* Hidden on mobile: the calendar list lives behind navigation on small screens. */
 .sidebar {
+  /* The calendar list is desktop-only, but View As is a trust surface and must be
+     reachable on a phone, so on mobile the sidebar collapses to just that control and
+     sits in its own row above the agenda. */
+  grid-area: sidebar;
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.sidebar .calendarList,
+.sidebar .sidebarHeading {
   display: none;
 }
 
@@ -260,4 +269,58 @@
     flex: 0 0 auto;
     padding: 0 var(--space-5);
   }
+}
+
+/* View As — a trust surface, so it reads as part of the product, not a debug toggle. */
+.viewAs {
+  margin-bottom: var(--space-6);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+}
+
+.viewAsLabel {
+  display: block;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.viewAsSelect {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.viewAsNote {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.empty {
+  margin: var(--space-12) auto;
+  max-width: 32ch;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* A busy block is visually quieter: there is nothing to read, and it should not compete
+   with events that carry real content. */
+.event[data-time='busy'] .eventTitle {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-regular);
+}
+
+.event[data-color='slate'] {
+  --event-color: var(--brand-slate);
 }

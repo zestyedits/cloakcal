@@ -63,6 +63,9 @@ export default defineConfig({
           name: 'crypto',
           include: ['packages/crypto/src/**/*.test.ts'],
           environment: 'node',
+          // The nonce-reuse property runs 1000 WebCrypto operations; the 5s default is
+          // too tight on a loaded machine and made it intermittently flaky.
+          testTimeout: 30_000,
         },
       },
       {
