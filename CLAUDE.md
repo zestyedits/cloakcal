@@ -77,8 +77,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 502 unit tests
-pnpm test:e2e            # 51 Playwright tests, runs its own dev server
+pnpm test                # 582 unit tests
+pnpm test:e2e            # 70 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 ```
@@ -97,26 +97,27 @@ To run the app with no account, using the committed fixture:
 ## Current state, honestly
 
 **Works:** sign up, sign in, first-run key ceremony with a 24-word recovery phrase, unlock,
-agenda and week views, week navigation, View As, creating an encrypted event, deleting one.
-Verified end to end in a browser against the live Supabase project, not just in tests.
+agenda and week views, week navigation, View As, and the full create / edit / delete loop on
+an event. Verified in a browser, not just in tests.
 
-**The biggest gap:** `packages/db` is still imported by nothing. The CRUD service — five
-enforced gates, three edit scopes, atomic series splits, optimistic concurrency, unskippable
-post-write verification — is fully tested against PGlite and wired to no UI. It is being
-ported to Supabase RPCs one mutation at a time.
+**Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
+`update_cloaked_event` (0011). All SECURITY INVOKER, so RLS decides what they can touch; all
+version-guarded; all audited without naming anything. Follow that shape for the next one —
+one RPC per user action, an expected version in, a distinguishable slug out.
 
-**Ported so far:** `create_cloaked_event` (0007) and `trash_cloaked_event` (0008). Both are
-SECURITY INVOKER, so RLS decides what they can touch. Trash is version-guarded, soft (the row
-and its cloaked fields survive), and audited without naming anything.
+**The biggest gap is now the SERIES SPLITS.** `packages/db/src/events.ts` still holds the
+only implementation of "just this occurrence" and "this and future", and it is imported by
+nothing. Editing today is whole-event: a change to a repeating event hits every occurrence,
+and the sheet says so rather than pretending otherwise.
 
-**So: you can create and delete an event, but not edit one.** Editing is the top job, and it
-is the hard part — three scopes, atomic series splits, post-write verification. Follow the
-shape 0008 established: one RPC, invoker rights, an expected version in, a distinguishable
-error out.
-
-**Delete is whole-series.** A recurring event is one row, so trashing it removes every
-occurrence, and the confirmation says so. Per-occurrence deletion needs the
-`recurrence_exceptions` path from `packages/db`, which lands with the edit port.
+Three things fall out of that, and they are all the same job:
+- **Retiming a repeating event is refused** by `update_cloaked_event`, deliberately and
+  loudly. Moving `dtstart_local` would strand every `recurrence_exceptions` row on the old
+  wall time and resurrect cancelled occurrences. The fix is to shift them by the same delta,
+  which belongs with the split work.
+- **Deleting is whole-series** for the same reason.
+- The reference implementation in `packages/db` is now correct on all three defects that
+  made splits unsafe (see the 0010-era commit) — but it is still not wired up.
 
 **Then, in order:**
 1. Password change / rewrap. Changing a Supabase password today leaves the old wrap in place
@@ -153,6 +154,21 @@ native iOS. **Independent security review is a hard gate before public launch.**
   `docs/deploy.md`) and can always be re-sourced from the Supabase dashboard.
 - **`supabase.auth.getClaims()`, not `getSession()`, on the server.** The session cookie is
   client-writable; getClaims verifies the JWT signature.
+- **Send temporal values to an RPC as TEXT, never as `timestamp`.** Postgres silently drops a
+  timezone offset when parsing into `timestamp without time zone`, so a client that sent
+  `zoned.toString()` instead of `local.toString()` would store an anchor hours off with no
+  error — and a read-back check comparing against the same typed parameter would compare two
+  copies of the same lossy parse and pass. `private.canonical_local` / `canonical_instant`
+  regex-validate first, which makes the cast total.
+- **axe measures COMPOSITED colour, so never run it mid-animation.** The event sheet rises
+  over `--duration-base`; analysing at opacity 0 reports every label as a contrast failure
+  against a box that is not painted yet, and it looks exactly like a palette bug. `openSheet`
+  in `e2e/edit-event.spec.ts` waits on `getAnimations()` rather than sleeping, which also
+  stays correct under prefers-reduced-motion.
+- **A dialog effect must not `close()` in its cleanup.** React re-runs effects in development
+  (effect → cleanup → effect) and `close()` dispatches a `close` event, so the sheet calls
+  `onClose` and shuts itself the instant it opens — in dev only, which is the worst place for
+  a bug to live. Unmounting releases the top layer on its own.
 - **Every new function is reachable by logged-out callers, and there is no way to change the
   default.** Two separate grants of `EXECUTE` exist and each hides the other. Supabase runs
   `alter default privileges ... grant all on functions to anon, ...` — an explicit `anon`
