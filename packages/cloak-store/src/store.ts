@@ -1,4 +1,4 @@
-import { cloakField, uncloakField, type CloakedPayload, type RootKey } from '@cloakcal/crypto'
+import { cloakField, uncloakField, type CloakedPayload, type KeyMaterial } from '@cloakcal/crypto'
 
 /**
  * CloakStore — the one place decrypted Tier B content exists.
@@ -88,7 +88,7 @@ export class CloakStore {
   readonly #values = new Map<FieldKey, FieldSnapshot>()
   readonly #ciphertext = new Map<FieldKey, EncryptedFieldRecord>()
   readonly #listeners = new Map<FieldKey, Set<() => void>>()
-  #rootKey: RootKey | null = null
+  #rootKey: KeyMaterial | null = null
 
   constructor() {
     if (!isBrowser()) throw new ServerDecryptionError()
@@ -104,7 +104,7 @@ export class CloakStore {
   }
 
   /** Provide the key and decrypt everything already ingested. */
-  async unlock(rootKey: RootKey): Promise<void> {
+  async unlock(rootKey: KeyMaterial): Promise<void> {
     this.#rootKey = rootKey
     await this.#decryptAll()
   }

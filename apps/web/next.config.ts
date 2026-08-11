@@ -21,6 +21,12 @@ const config: NextConfig = {
   // convention, where the specifier names the *emitted* file. These packages ship source,
   // so webpack must map that back to the .ts on disk. Without this every cross-file import
   // inside a workspace package fails to resolve.
+  //
+  // THIS IS WHY `next build` PASSES `--webpack`. Turbopack is the default builder from
+  // 15.5 and would ignore the block below. It also currently panics compiling this app's
+  // middleware ("missing incrementalCacheHandler in template"), so the choice is not
+  // hypothetical. Revisit when that is fixed upstream; the resolution above is the only
+  // thing keeping us on webpack.
   webpack: (config) => {
     config.resolve.extensionAlias = {
       ...config.resolve.extensionAlias,

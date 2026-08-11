@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/store.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@cloakcal/crypto": "workspace:*"

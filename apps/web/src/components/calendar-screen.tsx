@@ -1,10 +1,13 @@
 'use client'
 
 import { Suspense, useMemo, useState } from 'react'
+import Link from 'next/link'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import { CloakProvider } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
+import { WeekGrid } from './week-grid'
+import { NewEvent } from './new-event'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -15,9 +18,15 @@ import styles from './calendar-screen.module.css'
  * for this component to withhold, which is the point.
  */
 
+/**
+ * Agenda and Week read the SAME page of occurrences — one server fetch, already redacted —
+ * so switching between them is a pure presentation choice and can stay on the client. Day
+ * and Month need a different range, so they will be server navigations like the ‹ › steps
+ * are, not additions to this list.
+ */
 const NAV = [
   { id: 'day', label: 'Day', ready: false },
-  { id: 'week', label: 'Week', ready: false },
+  { id: 'week', label: 'Week', ready: true },
   { id: 'agenda', label: 'Agenda', ready: true },
   { id: 'month', label: 'Month', ready: false },
 ] as const
@@ -30,6 +39,11 @@ const DAY_LABEL = new Intl.DateTimeFormat('en-US', {
 })
 
 const timeOf = (iso: string) => (iso.includes('T') ? iso.slice(11, 16) : 'All day')
+
+export interface WeekLink {
+  readonly pathname: '/'
+  readonly query: Record<string, string>
+}
 
 function groupByDay(occurrences: readonly RedactedOccurrence[]) {
   const days = new Map<string, RedactedOccurrence[]>()
@@ -45,9 +59,25 @@ function groupByDay(occurrences: readonly RedactedOccurrence[]) {
 export function CalendarScreen({
   page,
   audiences,
+  heading,
+  previousHref,
+  nextHref,
+  timezone,
+  email,
+  composeDate,
 }: {
   page: RedactedPage
   audiences: ReadonlyArray<{ id: string; label: string }>
+  heading: string
+  /* URL objects rather than strings: `typedRoutes` will not accept a computed href string,
+     and a UrlObject is the escape hatch Next provides for exactly this — a fixed pathname
+     with a query built at request time. */
+  previousHref: WeekLink
+  nextHref: WeekLink
+  timezone: string
+  email?: string | undefined
+  /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
+  composeDate?: string | undefined
 }) {
   const [view, setView] = useState<string>('agenda')
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
@@ -59,7 +89,7 @@ export function CalendarScreen({
   }, [page.calendars])
 
   return (
-    <CloakProvider page={page}>
+    <CloakProvider page={page} email={email}>
       <div className={styles.shell}>
         <header className={styles.header}>
           <div className={styles.brand}>
@@ -68,7 +98,22 @@ export function CalendarScreen({
               Cloak<span className={styles.wordmarkAccent}>Cal</span>
             </span>
           </div>
-          <p className={styles.range}>May 18 – 24, 2026</p>
+
+          {/* Real links, not buttons: a week is a location, so it should be shareable,
+              bookmarkable and reachable with the back button. Server navigation also keeps
+              redaction on the server — client-side week switching would mean shipping
+              occurrences the audience is not entitled to. */}
+          <nav className={styles.weekNav} aria-label="Change week">
+            <Link className={styles.weekStep} href={previousHref} aria-label="Previous week">
+              ‹
+            </Link>
+            <p className={styles.range} aria-live="polite">
+              {heading}
+            </p>
+            <Link className={styles.weekStep} href={nextHref} aria-label="Next week">
+              ›
+            </Link>
+          </nav>
         </header>
 
         <aside className={styles.sidebar} aria-label="Calendars">
@@ -111,6 +156,19 @@ export function CalendarScreen({
             </p>
           )}
 
+          {view === 'week' && days.length > 0 && (
+            <WeekGrid
+              occurrences={page.occurrences}
+              from={page.from}
+              timezone={timezone}
+              colorFor={colorFor}
+            />
+          )}
+
+          {/* Rendered conditionally rather than hidden: two copies of every title in the
+              DOM would mean any assertion about a title matching twice, and a `hidden`
+              subtree is still text a naive leak scan would find. */}
+          {view === 'agenda' && (
           <ol className={styles.agenda}>
             {days.map(([day, occurrences]) => (
               <li key={day} className={styles.day}>
@@ -156,6 +214,7 @@ export function CalendarScreen({
               </li>
             ))}
           </ol>
+          )}
         </main>
 
         <nav className={styles.nav} aria-label="Calendar views">
@@ -173,6 +232,12 @@ export function CalendarScreen({
             </button>
           ))}
         </nav>
+
+        {/* Composing is owner-only. Creating an event while viewing as someone else would
+            be a confusing thing to offer and an easy thing to get wrong. */}
+        {composeDate !== undefined && page.audience === 'owner' && (
+          <NewEvent timezone={timezone} defaultDate={composeDate} />
+        )}
       </div>
     </CloakProvider>
   )

@@ -13,11 +13,14 @@
     "@cloakcal/cloak-store": "workspace:*",
     "@cloakcal/crypto": "workspace:*",
     "@cloakcal/domain": "workspace:*",
+    "@cloakcal/policy": "workspace:*",
     "@cloakcal/ui": "workspace:*",
+    "@js-temporal/polyfill": "^0.5.1",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
     "next": "^15.5.4",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "@cloakcal/policy": "workspace:*"
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.9",

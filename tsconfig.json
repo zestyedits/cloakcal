@@ -5,8 +5,22 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "preserve",
+    // The web app resolves `@/…` against its own src. Repeating the mapping here — rather
+    // than excluding apps/web and trusting `next build` to catch things — is what makes the
+    // React components part of `pnpm typecheck`. They were not, until M3: only .ts was
+    // included, so every .tsx file was checked by nothing until a production build ran.
+    "paths": {
+      "@/*": ["./apps/web/src/*"]
+    }
   },
-  "include": ["packages/**/*.ts", "apps/**/*.ts", "*.config.ts"],
-  "exclude": ["node_modules", "**/dist", "**/.next"]
+  "include": [
+    "packages/**/*.ts",
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "*.config.ts",
+    "apps/web/next-env.d.ts"
+  ],
+  "exclude": ["node_modules", "**/dist", "**/.next", "**/.next-prod"]
 }

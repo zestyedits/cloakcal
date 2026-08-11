@@ -62,12 +62,41 @@ test('gives every interactive control a 44px touch target', async ({ page }) => 
 test('marks unbuilt views as disabled rather than shipping dead controls', async ({ page }) => {
   // Spec §10: a control that does not work is not shipped. Disabled and labelled is
   // honest; a button that silently does nothing is not.
-  for (const name of ['Day', 'Week', 'Month']) {
+  for (const name of ['Day', 'Month']) {
     const control = page.getByRole('button', { name, exact: true })
     await expect(control).toBeDisabled()
     await expect(control).toHaveAttribute('title', /later milestone/i)
   }
-  await expect(page.getByRole('button', { name: 'Agenda', exact: true })).toBeEnabled()
+  for (const name of ['Agenda', 'Week']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeEnabled()
+  }
+})
+
+test('the week view renders the same occurrences the agenda does', async ({ page }) => {
+  // Both read one already-redacted page, so switching views can never disclose an
+  // occurrence the audience was not sent. This asserts that equivalence rather than
+  // trusting it: a week view that fetched its own data would be a second read path, and a
+  // second read path is a second place redaction can be forgotten.
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Week', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(page.getByText('Legal Call')).toBeVisible()
+})
+
+test('the week view withholds from a restricted audience exactly as the agenda does', async ({
+  page,
+}) => {
+  await page.goto('/?as=contact:alex')
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+
+  const html = await page.content()
+  for (const canary of ['Legal Call', 'Bramblewick handover', 'Quarrystone Room']) {
+    expect(html).not.toContain(canary)
+  }
 })
 
 test('keeps every heading in a sensible order', async ({ page }) => {

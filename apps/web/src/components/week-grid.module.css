@@ -1,0 +1,207 @@
+/*
+ * Week grid.
+ *
+ * The whole layout is one CSS grid: an hour gutter plus seven day columns, with the day
+ * headers and the optional all-day row as extra rows. Doing it as one grid rather than three
+ * synchronised scroll areas is what keeps the headers aligned with the columns when the
+ * thing scrolls horizontally on a phone — the classic calendar bug is a header row that
+ * drifts a pixel per day out of step with its column.
+ */
+
+.scroller {
+  overflow-x: auto;
+  overflow-y: visible;
+  /* Snap so a swipe lands on a day boundary rather than half a Tuesday. */
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.grid {
+  --gutter-width: 3.25rem;
+  --hour-height: 3.5rem;
+  --day-min-width: 6.5rem;
+
+  display: grid;
+  grid-template-columns: var(--gutter-width) repeat(7, minmax(var(--day-min-width), 1fr));
+  /* Header row, optional all-day row, then the body. auto handles the all-day row being
+     absent without a second template. */
+  grid-auto-rows: auto;
+  min-width: 100%;
+}
+
+.corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-base);
+}
+
+.dayHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  scroll-snap-align: start;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dayName {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.dayNumber {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Today is marked with a filled disc rather than a coloured column: a tinted column reads
+   as a status and competes with the calendar colours that actually carry meaning. */
+.dayHead[data-today='true'] .dayNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  height: 1.85rem;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--brand-white);
+}
+
+.allDayLabel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  background: var(--surface-base);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.allDayCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: var(--touch-min);
+}
+
+.allDayChip {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border-left: 3px solid var(--event-color, var(--accent));
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gutter {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: repeat(var(--hour-count), var(--hour-height));
+  background: var(--surface-base);
+}
+
+.hourLabel {
+  /* Nudged up so the label sits ON its gridline instead of inside the hour below it. */
+  transform: translateY(-0.5em);
+  padding-right: var(--space-2);
+  text-align: right;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.column {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(var(--hour-count), var(--hour-height));
+  border-left: 1px solid var(--border-subtle);
+  scroll-snap-align: start;
+}
+
+.hourLine {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.event {
+  position: absolute;
+  /* Inset so adjacent lanes and the column edge stay visually separate. */
+  padding: 2px var(--space-2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--event-color, var(--accent));
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.event:hover {
+  border-color: var(--border-default);
+}
+
+.event[data-color='indigo'] { --event-color: var(--brand-indigo); }
+.event[data-color='teal']   { --event-color: var(--brand-teal); }
+.event[data-color='violet'] { --event-color: var(--brand-violet); }
+.event[data-color='rose']   { --event-color: var(--brand-rose); }
+.event[data-color='slate']  { --event-color: var(--brand-slate); }
+
+.allDayChip[data-color='indigo'] { --event-color: var(--brand-indigo); }
+.allDayChip[data-color='teal']   { --event-color: var(--brand-teal); }
+.allDayChip[data-color='violet'] { --event-color: var(--brand-violet); }
+.allDayChip[data-color='rose']   { --event-color: var(--brand-rose); }
+.allDayChip[data-color='slate']  { --event-color: var(--brand-slate); }
+
+/* A busy block has nothing to read, so it should not compete with events that do. */
+.event[data-time='busy'] {
+  background: var(--privacy-hidden-quiet);
+  color: var(--text-tertiary);
+}
+
+.event[data-busy='free'] {
+  border-style: dashed;
+}
+
+.eventTime {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.eventTitle {
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dstNote {
+  color: var(--status-warning);
+}
+
+@media (min-width: 900px) {
+  .grid {
+    --day-min-width: 0;
+    --hour-height: 3rem;
+  }
+
+  .event {
+    font-size: var(--text-sm);
+  }
+}

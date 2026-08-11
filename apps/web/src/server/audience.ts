@@ -82,12 +82,12 @@ const WORKSPACE_RULES: readonly VisibilityRule[] = [
   },
 ]
 
-const toPayload = (occurrence: OccurrenceView): EventPayload => ({
+const toPayload = (occurrence: OccurrenceView, timezone: string): EventPayload => ({
   eventId: occurrence.eventId,
   calendarId: occurrence.calendarId,
   start: occurrence.start,
   end: occurrence.end,
-  timezone: 'America/New_York',
+  timezone,
   allDay: occurrence.allDay,
   busy: occurrence.busy,
   fields: occurrence.fields.map((f) => ({
@@ -123,7 +123,7 @@ export function redactPage(page: CalendarPage, audience: AudienceId, now: string
       policyVersion: 'v1',
     }
 
-    const { event } = redactForRecipient(input, toPayload(occurrence))
+    const { event } = redactForRecipient(input, toPayload(occurrence, page.timezone))
     if (event === null) {
       withheldCount += 1
       continue

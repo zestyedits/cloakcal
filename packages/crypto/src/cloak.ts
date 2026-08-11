@@ -82,6 +82,38 @@ export function createRootKey(): RootKey {
   return { bytes }
 }
 
+/**
+ * The root key in its long-lived, non-extractable form.
+ *
+ * `RootKey` holds raw bytes because wrapping has to encrypt them — there is no way around
+ * that at wrap time. But a live session does not need the bytes, only the ability to derive
+ * from them, and holding readable key material in a JavaScript array for the length of a
+ * session is a needless exposure: any XSS, any error reporter that walks an object graph,
+ * any structured clone can read it.
+ *
+ * Imported with `extractable = false`, the browser keeps the bytes and JavaScript can use
+ * the key without ever reading it back. It is also, unlike a Uint8Array, safe to persist:
+ * IndexedDB stores a CryptoKey natively and returns it still non-extractable, which is what
+ * ADR 0002 specifies for the web surface. Key theft becomes key *use*, which ends when the
+ * origin is closed rather than travelling off the device.
+ */
+export interface SessionKey {
+  readonly key: CryptoKey
+}
+
+export type KeyMaterial = RootKey | SessionKey
+
+export async function toSessionKey(rootKey: RootKey): Promise<SessionKey> {
+  return {
+    key: await subtle().importKey('raw', rootKey.bytes, 'HKDF', false, ['deriveKey']),
+  }
+}
+
+const asHkdfKey = async (material: KeyMaterial): Promise<CryptoKey> =>
+  'key' in material
+    ? material.key
+    : subtle().importKey('raw', material.bytes, 'HKDF', false, ['deriveKey'])
+
 /** Deterministic root key for tests and seed data. Never use outside test fixtures. */
 export function rootKeyFromSeedBytes(seed: Uint8Array): RootKey {
   if (seed.length !== KEY_BYTES) {
@@ -147,13 +179,13 @@ function buildAad(subject: CloakSubject, fieldName: string, keyVersion: number):
  * so a nonce collision in one event cannot weaken another.
  */
 async function deriveFieldKey(
-  rootKey: RootKey,
+  rootKey: KeyMaterial,
   subject: CloakSubject,
   fieldName: string,
   keyVersion: number,
 ): Promise<CryptoKey> {
   const s = subtle()
-  const material = await s.importKey('raw', rootKey.bytes, 'HKDF', false, ['deriveKey'])
+  const material = await asHkdfKey(rootKey)
 
   return s.deriveKey(
     {
@@ -172,7 +204,7 @@ async function deriveFieldKey(
 }
 
 export async function cloakField(
-  rootKey: RootKey,
+  rootKey: KeyMaterial,
   subject: CloakSubject,
   fieldName: string,
   plaintext: string,
@@ -204,7 +236,7 @@ export async function cloakField(
  * caller that silently renders "" would hide it.
  */
 export async function uncloakField(
-  rootKey: RootKey,
+  rootKey: KeyMaterial,
   subject: CloakSubject,
   fieldName: string,
   payload: CloakedPayload,
