@@ -1,0 +1,119 @@
+/*
+ * Delete event.
+ *
+ * The trigger is quiet until you want it. Deleting is the one action on a calendar row that
+ * cannot be undone from the UI yet, so it does not get to compete with the event's own title
+ * for attention — it stays low-contrast, and only becomes red once you have asked for it.
+ *
+ * Confirmation happens INLINE, replacing the row's controls rather than opening a dialog. A
+ * modal for one yes/no question means a focus trap, a scrim and an escape handler, all to ask
+ * something the user just clicked. Inline keeps the event visible while you decide, which is
+ * the thing you actually need to see.
+ */
+
+.trigger {
+  /* Meets the 44px touch target the a11y suite enforces, without a 44px-tall red button
+     sitting in every row: the box is full size, the ink inside it is small. */
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  color: var(--status-danger);
+  opacity: 1;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * On a phone the question does not fit beside the event, and the first attempt let it win:
+ * the title column collapsed to nothing, so you were asked to confirm deleting something you
+ * could no longer see. Dropping to a second row keeps the event legible while you decide.
+ *
+ * `grid-column` is set from here rather than from the agenda's stylesheet because a grid item
+ * places itself — this component does not need to know it is inside .event to opt out of its
+ * column, and the agenda does not need a hook into this component's internals.
+ */
+@media (max-width: 640px) {
+  .confirm {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+.question {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.error {
+  /* Full width so a two-line message does not squeeze the buttons off the row. */
+  flex-basis: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-md);
+  background: rgba(244, 87, 123, 0.1);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cancel,
+.destroy {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+/* "Keep" is the safe choice, so it is the plain one — and it is listed first, so the
+   destructive button is never where the cursor already is. */
+.cancel {
+  border: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-primary);
+}
+
+.cancel:hover:not(:disabled) {
+  background: var(--surface-raised);
+}
+
+.destroy {
+  border: 1px solid var(--status-danger);
+  background: var(--status-danger);
+  color: var(--brand-white);
+}
+
+.destroy:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.cancel:disabled,
+.destroy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

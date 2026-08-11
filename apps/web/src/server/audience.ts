@@ -34,6 +34,17 @@ export interface RedactedPage {
 export interface RedactedOccurrence extends RedactedEvent {
   readonly occurrenceLocal: string
   readonly dst: OccurrenceView['dst']
+  /**
+   * Present for the owner only, and absent for everybody else.
+   *
+   * These two exist to let the owner delete their own event: `version` guards the write, and
+   * `recurring` lets the confirmation say whether a whole series is about to go. Neither is
+   * content, but neither is anyone else's business either — an edit counter is a small side
+   * channel, and no other audience has a write for it to guard. Withholding is the default
+   * here rather than an afterthought.
+   */
+  readonly version?: number
+  readonly recurring?: boolean
 }
 
 /** Demo audiences for M2. Real contacts and groups arrive with CRM-lite. */
@@ -129,7 +140,16 @@ export function redactPage(page: CalendarPage, audience: AudienceId, now: string
       continue
     }
 
-    occurrences.push({ ...event, occurrenceLocal: occurrence.occurrenceLocal, dst: occurrence.dst })
+    occurrences.push({
+      ...event,
+      occurrenceLocal: occurrence.occurrenceLocal,
+      dst: occurrence.dst,
+      // Spread last and only for the owner, so a future edit to the engine cannot
+      // accidentally start leaking these to an audience by widening `event`.
+      ...(audience === 'owner'
+        ? { version: occurrence.version, recurring: occurrence.recurring }
+        : {}),
+    })
   }
 
   // A busy block must not disclose which calendar it belongs to, so the calendar list is

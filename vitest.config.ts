@@ -92,6 +92,15 @@ export default defineConfig({
       },
       {
         test: {
+          // The server half of apps/web — redaction, ranges, the read path. Node, not jsdom,
+          // so a test cannot accidentally lean on a browser global the real server lacks.
+          name: 'web-server',
+          include: ['apps/web/test/**/*.server.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'ui',
           include: ['packages/ui/src/**/*.test.ts'],
           environment: 'node',

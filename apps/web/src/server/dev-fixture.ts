@@ -67,6 +67,10 @@ export function getFixturePage(): CalendarPage {
           busy: event.busy as OccurrenceView['busy'],
           dst: 'none',
           fields: event.fields,
+          // The fixture is read-only — there is no Postgres row behind it to delete, so the
+          // version is a placeholder rather than a real row version.
+          version: 1,
+          recurring: event.rrule !== null,
         })
       }
       continue
@@ -93,6 +97,8 @@ export function getFixturePage(): CalendarPage {
         busy: event.busy as OccurrenceView['busy'],
         dst: occurrence.dst,
         fields: event.fields,
+        version: 1,
+        recurring: event.rrule !== null,
       })
     }
   }

@@ -52,6 +52,14 @@ export interface OccurrenceView {
   readonly busy: 'busy' | 'free' | 'tentative'
   readonly dst: Occurrence['dst']
   readonly fields: readonly CiphertextField[]
+  /**
+   * Row version, for optimistic concurrency on writes. Tier A — it describes how many times
+   * the row changed, not what it says. Only the owner is ever shown it (see audience.ts):
+   * an edit counter is a small side channel, and no other audience has a write to guard.
+   */
+  readonly version: number
+  /** True when this occurrence came from an rrule, so delete can say what it will remove. */
+  readonly recurring: boolean
 }
 
 export interface CalendarPage {
@@ -98,6 +106,7 @@ interface EventRow {
   end_date: string | null
   rrule: string | null
   busy: 'busy' | 'free' | 'tentative'
+  version: number
 }
 
 /** `\x…` hex from PostgREST, stripped to the bare hex the client already expects. */
@@ -140,7 +149,7 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
     supabase
       .from('events')
       .select(
-        'id, calendar_id, timezone, all_day, dtstart_local, start_utc, end_utc, start_date, end_date, rrule, busy',
+        'id, calendar_id, timezone, all_day, dtstart_local, start_utc, end_utc, start_date, end_date, rrule, busy, version',
       )
       .eq('workspace_id', workspace.id)
       .eq('lifecycle', 'active')
@@ -219,6 +228,8 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
           busy: event.busy,
           dst: 'none',
           fields,
+          version: event.version,
+          recurring: event.rrule !== null,
         })
       }
       continue
@@ -248,6 +259,8 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
         busy: event.busy,
         dst: occurrence.dst,
         fields,
+        version: event.version,
+        recurring: event.rrule !== null,
       })
     }
   }

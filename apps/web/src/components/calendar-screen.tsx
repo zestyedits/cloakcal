@@ -8,6 +8,7 @@ import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
 import { WeekGrid } from './week-grid'
 import { NewEvent } from './new-event'
+import { DeleteEvent } from './delete-event'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -218,6 +219,19 @@ export function CalendarScreen({
                       <span className={styles.busy} data-busy={occurrence.busy ?? 'busy'}>
                         {occurrence.busy === 'free' ? 'Free' : 'Busy'}
                       </span>
+                      {/* Owner only, and only when the server actually sent a version to
+                          guard the write with. Both conditions are already true together —
+                          audience.ts only attaches `version` for the owner — but relying on
+                          that coupling silently would make this the thing that breaks the
+                          day the engine changes. */}
+                      {page.audience === 'owner' && occurrence.version !== undefined && (
+                        <DeleteEvent
+                          eventId={occurrence.eventId}
+                          version={occurrence.version}
+                          recurring={occurrence.recurring ?? false}
+                          label={`the event at ${timeOf(occurrence.start)}`}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>

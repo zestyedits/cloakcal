@@ -50,12 +50,21 @@ const AUTH_SHIM = /* sql */ `
     if not exists (select 1 from pg_roles where rolname = 'authenticated') then
       create role authenticated nologin;
     end if;
+    -- Supabase's UNAUTHENTICATED role. It was missing here, and its absence hid a real
+    -- production gap: 0007 and 0008 revoked execute from PUBLIC and assumed that locked
+    -- them down, while Supabase's default privileges had separately granted execute to
+    -- anon. With no anon role in the harness there was nothing to assert against, so
+    -- "is not callable anonymously" passed by testing the wrong thing. See migration 0009.
+    if not exists (select 1 from pg_roles where rolname = 'anon') then
+      create role anon nologin;
+    end if;
   end
   $$;
 
   grant usage on schema public to authenticated;
   grant usage on schema auth to authenticated;
   grant select on auth.users to authenticated;
+  grant usage on schema public to anon;
 
   -- DEFAULT privileges, applied BEFORE any migration runs.
   --
@@ -68,6 +77,13 @@ const AUTH_SHIM = /* sql */ `
     grant select, insert, update, delete on tables to authenticated;
   alter default privileges in schema public
     grant usage, select on sequences to authenticated;
+
+  -- Supabase grants EXECUTE on new functions to anon by default. Mirrored here so the
+  -- harness reproduces the permissive starting point rather than a stricter fiction — a
+  -- migration that claims to revoke a privilege can only be tested against a database that
+  -- actually granted it.
+  alter default privileges in schema public
+    grant execute on functions to anon, authenticated;
 `
 
 /**
@@ -82,6 +98,8 @@ const MIGRATIONS = [
   '0005_route_token_128bit.sql',
   '0006_root_key_wraps.sql',
   '0007_create_cloaked_event.sql',
+  '0008_trash_cloaked_event.sql',
+  '0009_revoke_rpc_from_anon.sql',
 ] as const
 
 export interface QueryResult {
@@ -97,6 +115,14 @@ export interface TestDb {
   as(userId: string, sql: string, params?: unknown[]): Promise<QueryResult>
   /** Run SQL as an anonymous caller (no JWT subject), with RLS enforced. */
   asAnon(sql: string, params?: unknown[]): Promise<QueryResult>
+  /**
+   * Run SQL as Supabase's `anon` ROLE — an unauthenticated HTTP request.
+   *
+   * Different from `asAnon`, and the difference is the point. `asAnon` is the
+   * `authenticated` role with no JWT subject; this is the role PostgREST actually uses when
+   * nobody is signed in, and it carries its own grants. Privilege assertions belong here.
+   */
+  asUnauthenticated(sql: string, params?: unknown[]): Promise<QueryResult>
   /**
    * Run a callback inside a real transaction, as a signed-in user.
    *
@@ -139,6 +165,18 @@ export async function createTestDb(): Promise<TestDb> {
       return { rows: result.rows }
     },
     as: (userId, sql, params) => runAs(userId, sql, params),
+
+    async asUnauthenticated(sql, params = []) {
+      await pg.query(`select set_config('request.jwt.claim.sub', '', false)`)
+      await pg.exec('set role anon')
+      try {
+        const result = await pg.query<Record<string, unknown>>(sql, params)
+        return { rows: result.rows }
+      } finally {
+        await pg.exec('reset role')
+      }
+    },
+
     asAnon: (sql, params) => runAs(null, sql, params),
 
     async asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T> {

@@ -123,7 +123,9 @@
 
 .event {
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto;
+  /* time | title | busy pill | owner actions. The fourth column is `auto`, so it collapses
+     to nothing for audiences that get no delete control and the row looks untouched. */
+  grid-template-columns: 4.5rem 1fr auto auto;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--touch-min);

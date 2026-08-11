@@ -227,6 +227,26 @@ describe('create_cloaked_event', () => {
     ).rejects.toThrow()
   })
 
+  it('is not callable by the unauthenticated role at all', async () => {
+    // The test above uses the authenticated role with no subject. This one uses Supabase's
+    // `anon` role, which is what an unauthenticated HTTP request really is — and which held
+    // an execute grant in production until migration 0009, because the `revoke ... from
+    // public` here never applied to it.
+    await expect(
+      db.asUnauthenticated(CALL, [
+        uuid(7),
+        workspaceA,
+        calendarA,
+        'America/New_York',
+        '2026-05-19T13:00:00Z',
+        '2026-05-19T13:30:00Z',
+        '2026-05-19 09:00:00',
+        null,
+        JSON.stringify([field('title', 7)]),
+      ]),
+    ).rejects.toThrow(/permission denied/iu)
+  })
+
   it('runs as invoker, so it grants no privilege the caller lacked', async () => {
     const { rows } = await db.raw(
       `select prosecdef from pg_proc p
