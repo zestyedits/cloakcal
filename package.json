@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "test:leak": "vitest run --project leak",
     "test:a11y": "playwright test --project=a11y",
-    "test:visual": "playwright test --project=visual"
+    "test:visual": "playwright test --project=visual",
+    "email:setup": "tsx --env-file-if-exists=.env.email-setup tools/email-setup.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -36,6 +37,7 @@
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.1",
     "next": "15.5.23",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
