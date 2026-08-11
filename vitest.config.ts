@@ -99,6 +99,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'tools',
+          include: ['tools/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'leak',
           include: ['packages/**/*.leak.test.ts', 'apps/**/*.leak.test.ts'],
           environment: 'node',

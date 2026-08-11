@@ -26,6 +26,7 @@
  */
 
 import { execFile } from 'node:child_process'
+import { isSpfRecord, mergeSpf } from './spf.js'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -46,14 +47,15 @@ interface Config {
   readonly supabaseToken: string
   readonly vercelProject: string | null
   readonly dryRun: boolean
+  readonly mergeSpf: boolean
 }
 
 const required = (name: string): string => {
   const value = process.env[name]
   if (value === undefined || value.trim() === '') {
     throw new Error(
-      `${name} is not set. Copy tools/.env.email-setup.example to .env.email-setup, fill it ` +
-        `in, and run again. That file is gitignored.`,
+      `${name} is not set. Run:  cp tools/email-setup.env.example .env.email-setup  then fill ` +
+        `it in. The .env.email-setup path is gitignored; the template is not.`,
     )
   }
   return value.trim()
@@ -73,6 +75,7 @@ function loadConfig(): Config {
     supabaseToken: required('SUPABASE_ACCESS_TOKEN'),
     vercelProject: process.env['VERCEL_PROJECT']?.trim() ?? null,
     dryRun: process.argv.includes('--dry-run'),
+    mergeSpf: process.argv.includes('--merge-spf'),
   }
 }
 
@@ -274,18 +277,33 @@ async function writeDnsRecords(config: Config, domain: ResendDomain): Promise<vo
   // the domain as having no SPF at all. Mail keeps sending and quietly lands in spam.
   const resendSpf = domain.records.find((r) => r.record === 'SPF' && r.type === 'TXT')
   const existingSpf = current.records.find(
-    (r) => r.type === 'TXT' && subdomainOf(r, config.domain) === '' && r.content.startsWith('v=spf1'),
+    (r) => r.type === 'TXT' && subdomainOf(r, config.domain) === '' && isSpfRecord(r.content),
   )
 
   if (resendSpf !== undefined && existingSpf !== undefined && existingSpf.content !== resendSpf.value) {
-    throw new SetupError(
-      `${config.domain} already has an SPF record and it does not match Resend's.`,
-      `Two SPF records is a permerror, not a merge, so this script will not add a second.\n` +
-        `      Existing: ${existingSpf.content}\n` +
-        `      Resend:   ${resendSpf.value}\n` +
-        `      Set the existing record to a single merged value, e.g.\n` +
-        `      v=spf1 include:amazonses.com ${existingSpf.content.replace(/^v=spf1\s*/, '')}`,
-    )
+    const merged = mergeSpf(existingSpf.content, resendSpf.value)
+
+    if (!config.mergeSpf) {
+      throw new SetupError(
+        `${config.domain} already has an SPF record and it does not match Resend's.`,
+        `Two SPF records is a permerror, not a merge, so this script will not add a second.\n` +
+          `      Existing: ${existingSpf.content}\n` +
+          `      Resend:   ${resendSpf.value}\n` +
+          `      Merged:   ${merged}\n` +
+          `      Re-run with --merge-spf to replace the existing record with the merged value,\n` +
+          `      or set it by hand if you would rather look at it first.`,
+      )
+    }
+
+    info(`existing SPF: ${existingSpf.content}`)
+    info(`merged SPF:   ${merged}`)
+
+    if (!config.dryRun) {
+      // editByNameType rather than create: this REPLACES the record in place, which is the
+      // only safe operation here. Creating would leave two.
+      await porkbun(config, `/dns/editByNameType/${config.domain}/TXT/`, { content: merged, ttl: 600 })
+    }
+    ok(`${config.dryRun ? 'would merge' : 'merged'} SPF into one record`)
   }
 
   for (const record of domain.records) {
