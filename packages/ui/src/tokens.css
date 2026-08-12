@@ -46,6 +46,15 @@
 
   --gradient-accent: linear-gradient(135deg, #7c3aed 0%, #6d5cff 100%);
 
+  /* The gradient a LABEL can sit on. --gradient-accent above is the board's literal ramp and
+   * its light stop (#6D5CFF) carries white at only 4.20:1 — the exact AA failure this repo
+   * has shipped twice (see --accent and --status-danger-solid). So the brand gradient stays
+   * decorative, and this deepened pair exists for filled controls: each stop independently
+   * clears 4.5:1 under --brand-white (#6D28D9 ≈ 6.4:1, #6152E6 = 5.04:1 — the proven accent).
+   * Hover DARKENS, per the house rule. Both stops are asserted in CONTRAST_PAIRS. */
+  --gradient-accent-deep: linear-gradient(135deg, #6d28d9 0%, #6152e6 100%);
+  --gradient-accent-deep-hover: linear-gradient(135deg, #5b21b6 0%, #5a4cd8 100%);
+
   /* ---------------------------------------------------------------------
    * Typography — Inter, per the guide. Sizes use a 1.2 minor-third ramp;
    * the guide fixes the family and weights, not the scale.
@@ -97,8 +106,13 @@
    * Radii & elevation — "rounded corners & soft glows", never harsh shadows
    * (Visual Guide, DO / DON'T).
    * ------------------------------------------------------------------- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  /* Sharpened one step (6/10 → 4/8) in the modernization pass: controls read as machined
+   * rectangles, while sheets and cards keep --radius-lg/xl — the CONTRAST between 8px
+   * controls and 20px surfaces is what looks deliberate rather than uniformly rounded.
+   * --radius-full survives only for genuine circles (the today disc, the working dot);
+   * no BUTTON may use it — pill buttons are the look this pass exists to remove. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 999px;
@@ -117,6 +131,13 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-decelerate: cubic-bezier(0, 0, 0, 1);
   --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  /* Slight overshoot for press/pop micro-interactions only — never on layout-affecting
+   * movement, where overshoot reads as jank rather than snap. */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* Per-item delay for entrance staggers. Consumers must cap the multiplier (the agenda
+   * caps at 8) so a long list settles in well under half a second. */
+  --stagger-step: 24ms;
 
   /* Minimum touch target — spec requires large touch targets; 44px is the
    * WCAG 2.2 / iOS HIG floor and is treated as a hard minimum, not a goal. */
@@ -190,6 +211,13 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
   --glow-accent: 0 0 24px rgba(97, 82, 230, 0.28);
+
+  /* A 1px catch-light on the top edge of raised surfaces — layered as an EXTRA shadow
+   * (`box-shadow: var(--shadow-lg), var(--edge-highlight)`), never alone. On a dark ground
+   * this is what separates "machined panel" from "flat grey box"; it is the entire
+   * next-level-tech texture for the cost of one token, and it is deliberately the only
+   * such trick — more of them and it becomes noise. */
+  --edge-highlight: inset 0 1px 0 rgba(245, 246, 250, 0.06);
 }
 
 /* -----------------------------------------------------------------------
@@ -230,6 +258,7 @@
   --shadow-md: 0 4px 16px rgba(11, 13, 20, 0.1);
   --shadow-lg: 0 12px 40px rgba(11, 13, 20, 0.14);
   --glow-accent: 0 0 24px rgba(88, 71, 224, 0.18);
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 /* -----------------------------------------------------------------------
@@ -280,7 +309,12 @@
   *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+    /* Delays must collapse too: a staggered list at 1ms per item but 24ms apart would
+     * still make content appear over time, which is exactly what this media query is a
+     * promise not to do. */
+    animation-delay: 0ms !important;
     transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }

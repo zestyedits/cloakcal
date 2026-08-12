@@ -1,0 +1,11 @@
+.error {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-md);
+  /* Derived from the status colour rather than a hardcoded rgba, so it tracks the theme.
+     10% tint matches what every hand-rolled copy of this block used. */
+  background: color-mix(in srgb, var(--status-danger) 10%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}

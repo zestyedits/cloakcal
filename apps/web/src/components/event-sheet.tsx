@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { Button } from './ui/button'
+import { InlineError } from './ui/inline-error'
 import styles from './event-sheet.module.css'
 
 /**
@@ -82,28 +84,26 @@ export function EventSheet({
           {title}
         </h2>
 
-        {error != null && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
+        <InlineError>{error}</InlineError>
 
         {children}
 
         <div className={styles.actions}>
           {/* Cancel first, so the destructive-in-effect button is never where the thumb
-              already is after the last field. */}
-          <button
-            type="button"
-            className={styles.cancel}
-            disabled={busy}
-            onClick={() => ref.current?.close()}
-          >
+              already is after the last field. Cancel is disabled while busy but is never
+              itself "in progress" — only Save gets the busy cursor. */}
+          <Button variant="outline" disabled={busy} onClick={() => ref.current?.close()}>
             {cancelLabel}
-          </button>
-          <button type="submit" className={styles.save} disabled={busy || submitDisabled}>
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            className={styles.grow}
+            busy={busy}
+            disabled={submitDisabled}
+          >
             {submitLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </dialog>

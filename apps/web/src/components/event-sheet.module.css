@@ -31,12 +31,15 @@
   border: 1px solid var(--border-default);
   background: var(--surface-raised);
   color: var(--text-primary);
-  box-shadow: var(--shadow-lg);
+  /* The edge highlight rides on top of the shadow: a 1px catch-light along the top edge
+     that makes the raised surface read as machined rather than flat. */
+  box-shadow: var(--shadow-lg), var(--edge-highlight);
   animation: rise var(--duration-base) var(--ease-decelerate);
 }
 
 .sheet::backdrop {
   background: color-mix(in srgb, var(--surface-base) 70%, transparent);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -75,49 +78,14 @@
   letter-spacing: -0.01em;
 }
 
-.error {
-  margin: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--status-danger);
-  background: rgba(244, 87, 123, 0.1);
-  font-size: var(--text-sm);
-}
-
 .actions {
   display: flex;
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
 
-.save {
+/* Button visuals live in ui/button.module.css; only the layout is decided here.
+   Save takes the remaining row, cancel keeps its natural width. */
+.grow {
   flex: 1;
-  min-height: var(--touch-min);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--brand-white);
-  font: inherit;
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-}
-
-.save:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.cancel {
-  composes: save;
-  flex: 0 0 auto;
-  padding: 0 var(--space-5);
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
-}
-
-/* Cancelling is never "in progress", so it should not borrow the progress cursor. */
-.cancel:disabled {
-  cursor: not-allowed;
 }

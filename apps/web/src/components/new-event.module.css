@@ -18,7 +18,10 @@
   min-height: var(--touch-min);
   padding: 0 var(--space-5);
   border: 0;
-  border-radius: var(--radius-full);
+  /* A raised rectangle, not a pill. The pill FAB was the one control in the app wearing
+     the shape this design explicitly avoids; --radius-lg matches the sheet corners it
+     floats above, so it reads as part of the same surface family. */
+  border-radius: var(--radius-lg);
   background: var(--accent);
   color: var(--brand-white);
   font: inherit;
@@ -40,8 +43,8 @@
   cursor: not-allowed;
 }
 
-/* The label is dropped on the narrowest phones, where a round + is unambiguous and the
-   pill would crowd the week nav. */
+/* The label is dropped on the narrowest phones, where a bare + is unambiguous and the
+   full button would crowd the week nav. */
 @media (max-width: 380px) {
   .fabLabel {
     position: absolute;
