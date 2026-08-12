@@ -5,11 +5,20 @@
  * authoritative over "Brand Info Concepts.png" — the latter misprints two hex values
  * (#GD5CFF, #0BOD14 with a letter O).
  *
- * Dark is the designed default; the brand board is dark throughout. Light exists from
- * M0 because the spec requires theme customization and high-contrast accessibility, and
- * retrofitting a light theme after components are built is materially harder than
- * carrying two palettes from the start. Light is a documented extrapolation (plan D9) —
- * it is not present in the supplied references.
+ * WHICH THEME THE REFERENCES ACTUALLY SPECIFY — corrected 2026-08-12.
+ *
+ * This said "Dark is the designed default; the brand board is dark throughout", and that was
+ * wrong in a way that shaped the whole build. The board's CHROME is dark and so is the Visual
+ * Guide, but all three rendered PRODUCT screens — the desktop week grid, the mobile agenda and
+ * the Event Visibility sheet — are drawn on white, with pastel event blocks that only work on
+ * a light ground.
+ *
+ * So light is not an extrapolation. It is the only theme the references show the calendar in.
+ * Dark is the marketing surface and a fully supported option.
+ *
+ * Carrying both palettes from M0 turned out to be the right call for the wrong reason: it was
+ * done because retrofitting is hard, and it happens to mean the correction costs a default
+ * rather than a rewrite. See docs/calendar-design.md.
  *
  * Only SEMANTIC tokens should be used in components. The raw brand ramp exists so the
  * semantic layer has something to point at; reaching past it into --brand-* in a

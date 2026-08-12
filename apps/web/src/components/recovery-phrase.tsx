@@ -11,17 +11,27 @@ import styles from './auth.module.css'
  * after it unmounts. That is the whole design (D7, ADR 0002): CloakCal holds no wrap it can
  * open, so a phrase we could re-show would have to be a phrase we had stored.
  *
- * TWO THINGS THIS SCREEN REFUSES TO DO.
+ * WHAT THIS SCREEN REFUSES TO DO — AND WHAT IT NOW ALLOWS.
  *
- * It does not offer a copy button. A phrase on the clipboard is readable by every other
+ * It offers a DOWNLOAD but not a copy button, and the distinction is the whole argument. A phrase on the clipboard is readable by every other
  * page the user visits until something else overwrites it, and it lands in clipboard
  * history on both Windows and macOS. Writing it down is slower and genuinely safer, and the
  * one time this matters it is worth the friction.
+ *
+ * A file goes where the user chose to put it; a clipboard is a place they did not choose and
+ * cannot see. The thing actually being defended against is not the clipboard anyway — it is
+ * 24 words on a sticky note, or never written down at all.
  *
  * It does not accept "I'll do this later". An account with a password wrap and no confirmed
  * recovery phrase looks protected and is one forgotten password from unrecoverable. The
  * confirmation below asks for three words back, chosen at random, because a "yes I wrote it
  * down" checkbox measures nothing.
+ *
+ * THE CONFIRMATION IS NOT A MEMORY TEST, and the copy used to imply it was — it claimed the
+ * phrase could not be seen from here while a "Show me the phrase again" button sat directly
+ * below it, and while the download button put the words in a file on the user's disk. What
+ * the step actually checks is that a retrievable copy EXISTS, which is the only property that
+ * matters on the day it is needed.
  */
 
 const CONFIRM_COUNT = 3
@@ -157,8 +167,9 @@ export function RecoveryPhrase({
     <form className={styles.card} onSubmit={check}>
       <h1 className={styles.title}>Confirm your phrase</h1>
       <p className={styles.lede}>
-        Type these three words from the phrase you just wrote down. You cannot see the phrase from
-        here, which is the point.
+        Check your copy — the file you downloaded, or wherever you wrote it down. This is not a
+        memory test; it is to make sure you can actually find the phrase later, which is the only
+        thing that matters.
       </p>
 
       {error !== null && (

@@ -382,6 +382,19 @@ and re-add.
   `db.asAnon(...)`, for privilege assertions: `asAnon` is the `authenticated` role without a
   subject, which is a different thing entirely.
 
+## The references specify a LIGHT calendar, and we built a dark one
+
+Corrected 2026-08-12. `tokens.css` claimed "the brand board is dark throughout" and that drove
+the default. The board's chrome is dark; all three rendered PRODUCT screens are on white.
+Light is not the extrapolation — it is the only theme the calendar is drawn in.
+
+`docs/calendar-design.md` is the full read of what the board actually specifies: a left
+sidebar with a mini month and a colour-coded calendars list, a Today button and a Week/Month
+toggle, event blocks carrying the privacy level as a second line, a mobile week strip, a
+five-item bottom nav with **Cloak** in the centre slot, and the Event Visibility sheet. Almost
+none of it is built. `PRIVACY_LEVELS` in `packages/ui/src/tokens.ts` has been sitting unused
+since M0 and is what those chips and second lines render from.
+
 ## Recovery
 
 **The phrase can now be re-issued** — `/account` → "Get a new recovery phrase", proved with
