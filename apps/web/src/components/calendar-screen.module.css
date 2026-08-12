@@ -177,7 +177,8 @@
 }
 
 .sidebar .calendarList,
-.sidebar .sidebarHeading {
+.sidebar .sidebarHeading,
+.sidebar .calendarAdd {
   display: none;
 }
 
@@ -473,6 +474,16 @@
 
   .sidebarCompose,
   .sidebarMonth {
+    display: block;
+  }
+
+  /* The un-hide the base rule always promised and never had: "the calendar list is
+     desktop-only" was written above a hide with no desktop counterpart, so the list —
+     the board's MY CALENDARS section — had never rendered on any viewport. Found while
+     mounting the add row (0021). */
+  .sidebar .calendarList,
+  .sidebar .sidebarHeading,
+  .sidebar .calendarAdd {
     display: block;
   }
 

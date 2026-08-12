@@ -8,6 +8,7 @@ import { sealFields } from '@/lib/cloaked-fields'
 import type { SettingsCalendar } from '@/server/settings'
 import { useCloakStore } from '../cloak-provider'
 import { CloakedText } from '../cloaked-text'
+import { NewCalendarButton } from '../new-calendar'
 import { Button } from '../ui/button'
 import { Icon } from '../ui/icons'
 import { InlineError } from '../ui/inline-error'
@@ -164,6 +165,14 @@ export function CalendarsSection({
           )}
         </div>
       ))}
+
+      {/* Create (0021). The fixture has no writable backend, so it says so instead of
+          offering a dead form. Delete stays deferred; the Coming-soon row explains. */}
+      {fixtureMode ? (
+        <p className={styles.lockedNote}>Demo data. Sign in to create calendars.</p>
+      ) : (
+        <NewCalendarButton />
+      )}
     </>
   )
 }

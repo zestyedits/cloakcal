@@ -1,0 +1,80 @@
+/*
+ * The sidebar's "Add calendar" row and the create sheet's own bits. The swatch pattern
+ * mirrors settings.module.css deliberately: one way to pick a calendar colour, learned
+ * once. Selection is shape + check mark, never colour alone.
+ */
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min);
+  margin: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+
+.addRow:hover:not(:disabled) {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+.addRow:disabled {
+  cursor: not-allowed;
+  color: var(--text-tertiary);
+}
+
+.hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.swatches {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.swatch {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+}
+
+.swatch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.swatchInk {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: var(--radius-sm);
+}
+
+.swatch[data-color='indigo'] .swatchInk { background: var(--brand-indigo); }
+.swatch[data-color='teal'] .swatchInk   { background: var(--brand-teal); }
+.swatch[data-color='violet'] .swatchInk { background: var(--brand-violet); }
+.swatch[data-color='rose'] .swatchInk   { background: var(--brand-rose); }
+.swatch[data-color='slate'] .swatchInk  { background: var(--brand-slate); }
+
+.swatch[aria-pressed='true'] .swatchInk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-white);
+}
