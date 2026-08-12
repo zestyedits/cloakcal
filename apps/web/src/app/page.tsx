@@ -115,6 +115,13 @@ export default async function Page({
       timezone={timezone}
       weekStart={weekStart}
       workspaceRules={visibility.workspaceRules}
+      // Owner-only, like version and privacyLevel: rules are Tier A but they are the
+      // owner's configuration, and no other audience has a sheet to open with them.
+      rulesByEvent={
+        audience === 'owner'
+          ? Object.fromEntries(visibility.rulesByEvent)
+          : {}
+      }
       // A Record, not a Map: this crosses the RSC boundary. Ids about ids, nothing more.
       groupsByContact={Object.fromEntries(
         fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,

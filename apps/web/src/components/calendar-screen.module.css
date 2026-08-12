@@ -222,6 +222,25 @@
   background: var(--surface-overlay);
 }
 
+/* The chip's door: a full-height hit box with the small chip as its ink, same trick the
+   delete trigger uses to satisfy the 44px floor without a 44px-tall chip in every row. */
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* A lift, not a brightness shift: filters over the ink/wash pairs would re-litigate the
+   contrast math per theme, and the light inks sit closer to the floor. */
+.chipButton:hover {
+  transform: translateY(-1px);
+}
+
 /* Availability's new home, once the chip slot went to privacy: a quiet word under the
    time. Success ink on the raised row is a 3:1-checked pair, and "Free" is never the
    only carrier — the time itself is right above it. */
