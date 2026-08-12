@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { Temporal } from '@js-temporal/polyfill'
 import { redactPage, type AudienceId } from '@/server/audience'
 import { EMPTY_VISIBILITY, audienceIdOf, loadWorkspaceVisibility } from '@/server/visibility'
@@ -24,6 +23,7 @@ import {
   isDevFixtureEnabled,
 } from '@/server/dev-fixture'
 import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
+import { Landing } from '@/components/landing'
 
 /**
  * The view/URL contract, in one place:
@@ -69,10 +69,10 @@ export default async function Page({
   if (!fixtureMode) {
     const supabase = await supabaseServer()
     const { data: userData } = await supabase.auth.getUser()
-    // Middleware already redirects, but a Server Component must not assume middleware ran —
-    // a missed matcher entry would otherwise turn into a null dereference rather than a
-    // redirect, and the failure would look like a rendering bug.
-    if (userData.user === null) redirect('/sign-in')
+    // `/` is public now: a visitor with no session gets the landing page, a signed-in
+    // user gets their calendar. One address, branched on the session — the landing is
+    // what the product looks like from outside, which is also the honest demo of it.
+    if (userData.user === null) return <Landing />
     email = userData.user.email ?? ''
   }
 

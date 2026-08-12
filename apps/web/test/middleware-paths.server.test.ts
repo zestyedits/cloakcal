@@ -22,6 +22,22 @@ describe('middleware path lists', () => {
     expect(PUBLIC_PATHS).toContain('/recover')
   })
 
+  it('serves the landing page at the root without a session', () => {
+    // `/` is the landing for a signed-out visitor and the calendar for a signed-in one;
+    // page.tsx branches on the session. The prefix check appends a slash before matching,
+    // so listing '/' opens exactly the root — this pins that it does NOT leak further.
+    expect(PUBLIC_PATHS).toContain('/')
+    const isPublic = (pathname: string) =>
+      PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+    expect(isPublic('/')).toBe(true)
+    expect(isPublic('/settings')).toBe(false)
+  })
+
+  it('does NOT bounce a signed-in user off the root', () => {
+    // Signed-in users get the calendar at '/', not a redirect loop.
+    expect(SIGNED_IN_ELSEWHERE).not.toContain('/')
+  })
+
   it('does NOT bounce a signed-in user away from recovery', () => {
     // The emailed link arrives WITH a session. Bouncing it home makes the phrase untypeable.
     expect(SIGNED_IN_ELSEWHERE).not.toContain('/recover')
