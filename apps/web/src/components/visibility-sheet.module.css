@@ -25,7 +25,8 @@
 .tabs {
   display: flex;
   gap: var(--space-1);
-  padding: var(--space-1);
+  /* 2px so the tabs inside hold the full 44px floor without a chunky track. */
+  padding: 2px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
@@ -33,7 +34,7 @@
 
 .tab {
   flex: 1;
-  min-height: calc(var(--touch-min) - 8px);
+  min-height: var(--touch-min);
   border: 0;
   border-radius: var(--radius-sm);
   background: none;

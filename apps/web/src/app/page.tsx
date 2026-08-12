@@ -1,8 +1,19 @@
 import { redirect } from 'next/navigation'
+import { Temporal } from '@js-temporal/polyfill'
 import { redactPage, type AudienceId } from '@/server/audience'
 import { EMPTY_VISIBILITY, audienceIdOf, loadWorkspaceVisibility } from '@/server/visibility'
 import { getCalendarPage } from '@/server/events'
-import { formatRange, rangeFromParam, safeTimezone, shiftWeeks, weekParam } from '@/server/range'
+import {
+  anchorFromParam,
+  dateParam,
+  dayRange,
+  formatDay,
+  formatMonth,
+  formatRange,
+  monthGridRange,
+  safeTimezone,
+  weekRange,
+} from '@/server/range'
 import { loadWorkspacePrefs } from '@/server/settings'
 import { supabaseServer } from '@/lib/supabase/server'
 import {
@@ -12,7 +23,26 @@ import {
   FIXTURE_RULES,
   isDevFixtureEnabled,
 } from '@/server/dev-fixture'
-import { CalendarScreen, type WeekLink } from '@/components/calendar-screen'
+import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
+
+/**
+ * The view/URL contract, in one place:
+ *
+ *   ?view=  agenda | week | day | month     absent or unknown -> agenda
+ *   ?date=  YYYY-MM-DD anchor               absent -> today in the workspace zone
+ *   ?week=  accepted as a spelling of date  (old bookmarks; no new link emits it)
+ *   ?as=    audience, orthogonal, carried on every link
+ *
+ * Agenda and week are ONE fetch — the same week, already redacted — and switching between
+ * them stays a client toggle (the constraint recorded in calendar-screen.tsx). Day and
+ * month need different ranges, so they are server navigations. Steppers move the ANCHOR
+ * with PlainDate arithmetic (day ±1 day, week ±7 days, month ±1 month pinned to day 1 so
+ * repeated steps cannot drift through short months), then re-range.
+ */
+const VIEWS: readonly CalendarView[] = ['agenda', 'week', 'day', 'month']
+
+const parseView = (view: string | undefined): CalendarView =>
+  VIEWS.includes(view as CalendarView) ? (view as CalendarView) : 'agenda'
 
 /**
  * Server Component. Reads Tier A metadata plus ciphertext from Postgres as the signed-in
@@ -28,9 +58,10 @@ export const dynamic = 'force-dynamic'
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string; week?: string }>
+  searchParams: Promise<{ as?: string; view?: string; week?: string; date?: string }>
 }) {
-  const { as, week } = await searchParams
+  const { as, view: viewParam, week, date } = await searchParams
+  const view = parseView(viewParam)
 
   const fixtureMode = isDevFixtureEnabled()
 
@@ -53,9 +84,36 @@ export default async function Page({
   const timezone = safeTimezone(prefs?.timezone)
   const weekStart = prefs?.weekStart ?? 0
 
-  // The fixture is pinned to one week, so honouring ?week= there would render an empty
-  // grid and look like a bug in the range maths rather than a property of the fixture.
-  const range = fixtureMode ? DEMO_WEEK : rangeFromParam(week, timezone, weekStart)
+  // The anchor date every view hangs off. The fixture clamps it: week/agenda stay pinned
+  // to the demo week (honouring ?date= there would render an empty grid that looks like a
+  // range-maths bug), a day anchor is honoured only inside that week — the day page's
+  // week strip needs it — and month pins to May 2026, where the grid honestly shows the
+  // demo week's events and thirty-five quiet days, because that is all the fixture has.
+  let anchor = anchorFromParam(date ?? week, timezone)
+  if (fixtureMode) {
+    const demoFirst = Temporal.PlainDate.from(DEMO_WEEK.from.slice(0, 10))
+    const inDemoWeek =
+      Temporal.PlainDate.compare(anchor, demoFirst) >= 0 &&
+      Temporal.PlainDate.compare(anchor, demoFirst.add({ days: 6 })) <= 0
+    if (view !== 'day' || !inDemoWeek) anchor = Temporal.PlainDate.from('2026-05-19')
+  }
+
+  const range =
+    view === 'day'
+      ? dayRange(anchor, timezone)
+      : view === 'month'
+        ? monthGridRange(anchor, timezone, weekStart)
+        : fixtureMode
+          ? DEMO_WEEK
+          : weekRange(anchor.toZonedDateTime({ timeZone: timezone }), weekStart)
+
+  const heading =
+    view === 'day'
+      ? formatDay(anchor)
+      : view === 'month'
+        ? formatMonth(anchor)
+        : formatRange(range, timezone)
+
   const calendarPage = await getCalendarPage(range, timezone)
 
   // Contacts, groups and stored rules. Fixture mode has no workspace behind it, so it gets
@@ -92,24 +150,35 @@ export default async function Page({
     defaultTimeVis: 'hidden',
   })
 
-  const linkFor = (weeks: number): WeekLink => {
-    const shifted = shiftWeeks(range, weeks, timezone)
-    const query: Record<string, string> = { week: weekParam(shifted, timezone) }
-    // The audience is carried across a week step so View As survives navigation; dropping
-    // it would silently return a reviewer to the owner's view mid-check.
+  // Steppers move the anchor by one unit of the current view. Month steps pin to day 1
+  // first, so ±1 from Jan 31 lands on Feb 1, never drifts to March through a short month.
+  const linkFor = (step: number): WeekLink => {
+    const shifted =
+      view === 'day'
+        ? anchor.add({ days: step })
+        : view === 'month'
+          ? anchor.with({ day: 1 }).add({ months: step })
+          : anchor.add({ days: 7 * step })
+    const query: Record<string, string> = { date: dateParam(shifted) }
+    if (view !== 'agenda') query['view'] = view
+    // The audience is carried across a step so View As survives navigation; dropping it
+    // would silently return a reviewer to the owner's view mid-check.
     if (audience !== 'owner') query['as'] = audience
     return { pathname: '/', query }
   }
 
   // Composing needs a real session and a real workspace, so it is unavailable in fixture
-  // mode rather than present-and-broken.
-  const composeDate = fixtureMode ? undefined : range.from.slice(0, 10)
+  // mode rather than present-and-broken. The ANCHOR, not range.from: on a month page the
+  // range starts in the previous month's grid margin.
+  const composeDate = fixtureMode ? undefined : dateParam(anchor)
 
   return (
     <CalendarScreen
       page={page}
       audiences={visibility.audiences}
-      heading={formatRange(range, timezone)}
+      view={view}
+      anchorDate={dateParam(anchor)}
+      heading={heading}
       previousHref={linkFor(-1)}
       nextHref={linkFor(1)}
       timezone={timezone}

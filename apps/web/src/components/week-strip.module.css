@@ -46,6 +46,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* links mode: the day being shown gets the quiet ring; today's filled disc wins when
+   they coincide (declared after, same specificity). */
+.day[aria-current='page'] .number {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
 .day[data-today='true'] .number {
   background: var(--accent);
   color: var(--brand-white);

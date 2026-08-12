@@ -75,20 +75,67 @@ export function shiftWeeks(range: CalendarRange, weeks: number, timezone: string
   return { from: from.toInstant().toString(), to: to.toInstant().toString() }
 }
 
+/**
+ * Parse a `?date=YYYY-MM-DD` anchor. Anything absent or unparseable falls back to TODAY
+ * in the display zone — the same graceful degradation every view shares, so a mangled URL
+ * lands somewhere sensible rather than on an error page.
+ */
+export function anchorFromParam(
+  date: string | undefined,
+  timezone: string = DISPLAY_TIMEZONE,
+): Temporal.PlainDate {
+  if (date !== undefined && /^\d{4}-\d{2}-\d{2}$/u.test(date)) {
+    try {
+      return Temporal.PlainDate.from(date)
+    } catch {
+      // Shaped like a date but not one (2026-02-31). Fall through to today.
+    }
+  }
+  return Temporal.Now.zonedDateTimeISO(timezone).toPlainDate()
+}
+
 /** Parse a `?week=YYYY-MM-DD` param. Anything unparseable falls back to the current week. */
 export function rangeFromParam(
   week: string | undefined,
   timezone: string = DISPLAY_TIMEZONE,
   weekStart: WeekStart = 0,
 ): CalendarRange {
-  if (week === undefined || !/^\d{4}-\d{2}-\d{2}$/u.test(week)) return currentWeek(timezone, weekStart)
+  return weekRange(
+    anchorFromParam(week, timezone).toZonedDateTime({ timeZone: timezone }),
+    weekStart,
+  )
+}
 
-  try {
-    const anchor = Temporal.PlainDate.from(week).toZonedDateTime({ timeZone: timezone })
-    return weekRange(anchor, weekStart)
-  } catch {
-    return currentWeek(timezone, weekStart)
-  }
+/** One local day, [midnight, next midnight). DST-safe the same way weekRange is. */
+export function dayRange(anchor: Temporal.PlainDate, timezone: string): CalendarRange {
+  const from = anchor.toZonedDateTime({ timeZone: timezone }).startOfDay()
+  const to = from.add({ days: 1 })
+  return { from: from.toInstant().toString(), to: to.toInstant().toString() }
+}
+
+/**
+ * The VISIBLE month grid: six fixed rows of seven, starting on the configured week start —
+ * 42 days, not the calendar month. The grid renders the leading and trailing days either
+ * way, and a cell that renders as empty while events exist on it is a cell that lies;
+ * fetching the whole grid is the honest version. Six rows always, for the same reason the
+ * mini month commits to them: a month view that changes height as you step through the
+ * year reads as jumpy, not accurate.
+ */
+export function monthGridRange(
+  anchor: Temporal.PlainDate,
+  timezone: string,
+  weekStart: WeekStart = 0,
+): CalendarRange {
+  const first = anchor.with({ day: 1 })
+  const isoDay = first.dayOfWeek % 7
+  const back = (isoDay - weekStart + 7) % 7
+  const gridFirst = first.subtract({ days: back })
+
+  const from = gridFirst.toZonedDateTime({ timeZone: timezone }).startOfDay()
+  // Added as calendar days on the zoned start, so a DST shift inside the grid moves an
+  // hour of instants without ever moving a wall date.
+  const to = from.add({ days: 42 })
+  return { from: from.toInstant().toString(), to: to.toInstant().toString() }
 }
 
 /**
@@ -103,6 +150,30 @@ const MONTHS = [
 ] as const
 
 const monthName = (month: number): string => MONTHS[month - 1] ?? ''
+
+/** Same table idiom as MONTHS, same reason: formatting an instant without an explicit
+ *  zone renders it in the HOST zone. PlainDate.dayOfWeek is 1 = Monday … 7 = Sunday. */
+const WEEKDAYS = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+] as const
+
+/** "Tuesday, August 12, 2026" — the day view's heading. */
+export function formatDay(anchor: Temporal.PlainDate): string {
+  return `${WEEKDAYS[anchor.dayOfWeek - 1]}, ${monthName(anchor.month)} ${anchor.day}, ${anchor.year}`
+}
+
+/**
+ * "August 2026" — from the ANCHOR, never from formatRange of the grid range, whose ends
+ * live in the neighbouring months.
+ */
+export function formatMonth(anchor: Temporal.PlainDate): string {
+  return `${monthName(anchor.month)} ${anchor.year}`
+}
+
+/** The `?date=` value for an anchor. */
+export function dateParam(anchor: Temporal.PlainDate): string {
+  return anchor.toString()
+}
 
 /** "May 18 – 24, 2026", collapsing the month when both ends share one. */
 export function formatRange(range: CalendarRange, timezone: string): string {

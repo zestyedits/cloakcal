@@ -98,12 +98,15 @@ export function WeekGrid({
   from,
   timezone,
   colorFor,
+  dayCount = 7,
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
   from: string
   timezone: string
   colorFor: (calendarId: string | undefined) => string
+  /** 7 for the week, 1 for the day view — same grid, same lane packing, fewer columns. */
+  dayCount?: number
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -116,8 +119,10 @@ export function WeekGrid({
       day: '2-digit',
     })
 
-    return Array.from({ length: 7 }, (_, index) => labels.format(new Date(first.getTime() + index * DAY_MS)))
-  }, [from, timezone])
+    return Array.from({ length: dayCount }, (_, index) =>
+      labels.format(new Date(first.getTime() + index * DAY_MS)),
+    )
+  }, [from, timezone, dayCount])
 
   const timed = useMemo(() => occurrences.filter((o) => o.start.includes('T')), [occurrences])
   const allDay = useMemo(() => occurrences.filter((o) => !o.start.includes('T')), [occurrences])
@@ -176,7 +181,12 @@ export function WeekGrid({
 
   return (
     <div className={styles.scroller}>
-      <div className={styles.grid} style={{ '--hour-count': hours.length - 1 } as React.CSSProperties}>
+      <div
+        className={styles.grid}
+        style={
+          { '--hour-count': hours.length - 1, '--day-count': days.length } as React.CSSProperties
+        }
+      >
         {/* Corner: empty, but it has to exist so the gutter and headers stay aligned. */}
         <div className={styles.corner} aria-hidden="true" />
 
