@@ -91,7 +91,7 @@ export function RecoveryPhrase({
       '',
       ...numbered,
       '',
-      'To use it: cloakcal.com/recover — you can paste this whole file into the form.',
+      'To use it: cloakcal.com/recover. You can paste this whole file into the form.',
       '',
       'CloakCal cannot recover this for you. We never see your phrase or your password,',
       'which is what stops us, or anyone who breaks into our servers, reading your events.',
@@ -148,7 +148,7 @@ export function RecoveryPhrase({
 
         <p className={styles.warning}>
           <strong>We cannot recover this for you.</strong> CloakCal never sees your phrase or your
-          password, which is what stops us — or anyone who compromises our servers — from reading
+          password, which is what stops us, or anyone who compromises our servers, from reading
           your events. It also means that if you lose both, your Cloaked content is gone. Write the
           phrase on paper and keep it somewhere you would keep a passport.
         </p>
@@ -168,7 +168,7 @@ export function RecoveryPhrase({
     <form className={styles.card} onSubmit={check}>
       <h1 className={styles.title}>Confirm your phrase</h1>
       <p className={styles.lede}>
-        Check your copy — the file you downloaded, or wherever you wrote it down. This is not a
+        Check your copy: the file you downloaded, or wherever you wrote it down. This is not a
         memory test; it is to make sure you can actually find the phrase later, which is the only
         thing that matters.
       </p>

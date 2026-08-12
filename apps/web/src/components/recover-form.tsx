@@ -94,7 +94,7 @@ export function RecoverForm() {
       }
       if (linkError !== null) {
         setError(
-          'That link has expired or was already used. Request a new one below — they are ' +
+          'That link has expired or was already used. Request a new one below. They are ' +
             'single-use and short-lived on purpose.',
         )
       } else if (hasCode) {
@@ -271,7 +271,7 @@ export function RecoverForm() {
           {busy ? (
             <p className={styles.working} aria-live="polite">
               <span className={styles.pulse} aria-hidden="true" />
-              {working}. This takes a moment on purpose — a slow derivation is what makes a
+              {working}. This takes a moment on purpose. A slow derivation is what makes a
               stolen database expensive to attack.
             </p>
           ) : (
@@ -295,7 +295,7 @@ const LEDE: Record<Screen, string> = {
     'We will email you a link. Your recovery phrase alone is enough to open your calendar, but we have to know the link reached your inbox before handing over anything to unlock.',
   sent: 'If that address has a CloakCal account, a sign-in link is on its way. Open it on this device, then enter your recovery phrase.',
   reset:
-    'Your recovery phrase opens your key here in the browser. Your events are not re-encrypted and nothing about them changes — only the password that unlocks them.',
+    'Your recovery phrase opens your key here in the browser. Your events are not re-encrypted and nothing about them changes. Only the password that unlocks them does.',
 }
 
 function messageFor(caught: unknown): string {

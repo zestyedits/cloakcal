@@ -81,6 +81,10 @@
   --text-xl: 1.5rem;     /* 24px — screen titles */
   --text-2xl: 2rem;      /* 32px — display */
   --text-3xl: 2.75rem;   /* 44px — marketing display */
+  /* Marketing-only display size: the landing headline. The APP's ceiling stays --text-3xl;
+     nothing inside the product should ever need type this large, and if it seems to, that
+     is a layout problem wearing a font size. */
+  --text-4xl: 4rem;      /* 64px — landing display */
 
   --leading-tight: 1.2;
   --leading-normal: 1.5;
@@ -150,10 +154,19 @@
 
 /* -----------------------------------------------------------------------
  * Semantic layer — dark (default)
+ *
+ * The bare [data-theme='dark'] alternative exists for SUBTREES that commit to dark
+ * regardless of the visitor's stored theme — the landing page is the consumer (dark is
+ * the marketing surface, per the header of this file). Custom properties set on an
+ * element beat values inherited from html[data-theme='light'], which is what makes the
+ * commitment structural rather than default-dependent. App behaviour is unchanged:
+ * html[data-theme='dark'] matched before and still does, and :root[data-theme='light']
+ * at (0,1,1) still beats bare :root.
  * --------------------------------------------------------------------- */
 
 :root,
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'] {
   color-scheme: dark;
 
   --surface-base: var(--brand-deep-navy);
@@ -288,8 +301,11 @@
  * must run darker, not lighter.
  * --------------------------------------------------------------------- */
 
+/* The bare [data-theme='dark'] matches dark-committed subtrees (the landing) — see the
+   semantic dark block above for why. */
 :root,
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'] {
   --privacy-full: var(--status-success);
   --privacy-full-quiet: rgba(34, 211, 166, 0.14);
   --privacy-full-ink: #4fe0bb;

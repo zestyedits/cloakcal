@@ -185,5 +185,5 @@ test('does not let a form value carry plaintext out of the page', async ({ page,
 
 test('shows no edit affordance to an audience that is not the owner', async ({ page }) => {
   await page.goto('/?as=contact%3Asarah')
-  await expect(page.getByRole('button', { name: /— edit the event at/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /, edit the event at/ })).toHaveCount(0)
 })

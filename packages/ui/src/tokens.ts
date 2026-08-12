@@ -80,6 +80,10 @@ const DARK = {
   surfaceRaised: '#161a25',
   textPrimary: '#f5f6fa',
   textSecondary: '#b4b7c4', // rgba(245,246,250,0.72) composited on --surface-raised
+  /* The landing renders body copy directly on --surface-base, a pairing the app itself
+   * never uses (app copy sits on raised/overlay surfaces). Composited by the same math. */
+  textSecondaryOnBase: '#b3b5ba', // rgba(245,246,250,0.72) over #0b0d14
+  textTertiaryOnBase: '#808287', // rgba(245,246,250,0.5) over #0b0d14
   accent: '#6152e6',
   accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
@@ -136,6 +140,14 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'dark/body on raised', foreground: DARK.textPrimary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/accent text on raised', foreground: DARK.accentText, background: DARK.surfaceRaised, minimum: 4.5 },
+  /*
+   * Landing-page pairs: the marketing surface puts secondary and tertiary ink, and the
+   * accent-text lavender, straight onto --surface-base. Tertiary is held to 4.5 rather
+   * than 3 because the landing uses it at caption sizes, not only display numerals.
+   */
+  { name: 'dark/secondary on base', foreground: DARK.textSecondaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
+  { name: 'dark/tertiary on base', foreground: DARK.textTertiaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
+  { name: 'dark/accent text on base', foreground: DARK.accentText, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/accent as UI on base', foreground: DARK.accent, background: DARK.surfaceBase, minimum: 3 },
   /*
    * Text ON the accent — the filled-button case, and the gap that let a real AA failure

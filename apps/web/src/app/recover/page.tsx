@@ -2,7 +2,7 @@ import { RecoverForm } from '@/components/recover-form'
 import { ThemeToggle } from '@/components/theme-toggle'
 import styles from '@/components/auth.module.css'
 
-export const metadata = { title: 'Get back in — CloakCal' }
+export const metadata = { title: 'Get back in · CloakCal' }
 
 export default function RecoverPage() {
   return (

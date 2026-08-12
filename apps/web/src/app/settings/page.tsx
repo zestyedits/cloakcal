@@ -4,7 +4,7 @@ import { isDevFixtureEnabled } from '@/server/dev-fixture'
 import { loadSettingsData } from '@/server/settings'
 import { SettingsScreen, type SettingsProps } from '@/components/settings/settings-screen'
 
-export const metadata = { title: 'Settings — CloakCal' }
+export const metadata = { title: 'Settings · CloakCal' }
 
 /**
  * Never prerendered — reads the signed-in user, same trap and same fix as /account: CI has

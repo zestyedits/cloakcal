@@ -126,7 +126,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
       <h2 className={styles.title}>Get a new recovery phrase</h2>
       <p className={styles.lede}>
         Your events are not touched and your password does not change. The{' '}
-        <strong>old 24 words stop working</strong> the moment the new ones are issued — so if
+        <strong>old 24 words stop working</strong> the moment the new ones are issued. If
         you are doing this because someone saw them, this is the thing that shuts them out.
       </p>
 

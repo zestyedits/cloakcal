@@ -77,15 +77,15 @@ export function CalendarsSection({
   return (
     <>
       <p className={styles.sectionLede}>
-        Names are encrypted — renaming needs your calendar unlocked. Colours are not: they
-        show on busy-only views, so they were never secret.
+        Names are encrypted, so renaming needs your calendar unlocked. Colours are not:
+        they show on busy-only views, so they were never secret.
       </p>
 
       <InlineError>{error}</InlineError>
 
       {calendars.length === 0 && (
         <p className={styles.lockedNote}>
-          {fixtureMode ? 'Demo data — sign in to manage calendars.' : 'No calendars yet.'}
+          {fixtureMode ? 'Demo data. Sign in to manage calendars.' : 'No calendars yet.'}
         </p>
       )}
 
@@ -155,7 +155,7 @@ export function CalendarsSection({
                 variant="ghost"
                 size="sm"
                 disabled={!unlocked}
-                title={unlocked ? undefined : 'Unlock your calendar to rename — names are encrypted'}
+                title={unlocked ? undefined : 'Unlock your calendar to rename. Names are encrypted.'}
                 onClick={() => setRenaming({ id: calendar.id, value: '' })}
               >
                 Rename

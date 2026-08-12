@@ -84,7 +84,7 @@ export class RewrapHalfAppliedError extends Error {
   constructor() {
     super(
       'Your calendar key was updated but the new password did not save. Sign in with your ' +
-        'OLD password and try again — your events are safe, and your recovery phrase still works.',
+        'OLD password and try again. Your events are safe, and your recovery phrase still works.',
     )
     this.name = 'RewrapHalfAppliedError'
   }

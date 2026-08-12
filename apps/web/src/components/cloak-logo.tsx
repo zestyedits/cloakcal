@@ -18,7 +18,7 @@ export function CloakMark({
 }: {
   size?: number
   variant?: 'full' | 'favicon'
-  className?: string
+  className?: string | undefined
 }) {
   return (
     <span

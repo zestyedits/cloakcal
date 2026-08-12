@@ -209,7 +209,7 @@ export function VisibilitySection({
     <>
       <p className={styles.sectionLede}>
         What each person sees of your events unless an event says otherwise. Nobody sees
-        anything until you choose to show them — no rule means hidden.
+        anything until you choose to show them. No rule means hidden.
       </p>
 
       <InlineError>{error}</InlineError>
@@ -217,11 +217,11 @@ export function VisibilitySection({
       {workspaceId === null ? (
         <p className={styles.lockedNote}>
           {fixtureMode
-            ? 'Demo data — sign in to set visibility.'
+            ? 'Demo data. Sign in to set visibility.'
             : 'Available once your calendar is set up.'}
         </p>
       ) : rows.length <= 1 ? (
-        <p className={styles.rowNote}>Add people first — visibility is decided per person.</p>
+        <p className={styles.rowNote}>Add people first. Visibility is decided per person.</p>
       ) : (
         rows.map((option) => {
           const decision = decisionFor(option)
@@ -267,7 +267,7 @@ export function VisibilitySection({
 
               {/* The engine's own sentence — never restated here. */}
               <p className={styles.rowNote}>
-                {rule === undefined ? 'Hidden (default) — ' : ''}
+                {rule === undefined ? 'Hidden (default): ' : ''}
                 {explainDecision(decision)}
               </p>
 
