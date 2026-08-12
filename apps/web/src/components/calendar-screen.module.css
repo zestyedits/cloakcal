@@ -595,6 +595,12 @@
   color: var(--text-secondary);
 }
 
+/* Quiet, left-aligned, under the Settings link — the door out sits by the door to the
+   rest of the house. */
+.signOut {
+  align-self: flex-start;
+}
+
 /* The email under the word Settings: which account, without being the label. */
 .accountEmail {
   display: block;

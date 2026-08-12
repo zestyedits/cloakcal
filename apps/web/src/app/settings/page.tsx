@@ -25,6 +25,13 @@ export const dynamic = 'force-dynamic'
 export default async function SettingsPage() {
   const fixtureMode = isDevFixtureEnabled()
 
+  // The data load starts BEFORE the auth check resolves — both talk to Supabase as the
+  // request's cookie-scoped user, neither needs the other, and serialising them was a
+  // visible chunk of the "settings freezes" complaint. If the auth check redirects, the
+  // discarded promise is caught so a signed-out race cannot become an unhandled rejection.
+  const dataPromise = fixtureMode ? null : loadSettingsData()
+  dataPromise?.catch(() => undefined)
+
   let email = ''
   if (!fixtureMode) {
     const supabase = await supabaseServer()
@@ -36,9 +43,10 @@ export default async function SettingsPage() {
 
   // The fixture has no workspace and no session; the screen renders every section with
   // controls disabled and honest copy, so structure and a11y are still testable.
-  const data = fixtureMode
-    ? { prefs: null, calendars: [], visibility: null, devices: [] }
-    : await loadSettingsData()
+  const data =
+    dataPromise === null
+      ? { prefs: null, calendars: [], visibility: null, devices: [] }
+      : await dataPromise
 
   // Maps do not cross the RSC boundary; the membership indexes flatten to plain records
   // here, on the server, where they are still only ids about ids.

@@ -11,6 +11,7 @@ import { CloakLockup } from '../cloak-logo'
 import { ThemeToggle } from '../theme-toggle'
 import { ChangePassword } from '../change-password'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
+import { SignOutButton } from '../sign-out-button'
 import { AppearanceSection } from './appearance-section'
 import { TimeRegionSection } from './time-region-section'
 import { CalendarsSection } from './calendars-section'
@@ -265,6 +266,9 @@ export function SettingsScreen({
                       moved here. */}
                   <ChangePassword email={email} />
                   <ReissueRecoveryPhrase email={email} />
+                  <div>
+                    <SignOutButton />
+                  </div>
                 </>
               )}
             </SettingsSection>

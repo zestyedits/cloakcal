@@ -1,29 +1,54 @@
+import Link from 'next/link'
+import { CloakLockup } from '@/components/cloak-logo'
+import { ThemeToggle } from '@/components/theme-toggle'
+import settingsStyles from '@/components/settings/settings.module.css'
 import styles from './loading.module.css'
 
 /**
- * Settings-shaped skeleton. Without this, navigating here fell through to the ROOT
- * loading state — an agenda-shaped skeleton morphing into a settings page, which read as
- * a freeze followed by a teleport. Shapes match the real layout (header bar, nav chips,
- * section rows) so the page settles into content instead of jumping.
+ * The settings page's loading state — and deliberately AS MUCH of the real page as can
+ * exist without data. The first version was all grey bars, which read as a third, alien
+ * page between the calendar and settings: a freeze, then a teleport. The chrome here is
+ * the REAL chrome (same stylesheet, same header, same title, same nav chips), so the
+ * navigation reads as "settings, loading its rows" — the only things that shimmer are
+ * the section cards whose contents genuinely aren't known yet.
  *
- * No text, same as the calendar's skeleton: nothing for the leak scans to reason about.
+ * The nav chips are real anchor links: they cannot open a card that has not arrived, but
+ * the hash survives into the loaded page, whose deep-link effect opens the right card.
  */
 export default function SettingsLoading() {
   return (
-    <div className={styles.page} aria-busy="true" aria-label="Loading settings">
-      <div className={styles.headerBar}>
-        <div className={`${styles.chip} ${styles.pulse}`} />
-      </div>
-      <div className={styles.body}>
-        <div className={`${styles.title} ${styles.pulse}`} />
-        <div className={styles.chips}>
-          {Array.from({ length: 5 }, (_, i) => (
-            <div key={i} className={`${styles.chip} ${styles.pulse}`} />
+    <div className={settingsStyles.page}>
+      <header className={settingsStyles.header}>
+        <Link className={settingsStyles.back} href="/">
+          ‹ Calendar
+        </Link>
+        <div className={settingsStyles.headerSpace} />
+        <CloakLockup size="sm" />
+        <div className={settingsStyles.headerSpace} />
+        <ThemeToggle />
+      </header>
+
+      <div className={settingsStyles.body}>
+        <h1 className={settingsStyles.title}>Settings</h1>
+
+        <nav className={settingsStyles.nav} aria-label="Settings sections">
+          {['Appearance', 'Time & region', 'Calendars', 'People', 'Visibility', 'Security'].map(
+            (label) => (
+              <span key={label} className={settingsStyles.navLink}>
+                {label}
+              </span>
+            ),
+          )}
+        </nav>
+
+        <div className={settingsStyles.sections} aria-busy="true" aria-label="Loading settings">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className={`${styles.sectionRow} ${styles.pulse}`}>
+              <div className={styles.rowTitle} />
+              <div className={styles.rowState} />
+            </div>
           ))}
         </div>
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className={`${styles.section} ${styles.pulse}`} />
-        ))}
       </div>
     </div>
   )
