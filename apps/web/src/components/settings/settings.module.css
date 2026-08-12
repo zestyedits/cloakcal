@@ -106,20 +106,75 @@
 
 .sections {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-3);
   min-width: 0;
+  /* The page eases in rather than popping — the settings-shaped skeleton hands off to
+     this. `backwards` holds the from-state so there is no flash before the animation. */
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
+/* A collapsible card. Closed, the page is a calm table of contents: title + current
+   state per row. Open, the controls appear below the same summary row. */
 .section {
-  padding: var(--space-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   box-shadow: var(--shadow-sm), var(--edge-highlight);
   /* Anchor navigation should land the heading below the sticky header, not under it. */
   scroll-margin-top: calc(var(--touch-min) + var(--space-6));
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  /* The platform triangle is replaced by our chevron, which can rotate. */
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover {
+  background: var(--surface-overlay);
+}
+
+.summaryState {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryChevron {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.section[open] .summaryChevron {
+  transform: rotate(90deg);
+}
+
+.section[open] .summary {
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.sectionBody {
   display: grid;
   gap: var(--space-4);
+  padding: var(--space-4);
 }
 
 .sectionTitle {

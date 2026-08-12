@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
@@ -40,6 +40,60 @@ const SECTIONS = [
   { id: 'more', label: 'Coming soon' },
 ] as const
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/**
+ * One collapsible section card, on native <details> — keyboard and screen-reader
+ * behaviour for free, and a closed page that reads as a table of contents instead of a
+ * wall of controls. The summary row carries the title AND the current state ("Eastern
+ * Time · weeks start Sunday"), so most visits never need to open anything.
+ *
+ * The h2 lives INSIDE the summary: it stays visible when the card is closed, so the
+ * heading-order test and the section nav both keep working.
+ */
+function SettingsSection({
+  id,
+  title,
+  state,
+  defaultOpen = false,
+  children,
+}: {
+  id: string
+  title: string
+  /** Plain-language current value shown while closed. */
+  state: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  return (
+    <details id={id} className={styles.section} open={defaultOpen}>
+      <summary className={styles.summary}>
+        <h2 className={styles.sectionTitle}>{title}</h2>
+        <span className={styles.summaryState}>{state}</span>
+        <span className={styles.summaryChevron} aria-hidden="true">
+          ›
+        </span>
+      </summary>
+      <div className={styles.sectionBody}>{children}</div>
+    </details>
+  )
+}
+
+/** A `#section` link must OPEN the card it points at, not scroll to a closed row. */
+function useOpenOnHash() {
+  useEffect(() => {
+    const openTarget = () => {
+      const id = window.location.hash.slice(1)
+      if (id === '') return
+      const target = document.getElementById(id)
+      if (target instanceof HTMLDetailsElement) target.open = true
+    }
+    openTarget()
+    window.addEventListener('hashchange', openTarget)
+    return () => window.removeEventListener('hashchange', openTarget)
+  }, [])
+}
+
 /** Serializable throughout: this crosses the RSC boundary. Maps arrive as plain records. */
 export interface SettingsProps {
   readonly email: string
@@ -65,6 +119,7 @@ export function SettingsScreen({
   groupsByContact,
 }: SettingsProps) {
   const workspaceId = prefs?.workspaceId ?? null
+  useOpenOnHash()
 
   // The provider's page: calendars carry their sealed names; occurrences are empty because
   // settings renders none. Withheld/audience fields are the owner's trivially.
@@ -124,39 +179,79 @@ export function SettingsScreen({
           </nav>
 
           <main id="main" className={styles.sections}>
-            <AppearanceSection />
+            <SettingsSection id="appearance" title="Appearance" state="Dark or light" defaultOpen>
+              <AppearanceSection />
+            </SettingsSection>
 
-            <TimeRegionSection
-              workspaceId={workspaceId}
-              fixtureMode={fixtureMode}
-              timezone={prefs?.timezone ?? null}
-              weekStart={prefs?.weekStart ?? 0}
-            />
+            <SettingsSection
+              id="time-region"
+              title="Time & region"
+              state={
+                prefs === null
+                  ? 'Not set up yet'
+                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]}`
+              }
+            >
+              <TimeRegionSection
+                workspaceId={workspaceId}
+                fixtureMode={fixtureMode}
+                timezone={prefs?.timezone ?? null}
+                weekStart={prefs?.weekStart ?? 0}
+              />
+            </SettingsSection>
 
-            <CalendarsSection fixtureMode={fixtureMode} calendars={calendars} />
+            <SettingsSection
+              id="calendars"
+              title="Calendars"
+              state={`${calendars.length} ${calendars.length === 1 ? 'calendar' : 'calendars'}`}
+            >
+              <CalendarsSection fixtureMode={fixtureMode} calendars={calendars} />
+            </SettingsSection>
 
-            <PeopleSection
-              workspaceId={workspaceId}
-              fixtureMode={fixtureMode}
-              audiences={audiences}
-              membersByGroup={membersByGroup}
-            />
+            <SettingsSection
+              id="people"
+              title="People"
+              state={(() => {
+                const contacts = audiences.filter((a) => a.kind === 'individual').length
+                const groups = audiences.filter((a) => a.kind === 'group').length
+                if (contacts === 0 && groups === 0) return 'Nobody yet'
+                const parts = [
+                  `${contacts} ${contacts === 1 ? 'contact' : 'contacts'}`,
+                  ...(groups > 0 ? [`${groups} ${groups === 1 ? 'group' : 'groups'}`] : []),
+                ]
+                return parts.join(' · ')
+              })()}
+            >
+              <PeopleSection
+                workspaceId={workspaceId}
+                fixtureMode={fixtureMode}
+                audiences={audiences}
+                membersByGroup={membersByGroup}
+              />
+            </SettingsSection>
 
-            <VisibilitySection
-              workspaceId={workspaceId}
-              fixtureMode={fixtureMode}
-              audiences={audiences}
-              rules={workspaceRules}
-              groupsByContact={groupsByContact}
-            />
+            <SettingsSection
+              id="visibility"
+              title="Visibility"
+              state={
+                workspaceRules.length === 0
+                  ? 'Hidden from everyone'
+                  : `${workspaceRules.length} ${workspaceRules.length === 1 ? 'rule' : 'rules'} set`
+              }
+            >
+              <VisibilitySection
+                workspaceId={workspaceId}
+                fixtureMode={fixtureMode}
+                audiences={audiences}
+                rules={workspaceRules}
+                groupsByContact={groupsByContact}
+              />
+            </SettingsSection>
 
-            <section id="security" className={styles.section} aria-labelledby="security-title">
-              <h2 id="security-title" className={styles.sectionTitle}>
-                Security
-              </h2>
+            <SettingsSection id="security" title="Security" state="Password & recovery phrase">
               <p className={styles.sectionLede}>
-                Your password and recovery phrase both open the same root key. Changing either
-                re-wraps that key — nothing is re-encrypted.
+                Your password and recovery phrase both open the same key. Changing one never
+                touches your events.
               </p>
               {email === '' ? (
                 <p className={styles.lockedNote}>
@@ -172,12 +267,9 @@ export function SettingsScreen({
                   <ReissueRecoveryPhrase email={email} />
                 </>
               )}
-            </section>
+            </SettingsSection>
 
-            <section id="more" className={styles.section} aria-labelledby="more-title">
-              <h2 id="more-title" className={styles.sectionTitle}>
-                Coming soon
-              </h2>
+            <SettingsSection id="more" title="Coming soon" state="What's next">
               <p className={styles.sectionLede}>
                 Named here so the roadmap is honest, and quiet so it never outranks what works.
               </p>
@@ -222,7 +314,7 @@ export function SettingsScreen({
                   Creating and deleting calendars needs an answer for the events they hold.
                 </p>
               </div>
-            </section>
+            </SettingsSection>
           </main>
         </div>
       </div>

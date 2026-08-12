@@ -206,10 +206,7 @@ export function VisibilitySection({
     })
 
   return (
-    <section id="visibility" className={styles.section} aria-labelledby="visibility-title">
-      <h2 id="visibility-title" className={styles.sectionTitle}>
-        Visibility
-      </h2>
+    <>
       <p className={styles.sectionLede}>
         What each person sees of your events unless an event says otherwise. Nobody sees
         anything until you choose to show them — no rule means hidden.
@@ -302,6 +299,6 @@ export function VisibilitySection({
           )
         })
       )}
-    </section>
+    </>
   )
 }

@@ -75,10 +75,7 @@ export function CalendarsSection({
   }
 
   return (
-    <section id="calendars" className={styles.section} aria-labelledby="calendars-title">
-      <h2 id="calendars-title" className={styles.sectionTitle}>
-        Calendars
-      </h2>
+    <>
       <p className={styles.sectionLede}>
         Names are encrypted — renaming needs your calendar unlocked. Colours are not: they
         show on busy-only views, so they were never secret.
@@ -167,6 +164,6 @@ export function CalendarsSection({
           )}
         </div>
       ))}
-    </section>
+    </>
   )
 }

@@ -179,10 +179,7 @@ export function PeopleSection({
   )
 
   return (
-    <section id="people" className={styles.section} aria-labelledby="people-title">
-      <h2 id="people-title" className={styles.sectionTitle}>
-        People
-      </h2>
+    <>
       <p className={styles.sectionLede}>
         Contacts are who your visibility rules point at. Their names are encrypted — the
         server sees only the ids below the names.
@@ -251,6 +248,6 @@ export function PeopleSection({
           )}
         </>
       )}
-    </section>
+    </>
   )
 }
