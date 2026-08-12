@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signInAndUnlock, signOut, unlockWithRecoveryPhrase } from '@/lib/cloak-session'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -50,11 +51,7 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
           you provide the key. The times behind this panel are what our servers can see.
         </p>
 
-        {error !== null && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
+        <InlineError>{error}</InlineError>
 
         <div className={styles.form}>
           {mode === 'password' ? (

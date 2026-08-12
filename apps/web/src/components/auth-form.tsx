@@ -13,6 +13,7 @@ import { assessPassword } from '@cloakcal/crypto'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { RecoveryPhrase } from './recovery-phrase'
 import { CloakLockup } from './cloak-logo'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -209,11 +210,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           : 'Your password unlocks your events here in the browser. We never receive it.'}
       </p>
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError>{error}</InlineError>
 
       <div className={styles.form}>
         <div className={styles.field}>

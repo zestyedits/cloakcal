@@ -12,6 +12,7 @@ import {
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { CloakLockup } from './cloak-logo'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -180,11 +181,7 @@ export function RecoverForm() {
       <h1 className={styles.title}>{screen === 'sent' ? 'Check your email' : 'Get back in'}</h1>
       <p className={styles.lede}>{LEDE[screen]}</p>
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError>{error}</InlineError>
 
       {screen === 'checking' && (
         <p className={styles.working} aria-live="polite">

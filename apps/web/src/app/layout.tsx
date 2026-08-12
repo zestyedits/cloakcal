@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { inter } from './fonts'
 import { THEME_BOOTSTRAP } from '@/lib/theme'
+import { OfflineBanner } from '@/components/ui/offline-banner'
 import './globals.css'
 
 function siteOrigin(): string {
@@ -78,6 +79,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a className="skip-link" href="#main">
           Skip to calendar
         </a>
+        {/* Renders nothing while online. In the layout so every page gets it — losing the
+            network matters on the auth screens exactly as much as on the calendar. */}
+        <OfflineBanner />
         {children}
       </body>
     </html>
