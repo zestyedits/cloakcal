@@ -69,8 +69,16 @@ export function MiniMonth({
     })
     const weekFirst = fmt.format(new Date(from))
     const today = fmt.format(new Date())
+    // The highlighted "week" is the ANCHOR's containing week, not seven days off the
+    // range start. On a day page the range starts at the anchor itself and on a month
+    // page at the grid's first cell, so the old from-based set painted seven days that
+    // were not a week at all. On agenda/week pages the anchor's containing week IS the
+    // fetched week, so those pixels are unchanged.
+    const highlightFrom = toUtc(anchorDate ?? weekFirst)
+    const highlightDow = new Date(highlightFrom).getUTCDay()
+    const highlightFirst = highlightFrom - ((highlightDow - weekStart + 7) % 7) * DAY_MS
     const weekDays = new Set(
-      Array.from({ length: 7 }, (_, i) => toDay(toUtc(weekFirst) + i * DAY_MS)),
+      Array.from({ length: 7 }, (_, i) => toDay(highlightFirst + i * DAY_MS)),
     )
 
     const [year, month] = (anchorDate ?? weekFirst).split('-').map(Number)

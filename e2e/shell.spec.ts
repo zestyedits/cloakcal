@@ -89,6 +89,29 @@ test('Today is a link home that keeps the audience', async ({ page, isMobile }) 
   )
 })
 
+test('Today keeps the week view instead of falling to the agenda', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'Today is tablet-and-up chrome')
+  await page.goto('/')
+  await settle(page)
+
+  // On the agenda, Today stays minimal: no view param at all.
+  await expect(page.getByRole('link', { name: 'Today' })).not.toHaveAttribute(
+    'href',
+    /view=/,
+  )
+
+  // The regression this pins: `view` here is the CLIENT view, and the old builder
+  // dropped it for the whole week fetch — Today from Week view landed on the agenda.
+  await page.getByRole('button', { name: 'Week', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Today' })).toHaveAttribute(
+    'href',
+    /view=week/,
+  )
+})
+
 test('the week strip jumps to a day', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'the strip is mobile chrome; the mini month covers desktop')
   await page.goto('/')

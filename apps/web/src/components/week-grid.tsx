@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { PRIVACY_LEVELS } from '@cloakcal/ui'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
+import { EditableEvent } from './editable-event'
 import { Icon, type IconName } from './ui/icons'
 import styles from './week-grid.module.css'
 
@@ -99,6 +100,8 @@ export function WeekGrid({
   timezone,
   colorFor,
   dayCount = 7,
+  audience,
+  onOpenVisibility,
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
@@ -107,6 +110,14 @@ export function WeekGrid({
   colorFor: (calendarId: string | undefined) => string
   /** 7 for the week, 1 for the day view — same grid, same lane packing, fewer columns. */
   dayCount?: number
+  /**
+   * Belt-and-braces beside the version check, same as the agenda row: `version` is only
+   * attached for the owner (audience.ts), but the write path must not silently rely on
+   * that coupling.
+   */
+  audience?: string | undefined
+  /** The screen-level Event Visibility sheet's opener; absent = no visibility door. */
+  onOpenVisibility?: ((eventId: string) => void) | undefined
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -210,6 +221,22 @@ export function WeekGrid({
                     className={styles.allDayChip}
                     data-color={colorFor(occurrence.calendarId)}
                   >
+                    {/* Same door as the timed blocks; the agenda already opens all-day
+                        rows, so this is parity, not new behaviour. */}
+                    {audience === 'owner' && occurrence.version !== undefined && (
+                      <EditableEvent
+                        variant="block"
+                        eventId={occurrence.eventId}
+                        version={occurrence.version}
+                        recurring={occurrence.recurring ?? false}
+                        series={occurrence.series ?? null}
+                        occurrenceLocal={occurrence.occurrenceLocal}
+                        timezone={timezone}
+                        start={occurrence.start}
+                        end={occurrence.end}
+                        label={`the all-day event on ${day}`}
+                      />
+                    )}
                     {occurrence.time === 'busy' ? (
                       'Busy'
                     ) : (
@@ -244,63 +271,120 @@ export function WeekGrid({
                 <div key={hour} className={styles.hourLine} aria-hidden="true" />
               ))}
 
-              {placed.map(({ occurrence, top, height, lane, lanes }) => (
-                <article
-                  key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
-                  className={styles.event}
-                  data-color={colorFor(occurrence.calendarId)}
-                  data-time={occurrence.time}
-                  data-busy={occurrence.busy ?? 'busy'}
-                  style={{
-                    top: `${top}%`,
-                    height: `${height}%`,
-                    left: `${(lane / lanes) * 100}%`,
-                    width: `${100 / lanes}%`,
-                  }}
-                >
-                  <span className={styles.eventTime}>{occurrence.start.slice(11, 16)}</span>
-                  <span className={styles.eventTitle}>
-                    {occurrence.time === 'busy' ? (
-                      'Busy'
-                    ) : (
-                      <CloakedText
-                        subjectType="event"
-                        subjectId={occurrence.eventId}
-                        fieldName="title"
-                        placeholder="Private event"
+              {placed.map(({ occurrence, top, height, lane, lanes }) => {
+                // The agenda's guard, verbatim: version only exists for the owner, and the
+                // audience check is the deliberate second lock on the same door.
+                const editable =
+                  audience === 'owner' && occurrence.version !== undefined
+                const timeLabel = occurrence.start.slice(11, 16)
+
+                return (
+                  <article
+                    key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
+                    className={styles.event}
+                    data-color={colorFor(occurrence.calendarId)}
+                    data-time={occurrence.time}
+                    data-busy={occurrence.busy ?? 'busy'}
+                    style={{
+                      top: `${top}%`,
+                      height: `${height}%`,
+                      left: `${(lane / lanes) * 100}%`,
+                      width: `${100 / lanes}%`,
+                    }}
+                  >
+                    {/* The block is the edit door, same semantics as tapping an agenda
+                        row. A stretched button rather than a wrapping one, because the
+                        block's children are laid out by the grid. Delete stays on the
+                        agenda on purpose: a third control does not fit a 28px block, and
+                        delete is the one action that must never be a mis-tap. */}
+                    {editable && occurrence.version !== undefined && (
+                      <EditableEvent
+                        variant="block"
+                        eventId={occurrence.eventId}
+                        version={occurrence.version}
+                        recurring={occurrence.recurring ?? false}
+                        series={occurrence.series ?? null}
+                        occurrenceLocal={occurrence.occurrenceLocal}
+                        timezone={timezone}
+                        start={occurrence.start}
+                        end={occurrence.end}
+                        label={`the event at ${timeLabel}`}
                       />
                     )}
-                  </span>
-                  {/* The board's second line: privacy level when restricted, calendar
-                      name otherwise. Rendered in the block's own ink — the blocks sit on
-                      calendar-coloured washes the chip ink pairs were never computed
-                      against, and the icon + label carry the meaning without colour.
-                      Short blocks clip it via overflow; the title always wins. */}
-                  {occurrence.privacyLevel !== undefined &&
-                    (occurrence.privacyLevel !== 'full' ? (
-                      <span className={styles.privacyNote}>
-                        <Icon
-                          name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}
-                          size={11}
+                    <span className={styles.eventTime}>{timeLabel}</span>
+                    <span className={styles.eventTitle}>
+                      {occurrence.time === 'busy' ? (
+                        'Busy'
+                      ) : (
+                        <CloakedText
+                          subjectType="event"
+                          subjectId={occurrence.eventId}
+                          fieldName="title"
+                          placeholder="Private event"
                         />
-                        {PRIVACY_LEVELS[occurrence.privacyLevel].label}
-                      </span>
-                    ) : occurrence.calendarId !== undefined ? (
-                      <CloakedText
-                        className={styles.privacyNote}
-                        subjectType="calendar"
-                        subjectId={occurrence.calendarId}
-                        fieldName="display_name"
-                        placeholder="Calendar"
-                      />
-                    ) : null)}
-                  {occurrence.dst !== 'none' && (
-                    <span className={styles.dstNote}>
-                      {occurrence.dst === 'nonexistent-shifted' ? 'DST shifted' : 'Repeated hour'}
+                      )}
                     </span>
-                  )}
-                </article>
-              ))}
+                    {/* The board's second line: privacy level when restricted, calendar
+                        name otherwise. Rendered in the block's own ink — the blocks sit on
+                        calendar-coloured washes the chip ink pairs were never computed
+                        against, and the icon + label carry the meaning without colour.
+                        Short blocks clip it via overflow; the title always wins.
+
+                        For the owner it is also the visibility door, exactly like the
+                        agenda's chip: a button ABOVE the stretched edit trigger
+                        (z-index 2 over 1). Its aria-label is built from the time only. */}
+                    {occurrence.privacyLevel !== undefined &&
+                      (editable && onOpenVisibility !== undefined ? (
+                        <button
+                          type="button"
+                          className={styles.privacyNoteButton}
+                          aria-label={`Change who can see the event at ${timeLabel}`}
+                          onClick={() => onOpenVisibility(occurrence.eventId)}
+                        >
+                          {occurrence.privacyLevel !== 'full' ? (
+                            <>
+                              <Icon
+                                name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}
+                                size={11}
+                              />
+                              {PRIVACY_LEVELS[occurrence.privacyLevel].label}
+                            </>
+                          ) : occurrence.calendarId !== undefined ? (
+                            <CloakedText
+                              subjectType="calendar"
+                              subjectId={occurrence.calendarId}
+                              fieldName="display_name"
+                              placeholder="Calendar"
+                            />
+                          ) : (
+                            PRIVACY_LEVELS.full.label
+                          )}
+                        </button>
+                      ) : occurrence.privacyLevel !== 'full' ? (
+                        <span className={styles.privacyNote}>
+                          <Icon
+                            name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}
+                            size={11}
+                          />
+                          {PRIVACY_LEVELS[occurrence.privacyLevel].label}
+                        </span>
+                      ) : occurrence.calendarId !== undefined ? (
+                        <CloakedText
+                          className={styles.privacyNote}
+                          subjectType="calendar"
+                          subjectId={occurrence.calendarId}
+                          fieldName="display_name"
+                          placeholder="Calendar"
+                        />
+                      ) : null)}
+                    {occurrence.dst !== 'none' && (
+                      <span className={styles.dstNote}>
+                        {occurrence.dst === 'nonexistent-shifted' ? 'DST shifted' : 'Repeated hour'}
+                      </span>
+                    )}
+                  </article>
+                )
+              })}
             </div>
           )
         })}

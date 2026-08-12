@@ -244,7 +244,11 @@ export function CalendarScreen({
           {/* Today is a navigation, so it is a link: the server defaults to today, and the
               view and audience survive via the query exactly as on the steppers. The
               wrapper span owns visibility — hiding the ButtonLink itself would fight the
-              Button class's own display in the cascade and lose on import order. */}
+              Button class's own display in the cascade and lose on import order.
+
+              `view` here is the resolved CLIENT view, so Today from the week toggle keeps
+              week view. The old `!onWeekFetch` condition silently dropped it — Today from
+              Week landed on the agenda, which read as the button being broken. */}
           <span className={styles.today}>
             <ButtonLink
               variant="outline"
@@ -252,7 +256,7 @@ export function CalendarScreen({
               href={{
                 pathname: '/',
                 query: {
-                  ...(view !== 'agenda' && !onWeekFetch ? { view } : {}),
+                  ...(view !== 'agenda' ? { view } : {}),
                   ...(page.audience === 'owner' ? {} : { as: page.audience }),
                 },
               }}
@@ -403,6 +407,8 @@ export function CalendarScreen({
               from={page.from}
               timezone={timezone}
               colorFor={colorFor}
+              audience={page.audience}
+              onOpenVisibility={setVisibilityFor}
             />
           )}
 
@@ -413,6 +419,8 @@ export function CalendarScreen({
               timezone={timezone}
               colorFor={colorFor}
               dayCount={1}
+              audience={page.audience}
+              onOpenVisibility={setVisibilityFor}
             />
           )}
 
