@@ -12,6 +12,12 @@ import { expect, test } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+  // Let every entrance animation finish before any assertion runs. axe measures
+  // COMPOSITED colour, so scanning mid-reveal reports contrast failures against frames
+  // that are not finished painting — the documented trap from the edit-event spec, now
+  // relevant on page load because titles play the uncloak wipe and rows stagger in.
+  // Same pattern as `openSheet`, and correct under reduced motion (1ms, already done).
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
 })
 
 test('has no detectable WCAG A or AA violations', async ({ page }) => {

@@ -18,6 +18,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Shared entrance: a short rise-and-fade, compositor-only. Global because both the event
+   sheet and the agenda rows play it, and CSS-module keyframes are file-scoped — a module
+   that references `rise` without defining it resolves to this one. */
+@keyframes rise {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Visible focus is a launch requirement, not a nicety. */
 :focus-visible {
   outline: 2px solid var(--focus-ring);

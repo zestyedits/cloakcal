@@ -115,6 +115,12 @@
   border-left: 3px solid var(--event-color, var(--accent));
   transition: transform var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
+  /* Entrance: the shared rise, staggered by row. `backwards` holds the from-state during
+     the delay so late rows do not flash in place before their turn. --i is set inline per
+     row and CAPPED THERE (at 8) so a packed week settles in under half a second; the
+     reduced-motion block in tokens.css zeroes both the duration and the delay. */
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
+  animation-delay: calc(var(--i, 0) * var(--stagger-step));
 }
 
 .event + .event {

@@ -41,11 +41,16 @@
   background: color-mix(in srgb, var(--surface-base) 70%, transparent);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+  animation: backdrop-fade var(--duration-base) var(--ease-decelerate);
 }
 
-@keyframes rise {
-  from { transform: translateY(12px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+/* `rise` is the shared global keyframe in globals.css. The backdrop fades in alongside
+   the sheet's rise; there is deliberately NO exit animation — choreographing a native
+   <dialog>'s close is where the close-in-cleanup class of bug lives (see event-sheet.tsx),
+   and an instant dismissal reads as responsiveness, not abruptness. */
+@keyframes backdrop-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @media (min-width: 640px) {
