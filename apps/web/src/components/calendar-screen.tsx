@@ -18,6 +18,7 @@ import { ThemeToggle } from './theme-toggle'
 import { MiniMonth } from './mini-month'
 import { WeekStrip } from './week-strip'
 import { CloakSheet } from './cloak-sheet'
+import { VisibilitySheet } from './visibility-sheet'
 import { ButtonLink } from './ui/button'
 import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
@@ -77,6 +78,7 @@ export function CalendarScreen({
   timezone,
   weekStart = 0,
   workspaceRules = [],
+  rulesByEvent = {},
   groupsByContact = {},
   email,
   composeDate,
@@ -93,6 +95,8 @@ export function CalendarScreen({
   weekStart?: number
   /** Workspace-level rules, for the Cloak sheet's per-audience summaries. */
   workspaceRules?: readonly VisibilityRule[]
+  /** Event-scoped rules, keyed by event id. Owner-only; empty for every other audience. */
+  rulesByEvent?: Readonly<Record<string, readonly VisibilityRule[]>>
   groupsByContact?: Readonly<Record<string, readonly string[]>>
   email?: string | undefined
   /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
@@ -101,6 +105,8 @@ export function CalendarScreen({
   const [view, setView] = useState<string>('agenda')
   const [composeOpen, setComposeOpen] = useState(false)
   const [cloakOpen, setCloakOpen] = useState(false)
+  /** Event id whose visibility sheet is open, or null. */
+  const [visibilityFor, setVisibilityFor] = useState<string | null>(null)
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
 
   // Running index of each day's first row across the whole agenda, so the entrance
@@ -352,21 +358,32 @@ export function CalendarScreen({
                       {/* The board's rule for the second label: the privacy level when it
                           is anything other than full — the product's whole argument, at a
                           glance — otherwise the calendar, which is the useful fact about
-                          an unrestricted event. Non-owners keep the availability chip:
-                          the redaction they received IS their privacy information. */}
+                          an unrestricted event. For the owner the chip is also the DOOR:
+                          it opens this event's visibility sheet, which makes the privacy
+                          state and the privacy control the same object. Non-owners keep
+                          the availability chip: the redaction they received IS their
+                          privacy information. */}
                       {page.audience === 'owner' && occurrence.privacyLevel !== undefined ? (
-                        occurrence.privacyLevel === 'full' &&
-                        occurrence.calendarId !== undefined ? (
-                          <CloakedText
-                            className={styles.calendarNote}
-                            subjectType="calendar"
-                            subjectId={occurrence.calendarId}
-                            fieldName="display_name"
-                            placeholder="Calendar"
-                          />
-                        ) : (
-                          <PrivacyChip level={occurrence.privacyLevel} />
-                        )
+                        <button
+                          type="button"
+                          className={styles.chipButton}
+                          title="Change who can see this event"
+                          aria-label={`Change who can see the event at ${timeOf(occurrence.start)}`}
+                          onClick={() => setVisibilityFor(occurrence.eventId)}
+                        >
+                          {occurrence.privacyLevel === 'full' &&
+                          occurrence.calendarId !== undefined ? (
+                            <CloakedText
+                              className={styles.calendarNote}
+                              subjectType="calendar"
+                              subjectId={occurrence.calendarId}
+                              fieldName="display_name"
+                              placeholder="Calendar"
+                            />
+                          ) : (
+                            <PrivacyChip level={occurrence.privacyLevel} />
+                          )}
+                        </button>
                       ) : (
                         <span className={styles.busy} data-busy={occurrence.busy ?? 'busy'}>
                           {occurrence.busy === 'free' ? 'Free' : 'Busy'}
@@ -430,6 +447,17 @@ export function CalendarScreen({
               />
             )}
           </>
+        )}
+
+        {visibilityFor !== null && (
+          <VisibilitySheet
+            eventId={visibilityFor}
+            audiences={audiences}
+            workspaceRules={workspaceRules}
+            eventRules={rulesByEvent[visibilityFor] ?? []}
+            groupsByContact={groupsByContact}
+            onClose={() => setVisibilityFor(null)}
+          />
         )}
 
         {cloakOpen && (
