@@ -34,6 +34,7 @@ export function EditableEvent({
   end,
   /** Describes the event without naming it — the title is encrypted and stays that way. */
   label,
+  variant = 'row',
   children,
 }: {
   eventId: string
@@ -45,7 +46,15 @@ export function EditableEvent({
   start: string
   end: string
   label: string
-  children: ReactNode
+  /**
+   * 'row' wraps the agenda row's title column, as always. 'block' is the week/day grid's
+   * door: a stretched invisible button over the whole event block, because the block's
+   * content is laid out by the grid and a wrapping button would fight the absolute
+   * positioning. Its accessible name is built from the LABEL only — time, never title —
+   * so the no-plaintext-in-constructed-names rule holds by construction.
+   */
+  variant?: 'row' | 'block'
+  children?: ReactNode
 }) {
   const store = useCloakStore()
   const [editing, setEditing] = useState(false)
@@ -55,16 +64,17 @@ export function EditableEvent({
     <>
       <button
         type="button"
-        className={styles.trigger}
+        className={variant === 'block' ? styles.blockTrigger : styles.trigger}
         disabled={locked}
         title={locked ? 'Unlock your calendar first' : undefined}
+        {...(variant === 'block' ? { 'aria-label': `Edit ${label}` } : {})}
         onClick={() => setEditing(true)}
       >
         {children}
-        {/* The accessible name is the decrypted title, or the placeholder when locked — no
-            aria-label is constructed anywhere, so nothing new can carry plaintext. This just
-            says what the control DOES. */}
-        <span className={styles.action}>, edit {label}</span>
+        {/* Row variant: the accessible name is the decrypted title, or the placeholder when
+            locked — no aria-label is constructed anywhere, so nothing new can carry
+            plaintext. This just says what the control DOES. */}
+        {variant === 'row' && <span className={styles.action}>, edit {label}</span>}
       </button>
 
       {editing && (

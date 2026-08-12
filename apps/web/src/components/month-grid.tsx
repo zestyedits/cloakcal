@@ -12,6 +12,15 @@ import styles from './month-grid.module.css'
  * are display-only spans — editing and visibility live in agenda/day, where there is room
  * for the controls. Up to three entries per cell (all-day first), then "+N more".
  *
+ * STILL DISPLAY-ONLY AFTER THE 2026-08 GRID-INTERACTIONS PASS, decided rather than
+ * deferred by neglect: an interactive entry inside the cell <Link> is
+ * interactive-inside-interactive — invalid HTML whether the entry is an <a> or a
+ * <button> — so the "cheap" version does not exist; the real one restructures the cell
+ * (date number becomes the drill link) and reworks the month specs, for a view whose own
+ * density warning above says there is no room for controls. Week and day blocks are the
+ * doors now, one click away. grid-interactions.spec.ts pins that this view has no edit
+ * buttons, so revisiting this is a decision, not a drift.
+ *
  * NO PRIVACY CHIP AT THIS DENSITY, DELIBERATELY. The chip inks are verified against
  * composited washes that do not exist in an 84-cell grid, and the tokens forbid colour as
  * the sole carrier of meaning — a bare coloured dot standing for "limited" would be

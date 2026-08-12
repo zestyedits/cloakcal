@@ -38,6 +38,28 @@
   opacity: 1;
 }
 
+/*
+ * The week/day grid's door: stretched over the whole event block, invisible, under the
+ * chip button (z-index 1 vs 2). The block cannot honestly reach 44px — a 30-minute event
+ * in a 56px-per-hour grid is ~28px tall — so the target is the block's FULL LANE WIDTH,
+ * and the same actions exist at ≥44px on the agenda, which is the same fetch one toggle
+ * away (WCAG 2.5.8 equivalence, stated rather than hidden).
+ */
+.blockTrigger {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.blockTrigger:disabled {
+  cursor: not-allowed;
+}
+
 /* Announced, never shown. The visible row already reads as an event; a screen reader needs
    to be told the thing is activatable and what it will do. */
 .action {

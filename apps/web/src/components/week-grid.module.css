@@ -96,6 +96,8 @@
 }
 
 .allDayChip {
+  /* Positioned so the stretched edit trigger inside (owner only) has a containing box. */
+  position: relative;
   padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
@@ -204,6 +206,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * The owner's visibility door: the same second line, as a button ABOVE the stretched
+ * edit trigger (z-index 2 over 1). A 24px minimum box via padding — the 2.5.8 numeric
+ * floor; 44px is honestly impossible inside a 28px block, and the agenda offers the same
+ * action at full size. Hover shows an underline so pointer users learn it is a control
+ * without the block sprouting chrome.
+ */
+.privacyNoteButton {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  align-self: flex-start;
+  min-height: 24px;
+  min-width: 24px;
+  margin: 0;
+  padding: 2px var(--space-1) 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.privacyNoteButton:hover {
+  text-decoration: underline;
+  color: var(--text-primary);
 }
 
 .dstNote {
