@@ -64,7 +64,7 @@ export function EditableEvent({
         {/* The accessible name is the decrypted title, or the placeholder when locked — no
             aria-label is constructed anywhere, so nothing new can carry plaintext. This just
             says what the control DOES. */}
-        <span className={styles.action}> — edit {label}</span>
+        <span className={styles.action}>, edit {label}</span>
       </button>
 
       {editing && (

@@ -134,13 +134,13 @@ export const RECOVERY_HTML = shell({
   body:
     p('Someone asked to reset the password for this CloakCal account. If that was not you, ignore this email and nothing changes.') +
     p(
-      `You will need your ${strong('24-word recovery phrase')} — the words you wrote down when you set up your calendar. ` +
+      `You will need your ${strong('24-word recovery phrase')}, the words you wrote down when you set up your calendar. ` +
         'CloakCal cannot reset your password without them: your password unlocks your events, so we are re-wrapping that key rather than resetting a login. We do not have a copy.',
     ) +
     p(`Open this link ${strong('in the same browser you requested it from')}. It expires in an hour and works once.`),
   buttonLabel: 'Set a new password',
   footnote:
-    'CloakCal encrypts your event details in your browser. We store times so reminders and booking work, and we say so plainly — we are not zero-knowledge. If you did not request this, no action is needed.',
+    'CloakCal encrypts your event details in your browser. We store times so reminders and booking work, and we say so plainly: we are not zero-knowledge. If you did not request this, no action is needed.',
 })
 
 /** Sign-up confirmation. */
@@ -153,7 +153,7 @@ export const CONFIRMATION_HTML = shell({
     p('Welcome to CloakCal. Confirm this address to finish setting up your calendar.') +
     p(
       `After you sign in, your encryption keys are created ${strong('on your device')} and you will be shown a 24-word recovery phrase. ` +
-        'Write it down somewhere safe before you go any further — it is the only way back into your calendar if you forget your password, and we cannot send you another copy.',
+        'Write it down somewhere safe before you go any further. It is the only way back into your calendar if you forget your password, and we cannot send you another copy.',
     ),
   buttonLabel: 'Confirm email',
   footnote:

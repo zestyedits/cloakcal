@@ -3,7 +3,7 @@ import { AuthForm } from '@/components/auth-form'
 import { ThemeToggle } from '@/components/theme-toggle'
 import styles from '@/components/auth.module.css'
 
-export const metadata = { title: 'Sign in — CloakCal' }
+export const metadata = { title: 'Sign in · CloakCal' }
 
 export default function SignInPage() {
   return (

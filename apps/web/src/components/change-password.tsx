@@ -87,7 +87,7 @@ export function ChangePassword({ email }: { email: string }) {
       <h1 className={styles.title}>Change your password</h1>
       <p className={styles.lede}>
         Your events are not re-encrypted. Your password wraps the key that opens them, so only
-        the wrapper changes — nothing about your calendar is rewritten, and your recovery
+        the wrapper changes. Nothing about your calendar is rewritten, and your recovery
         phrase keeps working.
       </p>
 
@@ -198,7 +198,7 @@ export function ChangePassword({ email }: { email: string }) {
         {busy ? (
           <p className={styles.working} aria-live="polite">
             <span className={styles.pulse} aria-hidden="true" />
-            {working}. This takes a moment on purpose — a slow derivation is what makes a
+            {working}. This takes a moment on purpose. A slow derivation is what makes a
             stolen database expensive to attack.
           </p>
         ) : (

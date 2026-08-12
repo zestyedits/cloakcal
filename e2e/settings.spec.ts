@@ -44,7 +44,7 @@ test('demo mode says so instead of offering dead controls', async ({ page }) => 
   // Sections that need a workspace disable with the same honest sentence, not a spinner
   // and not a silent no-op.
   await page.getByRole('heading', { level: 2, name: 'Time & region' }).click()
-  await expect(page.getByText(/Demo data — sign in/).first()).toBeVisible()
+  await expect(page.getByText(/Demo data\. Sign in/).first()).toBeVisible()
   await expect(page.getByLabel('Timezone')).toBeDisabled()
   await expect(page.getByLabel('Week starts on')).toBeDisabled()
 })

@@ -40,11 +40,11 @@ interface Seed {
 const SEEDS: readonly Seed[] = [
   { day: 1, time: '09:00', minutes: 30, title: 'Team standup', location: 'Zoom', rrule: 'FREQ=WEEKLY' },
   { day: 1, time: '12:00', minutes: 60, title: 'Lunch with Alex', location: 'Blue Door Café', busy: 'free' },
-  { day: 2, time: '14:00', minutes: 45, title: 'Legal call — custody', location: 'Conference Rm B', notes: 'Bring the March filings.' },
+  { day: 2, time: '14:00', minutes: 45, title: 'Legal call, custody', location: 'Conference Rm B', notes: 'Bring the March filings.' },
   { day: 3, time: '09:30', minutes: 60, title: 'Project review', notes: 'Q3 scope cuts.' },
   { day: 3, time: '17:30', minutes: 60, title: 'Gym', busy: 'free' },
-  { day: 4, time: '10:00', minutes: 30, title: 'Client meeting — Bramblewick', location: 'Video' },
-  { day: 5, time: '15:00', minutes: 90, title: 'Deep work — proposal draft' },
+  { day: 4, time: '10:00', minutes: 30, title: 'Client meeting, Bramblewick', location: 'Video' },
+  { day: 5, time: '15:00', minutes: 90, title: 'Deep work: proposal draft' },
   { day: 6, time: '11:00', minutes: 60, title: 'Farmers market', busy: 'free' },
 ]
 
@@ -144,7 +144,7 @@ export function SeedSampleEvents({ from, timezone }: { from: string; timezone: s
         variant="outline"
         busy={busy}
         disabled={!unlocked}
-        title={unlocked ? undefined : 'Unlock your calendar first — sample events are encrypted like real ones'}
+        title={unlocked ? undefined : 'Unlock your calendar first. Sample events are encrypted like real ones.'}
         onClick={() => void seed()}
       >
         {busy ? 'Encrypting and adding' : 'Add sample events'}

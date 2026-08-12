@@ -157,7 +157,7 @@ export function PeopleSection({
       {option.kind === 'group' && openGroup === option.id && confirming !== option.id && (
         <div style={{ width: '100%' }}>
           {contacts.length === 0 && (
-            <p className={styles.rowNote}>Add a contact first — a group is made of them.</p>
+            <p className={styles.rowNote}>Add a contact first. A group is made of them.</p>
           )}
           {contacts.map((contact) => {
             const isMember = (membersByGroup[option.id] ?? []).includes(contact.id)
@@ -181,7 +181,7 @@ export function PeopleSection({
   return (
     <>
       <p className={styles.sectionLede}>
-        Contacts are who your visibility rules point at. Their names are encrypted — the
+        Contacts are who your visibility rules point at. Their names are encrypted. The
         server sees only the ids below the names.
       </p>
 
@@ -189,7 +189,7 @@ export function PeopleSection({
 
       {workspaceId === null ? (
         <p className={styles.lockedNote}>
-          {fixtureMode ? 'Demo data — sign in to manage people.' : 'Available once your calendar is set up.'}
+          {fixtureMode ? 'Demo data. Sign in to manage people.' : 'Available once your calendar is set up.'}
         </p>
       ) : (
         <>
@@ -207,7 +207,7 @@ export function PeopleSection({
               <Button
                 variant="outline"
                 disabled={!unlocked}
-                title={unlocked ? undefined : 'Unlock your calendar first — names are encrypted'}
+                title={unlocked ? undefined : 'Unlock your calendar first. Names are encrypted.'}
                 onClick={() => setDraft({ kind: 'contact', value: '' })}
               >
                 Add contact
@@ -215,7 +215,7 @@ export function PeopleSection({
               <Button
                 variant="outline"
                 disabled={!unlocked}
-                title={unlocked ? undefined : 'Unlock your calendar first — labels are encrypted'}
+                title={unlocked ? undefined : 'Unlock your calendar first. Labels are encrypted.'}
                 onClick={() => setDraft({ kind: 'group', value: '' })}
               >
                 Add group

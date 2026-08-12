@@ -256,7 +256,7 @@ export function SettingsScreen({
               </p>
               {email === '' ? (
                 <p className={styles.lockedNote}>
-                  Demo data — sign in to manage your password and recovery phrase.
+                  Demo data. Sign in to manage your password and recovery phrase.
                 </p>
               ) : (
                 <>

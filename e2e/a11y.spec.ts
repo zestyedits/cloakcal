@@ -153,3 +153,56 @@ test('honours reduced motion', async ({ page }) => {
   )
   expect(duration).toBe('1ms')
 })
+
+test.describe('landing', () => {
+  // The signed-out landing, through its fixture-gated door (see landing.spec.ts). It
+  // overrides the file's beforeEach navigation by going somewhere else first thing.
+  test('has no accessibility violations, sane headings, and 44px controls', async ({ page }) => {
+    await page.goto('/?landing=1')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+
+    const levels = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).map((h) =>
+        Number(h.tagName.slice(1)),
+      ),
+    )
+    expect(levels[0]).toBe(1)
+    for (let i = 1; i < levels.length; i += 1) {
+      expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1)
+    }
+
+    const measured = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button, a[href]')).map((el) => ({
+        label: (el.textContent ?? '').trim().slice(0, 30) || el.tagName,
+        height: Math.round(el.getBoundingClientRect().height),
+        hidden: el.getBoundingClientRect().height === 0,
+      })),
+    )
+    const tooSmall = measured
+      .filter((m) => !m.hidden)
+      .filter((m) => m.height < 44)
+      .map((m) => `${m.label}: ${m.height}px`)
+    expect(tooSmall).toEqual([])
+  })
+
+  test('the demo scans clean in every audience state', async ({ page }) => {
+    // A control behind a click is a control nobody tested: axe runs against each state
+    // the tabs can produce, not only the server-rendered one.
+    await page.goto('/?landing=1')
+    // exact: true — "You" is a substring of "Your client" under the default name match.
+    for (const tab of ['Your client', 'Everyone else', 'You']) {
+      await page.getByRole('button', { name: tab, exact: true }).click()
+      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze()
+      expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+    }
+  })
+})

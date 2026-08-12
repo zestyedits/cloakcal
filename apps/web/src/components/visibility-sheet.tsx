@@ -305,7 +305,7 @@ export function VisibilitySheet({
 
               {/* The engine's sentence, with the source of the answer named. */}
               <p className={styles.note}>
-                {override === undefined ? 'Their default — ' : 'For this event — '}
+                {override === undefined ? 'Their default: ' : 'For this event: '}
                 {explainDecision(decision)}
               </p>
 
@@ -333,7 +333,7 @@ export function VisibilitySheet({
         })}
 
         {offline && audiences.some((a) => a.kind !== 'owner' && a.kind !== 'public') && (
-          <p className={styles.note}>Demo data — sign in to change visibility.</p>
+          <p className={styles.note}>Demo data. Sign in to change visibility.</p>
         )}
       </div>
     </dialog>

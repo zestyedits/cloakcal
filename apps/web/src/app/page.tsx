@@ -58,12 +58,24 @@ export const dynamic = 'force-dynamic'
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ as?: string; view?: string; week?: string; date?: string }>
+  searchParams: Promise<{
+    as?: string
+    view?: string
+    week?: string
+    date?: string
+    landing?: string
+  }>
 }) {
-  const { as, view: viewParam, week, date } = await searchParams
+  const { as, view: viewParam, week, date, landing } = await searchParams
   const view = parseView(viewParam)
 
   const fixtureMode = isDevFixtureEnabled()
+
+  // Fixture-gated door to the landing page. Every Playwright project runs in fixture
+  // mode, where `/` renders the demo calendar and the landing is otherwise reachable by
+  // no test at all. Production never takes this branch: isDevFixtureEnabled() is inlined
+  // false there, so the session decides, below, as always.
+  if (fixtureMode && landing !== undefined) return <Landing />
 
   let email = ''
   if (!fixtureMode) {

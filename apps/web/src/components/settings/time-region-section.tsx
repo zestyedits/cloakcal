@@ -69,7 +69,7 @@ export function TimeRegionSection({
   return (
     <>
       <p className={styles.sectionLede}>
-        Changes how your calendar is displayed. Events keep their local times — a 9:00
+        Changes how your calendar is displayed. Events keep their local times: a 9:00
         meeting stays at 9:00.
       </p>
 
@@ -78,7 +78,7 @@ export function TimeRegionSection({
       {workspaceId === null && (
         <p className={styles.lockedNote}>
           {fixtureMode
-            ? 'Demo data — sign in to change these.'
+            ? 'Demo data. Sign in to change these.'
             : 'These arrive once your calendar is set up.'}
         </p>
       )}

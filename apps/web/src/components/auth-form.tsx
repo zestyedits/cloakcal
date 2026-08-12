@@ -176,7 +176,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         */}
         <p className={styles.lede}>
           If <strong>{email}</strong> is new here, a confirmation link is on its way. Open it,
-          then sign in — your keys are created on your device, at first sign-in.
+          then sign in. Your keys are created on your device, at first sign-in.
         </p>
         <p className={styles.lede}>
           <strong>Nothing arrives?</strong> You may already have an account. This page will not
@@ -264,7 +264,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {busy ? (
           <p className={styles.working} aria-live="polite">
             <span className={styles.pulse} aria-hidden="true" />
-            {stage.label}. This takes a moment on purpose — a slow derivation is what makes a
+            {stage.label}. This takes a moment on purpose. A slow derivation is what makes a
             stolen database expensive to attack.
           </p>
         ) : (
@@ -307,7 +307,7 @@ function messageFor(caught: unknown): string {
     return 'That email and password combination did not work.'
   }
   if (/password/iu.test(message) && /length|characters|short/iu.test(message)) {
-    return 'Choose a longer password — at least 10 characters.'
+    return 'Choose a longer password, at least 10 characters.'
   }
   if (/already registered|already exists/iu.test(message)) {
     return 'There is already an account with that email. Try signing in.'

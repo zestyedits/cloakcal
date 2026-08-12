@@ -124,7 +124,7 @@ export function RecoveryPhraseInput({
 
       <p className={styles.status} aria-live="polite">
         {checksumFails
-          ? 'All 24 words are real, but they do not check out together — usually one word is ' +
+          ? 'All 24 words are real, but they do not check out together. Usually one word is ' +
             'mistyped or two are swapped. BIP-39 catches that before anything is decrypted.'
           : `${filled} of ${RECOVERY_WORD_COUNT} words`}
       </p>
