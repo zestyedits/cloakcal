@@ -19,7 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 
 /** Reachable without a session. */
-export const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/recover']
+export const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/recover', '/auth/callback']
 
 /**
  * Public paths a signed-in user has no business on, and gets bounced home from.

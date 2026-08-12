@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 737 unit tests
+pnpm test                # 757 unit tests
 pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -421,6 +421,21 @@ confirmation link to X", which was simply false in that case and left the user w
 It now covers both cases without resolving which, and offers sign-in AND reset either way.
 `signup-enumeration.client.test.ts` forbids branching on `data.user.identities`, which is the
 documented tell and the tempting "fix".
+
+**An emailed link needs `/auth/callback`, and `/` is not a substitute.** Confirming an email
+silently did nothing for a while: `signUp` passed no `emailRedirectTo`, so the link used
+Supabase's Site URL and landed on `/` — which is not public, so middleware redirected to
+`/sign-in` before any JavaScript ran. GoTrue had already spent the single-use token by then,
+so the link could not be retried and the account stayed unconfirmed. Third appearance of the
+same shape: a route that must run for someone with NO session, guarded by the thing that
+checks for a session. `/auth/callback` is a Route Handler (it can write cookies, unlike a
+Server Component), it is in PUBLIC_PATHS, and `middleware-paths.server.test.ts` pins it.
+
+**Never forward Supabase's auth error text to a user.** Its PKCE verifier failure reads "PKCE
+code verifier not found in storage… For SSR frameworks (Next.js, SvelteKit, etc.), use
+@supabase/ssr on both the server and client" — advice for whoever built the app, shown to
+someone who clicked a link in their email. The callback maps failures to slugs
+(`link_dead`, `wrong_browser`) and the sign-in form owns the copy, same rule as the RPC hints.
 
 **The recovery link is PKCE, so it comes back as `?code=`, not a URL fragment.**
 `@supabase/ssr`'s `createBrowserClient` hardcodes `flowType: 'pkce'`. The consequence is real:

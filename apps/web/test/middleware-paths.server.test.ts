@@ -37,6 +37,21 @@ describe('middleware path lists', () => {
     for (const path of SIGNED_IN_ELSEWHERE) expect(PUBLIC_PATHS).toContain(path)
   })
 
+  it('lets an emailed confirmation link reach the callback', () => {
+    // The third time this exact shape of bug has appeared. /auth/callback exists to run for
+    // someone with NO session — redeeming the code is what creates one — so a middleware that
+    // guards it bounces the user to /sign-in before the exchange can happen, and GoTrue has
+    // already spent the single-use token by then. "Clicking confirm does nothing", and the
+    // link cannot be retried.
+    expect(PUBLIC_PATHS).toContain('/auth/callback')
+  })
+
+  it('does NOT bounce a signed-in user away from the callback', () => {
+    // Same reasoning as /recover. A link opened in a browser that already has a session must
+    // still complete its exchange rather than being redirected home a moment too early.
+    expect(SIGNED_IN_ELSEWHERE).not.toContain('/auth/callback')
+  })
+
   it('keeps the account page private', () => {
     // It changes a password, so it must never be reachable without a session.
     expect(PUBLIC_PATHS).not.toContain('/account')
@@ -79,6 +94,16 @@ describe('middleware matcher', () => {
   ])('leaves %s alone (%s)', (path) => {
     expect(matches(path)).toBe(false)
   })
+
+  it.each(['/', '/account', '/sign-in', '/recover', '/auth/callback'])(
+    'still runs middleware on %s, which PUBLIC_PATHS then lets through',
+    (path) => {
+      // Matching and being public are different questions. The matcher decides whether the
+      // middleware runs at all; PUBLIC_PATHS decides what it does. A path excluded from the
+      // matcher would skip the session refresh these routes rely on.
+      expect(matches(path)).toBe(true)
+    },
+  )
 
   it.each(['/', '/account', '/sign-in', '/recover'])('still guards %s', (path) => {
     expect(matches(path)).toBe(true)

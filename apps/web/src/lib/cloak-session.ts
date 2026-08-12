@@ -111,7 +111,17 @@ export async function signUp(email: string, password: string): Promise<{ needsCo
   const master = await deriveMasterSecret(password, email, CURRENT_KDF_PARAMS)
   const authSecret = await deriveAuthSecret(master)
 
-  const { data, error } = await supabase.auth.signUp({ email, password: authSecret })
+  // WHERE THE CONFIRMATION LINK LANDS, and it has to be said explicitly.
+  //
+  // Without this, Supabase uses its Site URL — `/` — which is not a public path. Middleware
+  // runs on the server before any JavaScript, sees no session cookie (there cannot be one
+  // yet; the code in the URL is what would create it) and redirects to /sign-in. The user
+  // sees "confirm does nothing", and the token is single-use so the link cannot be retried.
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: authSecret,
+    options: { emailRedirectTo: `${globalThis.location.origin}/auth/callback` },
+  })
   if (error !== null) throw error
 
   return { needsConfirmation: data.session === null }

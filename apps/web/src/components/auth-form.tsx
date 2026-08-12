@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CloakSetupRequiredError,
   initializeCloak,
   signInAndUnlock,
   signUp,
 } from '@/lib/cloak-session'
+import { assessPassword } from '@cloakcal/crypto'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { RecoveryPhrase } from './recovery-phrase'
 import { CloakLockup } from './cloak-logo'
@@ -34,6 +35,22 @@ type Stage =
   | { kind: 'confirm-email' }
   | { kind: 'recovery'; phrase: string }
 
+/**
+ * Slugs from /auth/callback, turned into something a person can act on.
+ *
+ * The route deliberately does not forward Supabase's own message: its verifier failure is a
+ * paragraph of advice about using @supabase/ssr, addressed to a developer. Matching on a slug
+ * rather than prose is the same rule the RPC errors follow.
+ */
+const AUTH_FAILURES: Record<string, string> = {
+  link_dead:
+    'That link has expired or was already used. Links are single-use and short-lived on ' +
+    'purpose. Sign in below, or sign up again to get a new one.',
+  wrong_browser:
+    'That link has to be opened in the same browser it was sent from. Open your email on ' +
+    'this device, or sign up again from here and use the new link.',
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -43,12 +60,39 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const busy = stage.kind === 'working'
 
+  /**
+   * A dead confirmation link says so, here.
+   *
+   * /auth/callback cannot render anything — it is a Route Handler whose only move is a
+   * redirect — so it hands the reason over in the query string. Without this the user clicks
+   * "Confirm email", lands on a sign-in form, and has no way to tell an expired link from a
+   * link that worked, which is precisely the confusion that made this bug hard to report.
+   */
+  const params = useSearchParams()
+  const authError = params.get('authError')
+  useEffect(() => {
+    if (authError !== null && authError !== '') setError(AUTH_FAILURES[authError] ?? AUTH_FAILURES['link_dead']!)
+  }, [authError])
+
+  // Recomputed each render rather than memoised: it is a handful of string scans, and a
+  // stale meter is worse than a fast one.
+  const strength = assessPassword(password, email)
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
 
     try {
       if (mode === 'sign-up') {
+        // Checked here, not only on the input. `minLength` is a hint to the browser and
+        // nothing else: devtools removes it, and any other caller of signUp never saw it.
+        // This password derives the key that decrypts the content, so it is not a lock on the
+        // box — it is how strong the box is.
+        const strength = assessPassword(password, email)
+        if (!strength.acceptable) {
+          setError(strength.problems.join(' '))
+          return
+        }
         setStage({ kind: 'working', label: 'Creating your account' })
         const { needsConfirmation } = await signUp(email, password)
         if (needsConfirmation) {
@@ -199,12 +243,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
             className={styles.input}
             type="password"
             required
-            minLength={10}
+            minLength={mode === 'sign-up' ? 12 : 1}
             autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
             disabled={busy}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-describedby={mode === 'sign-up' ? 'password-strength' : undefined}
           />
+          {/* Sign-IN has no floor, deliberately. Anyone who set a shorter password before
+              this existed must still be able to get in; refusing them at the door would be
+              locking people out of their own calendars to enforce a rule added later. */}
+          {mode === 'sign-up' && (
+            <p id="password-strength" className={styles.hint} aria-live="polite">
+              {password === ''
+                ? 'Twelve characters or more. A few unrelated words beats one mangled one.'
+                : strength.problems.length > 0
+                  ? strength.problems.join(' ')
+                  : `Looks ${strength.verdict}.`}
+            </p>
+          )}
         </div>
 
         {busy ? (
