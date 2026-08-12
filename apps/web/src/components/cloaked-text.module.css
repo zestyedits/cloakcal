@@ -1,0 +1,34 @@
+/*
+ * The uncloak — decryption made visible.
+ *
+ * A left-to-right wipe with blur resolving to sharp, over --duration-cloak: the one
+ * duration token that existed since M0 as "the signature motion" and was never spent.
+ * It plays when a value goes from sealed to readable — unlock, a View As switch, a page
+ * of ciphertext arriving — and only when a placeholder was actually painted first;
+ * revealing something nobody saw hidden is just latency.
+ *
+ * Every property here is compositor-only (opacity, filter, clip-path), so the wipe never
+ * causes layout. Reduced motion collapses --duration-cloak to 1ms globally in tokens.css.
+ */
+
+.reveal {
+  /* clip-path on an inline box is unreliable across engines; inline-block clips
+     dependably and keeps the text in flow. */
+  display: inline-block;
+  max-width: 100%;
+  animation: uncloak var(--duration-cloak) var(--ease-decelerate);
+}
+
+@keyframes uncloak {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    clip-path: inset(0);
+  }
+}

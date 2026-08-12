@@ -1,9 +1,10 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
+import { withViewTransition } from '@/lib/view-transition'
 import { CloakProvider } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
@@ -86,6 +87,19 @@ export function CalendarScreen({
 }) {
   const [view, setView] = useState<string>('agenda')
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
+
+  // Running index of each day's first row across the whole agenda, so the entrance
+  // stagger flows through the list rather than restarting at every day heading. The cap
+  // lives here (not in CSS) so the delay math stays a plain multiplication.
+  const staggerBase = useMemo(() => {
+    const base = new Map<string, number>()
+    let n = 0
+    for (const [day, occurrences] of days) {
+      base.set(day, n)
+      n += occurrences.length
+    }
+    return base
+  }, [days])
 
   const colorFor = useMemo(() => {
     const map = new Map(page.calendars.map((c) => [c.id, c.colorToken]))
@@ -196,12 +210,17 @@ export function CalendarScreen({
                   {DAY_LABEL.format(new Date(`${day}T00:00:00Z`))}
                 </h2>
                 <ul className={styles.events}>
-                  {occurrences.map((occurrence) => (
+                  {occurrences.map((occurrence, index) => (
                     <li
                       key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
                       className={styles.event}
                       data-color={colorFor(occurrence.calendarId)}
                       data-time={occurrence.time}
+                      style={
+                        {
+                          '--i': Math.min((staggerBase.get(day) ?? 0) + index, 8),
+                        } as CSSProperties
+                      }
                     >
                       <span className={styles.time}>{timeOf(occurrence.start)}</span>
                       <span className={styles.eventBody}>
@@ -287,7 +306,9 @@ export function CalendarScreen({
               aria-current={view === item.id ? 'page' : undefined}
               disabled={!item.ready}
               title={item.ready ? undefined : 'Coming in a later milestone'}
-              onClick={() => setView(item.id)}
+              // Wrapped in a View Transition so the two layouts cross-fade where the
+              // browser supports it; everywhere else this is exactly setView.
+              onClick={() => withViewTransition(() => setView(item.id))}
             >
               {item.label}
             </button>
