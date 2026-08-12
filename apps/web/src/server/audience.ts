@@ -19,7 +19,7 @@ import { toPolicyFieldName } from './policy-codec.js'
  * The engine sees Tier A facts and ciphertext only; it never handles content.
  */
 
-export type AudienceId = 'owner' | `contact:${string}` | 'public'
+export type AudienceId = 'owner' | `contact:${string}` | `group:${string}` | 'public'
 
 export interface RedactedPage {
   readonly timezone: string
@@ -49,51 +49,30 @@ export interface RedactedOccurrence extends RedactedEvent {
   readonly series?: OccurrenceView['series']
 }
 
-/** Demo audiences for M2. Real contacts and groups arrive with CRM-lite. */
-export const DEMO_AUDIENCES: ReadonlyArray<{ id: AudienceId; label: string }> = [
-  { id: 'owner', label: 'Me' },
-  { id: 'contact:sarah', label: 'Sarah (client)' },
-  { id: 'contact:alex', label: 'Alex (colleague)' },
-  { id: 'public', label: 'Anyone with the link' },
-]
-
-const viewerFor = (audience: AudienceId): ViewerIdentity => {
+/**
+ * Who the engine thinks is looking.
+ *
+ * `groupIds` is resolved from real membership rather than the hardcoded `['colleagues']` this
+ * used to carry. An individual who belongs to no group simply has none, and the engine's
+ * group rules then do not apply to them — which is the correct answer and used to be
+ * impossible to express.
+ */
+const viewerFor = (
+  audience: AudienceId,
+  groupsFor: (contactId: string) => readonly string[],
+): ViewerIdentity => {
   if (audience === 'owner') return { kind: 'owner' }
   if (audience === 'public') return { kind: 'public' }
-  return { kind: 'individual', contactId: audience.slice('contact:'.length), groupIds: ['colleagues'] }
+  if (audience.startsWith('group:')) {
+    // Previewing a GROUP means previewing a person whose only membership is that group —
+    // "what does someone in Clients see". The engine has no `group` viewer kind, and it
+    // should not: a group is not a viewer, it is a property of one. Modelling it as a
+    // member keeps the tiebreak in D8 doing the same work it does for a real person.
+    return { kind: 'individual', contactId: audience, groupIds: [audience.slice('group:'.length)] }
+  }
+  const contactId = audience.slice('contact:'.length)
+  return { kind: 'individual', contactId, groupIds: groupsFor(contactId) }
 }
-
-/**
- * Demo rules, standing in for stored visibility_rules until the CRM lands.
- *
- * Chosen to exercise the interesting paths rather than to flatter the engine: Sarah gets
- * limited detail, colleagues get busy-only, and the public gets nothing unless a rule
- * says otherwise.
- */
-const WORKSPACE_RULES: readonly VisibilityRule[] = [
-  {
-    id: 'ws-sarah-limited',
-    scope: 'workspace',
-    audience: 'individual',
-    audienceRef: 'sarah',
-    groupPriority: null,
-    timeVis: 'exact',
-    fields: { title: 'visible' },
-    revealAt: null,
-    expiresAt: null,
-  },
-  {
-    id: 'ws-colleagues-busy',
-    scope: 'workspace',
-    audience: 'group',
-    audienceRef: 'colleagues',
-    groupPriority: 10,
-    timeVis: 'busy',
-    fields: {},
-    revealAt: null,
-    expiresAt: null,
-  },
-]
 
 /**
  * Tier A facts in, `EventPayload` out.
@@ -135,8 +114,33 @@ const toPayload = (occurrence: OccurrenceView, timezone: string): EventPayload =
   }),
 })
 
-export function redactPage(page: CalendarPage, audience: AudienceId, now: string): RedactedPage {
-  const viewer = viewerFor(audience)
+/**
+ * Everything the engine needs that is not the calendar itself.
+ *
+ * Passed in rather than read here, so this module stays pure and the contract test that
+ * compares server redaction against client View As can feed both the same inputs.
+ */
+export interface RedactionContext {
+  readonly workspaceId: string
+  readonly workspaceRules: readonly VisibilityRule[]
+  readonly rulesByEvent: ReadonlyMap<string, readonly VisibilityRule[]>
+  /** Group membership per contact, for resolving an individual viewer's group rules. */
+  readonly groupsByContact: ReadonlyMap<string, readonly string[]>
+  /**
+   * What an audience with NO rule sees. Hidden, and it has to be: a calendar that defaulted
+   * to visible would disclose everything the moment someone was added as a contact and before
+   * anyone decided what they should see.
+   */
+  readonly defaultTimeVis: 'exact' | 'busy' | 'hidden'
+}
+
+export function redactPage(
+  page: CalendarPage,
+  audience: AudienceId,
+  now: string,
+  context: RedactionContext,
+): RedactedPage {
+  const viewer = viewerFor(audience, (id) => context.groupsByContact.get(id) ?? [])
   const occurrences: RedactedOccurrence[] = []
   let withheldCount = 0
 
@@ -144,16 +148,18 @@ export function redactPage(page: CalendarPage, audience: AudienceId, now: string
     const input: EvaluateInput = {
       event: {
         eventId: occurrence.eventId,
-        workspaceId: 'ws-demo',
+        workspaceId: context.workspaceId,
         lifecycle: 'active',
-        rules: [],
+        // Per-event overrides. This was always `[]`, so an event-scoped rule could be stored
+        // and would never be applied — the engine supported them and nothing fed them in.
+        rules: context.rulesByEvent.get(occurrence.eventId) ?? [],
       },
       viewer,
       workspace: {
-        workspaceId: 'ws-demo',
-        timeVis: 'hidden',
+        workspaceId: context.workspaceId,
+        timeVis: context.defaultTimeVis,
         fields: {},
-        rules: WORKSPACE_RULES,
+        rules: context.workspaceRules,
       },
       now,
       policyVersion: 'v1',

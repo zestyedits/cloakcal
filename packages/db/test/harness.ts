@@ -107,6 +107,7 @@ const MIGRATIONS = [
   '0014_cancel_occurrence.sql',
   '0015_cloak_subject_contacts.sql',
   '0016_contacts_and_groups.sql',
+  '0017_contact_and_rule_rpcs.sql',
 ] as const
 
 export interface QueryResult {

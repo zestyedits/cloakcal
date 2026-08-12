@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 723 unit tests
+pnpm test                # 737 unit tests
 pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -181,7 +181,28 @@ storing the same people in the clear one table over would make that pointless. T
 that the server cannot answer "is this email a contact of yours?", which booking will
 eventually need; ADR 0004 lists the options and rules out "add a plaintext column".
 
-Schema only so far. Nothing reads or writes these yet, so `audience.ts` still uses demo rules.
+**View As now reads real rules.** 0017 adds `upsert_contact`, `delete_contact`,
+`set_visibility_rule` and `delete_visibility_rule`; `server/visibility.ts` loads contacts,
+groups and stored rules; `audience.ts` takes them as an argument. `DEMO_AUDIENCES`,
+`WORKSPACE_RULES` and the `'ws-demo'` literal are gone from production code — they now live in
+`dev-fixture.ts` behind the dev gate, because the e2e privacy suite genuinely needs a
+restricted audience to assert against and the fixture is the honest place for demo data.
+
+Two consequences of ADR 0004 show up here rather than being avoided:
+- **The server cannot label the audience picker.** Contact names are ciphertext, so
+  `ViewAsBar` decrypts them via `useCloakedLabels`. Before unlock it shows `Contact 4f2a…`,
+  which is what the server actually sees.
+- **Rules have no version guard**, breaking the house RPC pattern on purpose. A rule is a row
+  you overwrite by choosing a different radio button; last-write-wins IS the semantics, and a
+  version column would put "someone else changed this, reload" in front of a double-click.
+
+A partial unique index makes two rules for one audience unrepresentable. Two rows would be
+resolved by the engine's tiebreak — deterministic, and still meaning the UI showed one setting
+with a shadow of the previous one behind it.
+
+**Still missing for sharing to be real:** nothing can be sent to anyone. `access_envelopes`
+is still unused, and `deriveFieldKey` returns a NON-EXTRACTABLE key, so envelope material
+cannot be read out of it. That is the next crypto change and it needs an ADR.
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.

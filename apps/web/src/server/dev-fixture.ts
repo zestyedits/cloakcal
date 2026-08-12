@@ -1,4 +1,6 @@
 import { expandSeries } from '@cloakcal/domain'
+import type { VisibilityRule } from '@cloakcal/policy'
+import type { AudienceOption } from '@/lib/audiences'
 import fixture from './events.fixture.json' with { type: 'json' }
 import type { CalendarPage, CalendarRange, OccurrenceView } from './events'
 import { isoLocalFromUtc } from './local-time'
@@ -27,6 +29,62 @@ export const DEMO_WEEK: CalendarRange = {
   from: '2026-05-18T00:00:00-04:00',
   to: '2026-05-25T00:00:00-04:00',
 }
+
+/**
+ * Audiences and rules for the fixture.
+ *
+ * These ARE the old `DEMO_AUDIENCES` and `WORKSPACE_RULES`, moved out of
+ * `server/audience.ts` and behind the same gate as the fixture events. That is the point of
+ * the move: in production those constants made View As demonstrate the engine rather than
+ * control it, but the end-to-end privacy suite genuinely needs a restricted audience to
+ * assert against — the tests that check a withheld title is absent from the HTML are
+ * meaningless without someone to withhold it from.
+ *
+ * So the demo data stays, in the one place that is honestly labelled demo data, and cannot
+ * reach a production build. Real contacts come from the database.
+ *
+ * The ids are the literals the e2e suite navigates to (`?as=contact:sarah`), not uuids.
+ * Nothing validates them as uuids on this path because nothing here touches Postgres.
+ */
+export const FIXTURE_AUDIENCES: readonly AudienceOption[] = [
+  { id: 'owner', kind: 'owner' },
+  { id: 'sarah', kind: 'individual' },
+  { id: 'alex', kind: 'individual' },
+  { id: 'public', kind: 'public' },
+]
+
+/**
+ * Chosen to exercise the interesting paths rather than to flatter the engine: Sarah gets a
+ * title and an exact time, colleagues get busy-only, and the public gets nothing because no
+ * rule mentions them.
+ */
+export const FIXTURE_RULES: readonly VisibilityRule[] = [
+  {
+    id: 'fixture-sarah-limited',
+    scope: 'workspace',
+    audience: 'individual',
+    audienceRef: 'sarah',
+    groupPriority: null,
+    timeVis: 'exact',
+    fields: { title: 'visible' },
+    revealAt: null,
+    expiresAt: null,
+  },
+  {
+    id: 'fixture-colleagues-busy',
+    scope: 'workspace',
+    audience: 'group',
+    audienceRef: 'colleagues',
+    groupPriority: 10,
+    timeVis: 'busy',
+    fields: {},
+    revealAt: null,
+    expiresAt: null,
+  },
+]
+
+/** Alex is the colleague; Sarah is not, so the two rules above land differently. */
+export const FIXTURE_GROUPS = new Map<string, readonly string[]>([['alex', ['colleagues']]])
 
 export function isDevFixtureEnabled(): boolean {
   return (
@@ -117,5 +175,9 @@ export function getFixturePage(): CalendarPage {
     to: range.to,
     calendars: fixture.calendars,
     occurrences,
+    // No workspace behind the fixture, so no contacts and no stored rules to load. The page
+    // falls back to owner-and-public, which is the honest thing to show for data that has
+    // no owner.
+    workspaceId: null,
   }
 }

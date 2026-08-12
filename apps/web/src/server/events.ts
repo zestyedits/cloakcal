@@ -77,6 +77,12 @@ export interface CalendarPage {
   readonly to: string
   readonly calendars: readonly CalendarMeta[]
   readonly occurrences: readonly OccurrenceView[]
+  /**
+   * Null in fixture mode, and only there. The page needs it to load the workspace's contacts
+   * and visibility rules; returning it here rather than looking the workspace up a second
+   * time keeps one definition of "which workspace is this" — the oldest active one.
+   */
+  readonly workspaceId: string | null
 }
 
 export interface CalendarRange {
@@ -91,6 +97,7 @@ export const EMPTY_PAGE = (range: CalendarRange, timezone: string): CalendarPage
   to: range.to,
   calendars: [],
   occurrences: [],
+  workspaceId: null,
 })
 
 interface FieldRow {
@@ -281,6 +288,6 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
 
   occurrences.sort((a, b) => a.startInstant.localeCompare(b.startInstant))
 
-  return { timezone, from: range.from, to: range.to, calendars, occurrences }
+  return { timezone, from: range.from, to: range.to, calendars, occurrences, workspaceId: workspace.id }
 }
 

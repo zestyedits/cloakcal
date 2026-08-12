@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
+import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
@@ -70,7 +71,7 @@ export function CalendarScreen({
   composeDate,
 }: {
   page: RedactedPage
-  audiences: ReadonlyArray<{ id: string; label: string }>
+  audiences: readonly AudienceOption[]
   heading: string
   /* URL objects rather than strings: `typedRoutes` will not accept a computed href string,
      and a UrlObject is the escape hatch Next provides for exactly this — a fixed pathname

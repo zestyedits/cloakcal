@@ -48,13 +48,57 @@ const page: CalendarPage = {
   to: '2026-05-25T00:00:00Z',
   calendars: [{ id: 'cal-1', colorToken: 'indigo', fields: [] }],
   occurrences: [occurrence('event-1', 7, true), occurrence('event-2', 1, false)],
+  workspaceId: 'ws-test',
 }
 
 const NOW = '2026-05-18T12:00:00Z'
 
+/**
+ * The rules this test used to get for free.
+ *
+ * `redactPage` read two hardcoded demo rules out of a module constant; it now takes them as
+ * an argument, because the real ones live in the database. Declaring them here keeps the
+ * test's subject unchanged — it is about which METADATA reaches which audience, not about
+ * where rules come from — while making the inputs visible instead of ambient.
+ *
+ * Sarah sees titles so her occurrences survive redaction with content attached, which makes
+ * her the audience most likely to be handed owner-only fields by accident. That is the point
+ * of the test and the reason her rule has to stay generous.
+ */
+const CONTEXT = {
+  workspaceId: 'ws-test',
+  workspaceRules: [
+    {
+      id: 'r-sarah',
+      scope: 'workspace' as const,
+      audience: 'individual' as const,
+      audienceRef: 'sarah',
+      groupPriority: null,
+      timeVis: 'exact' as const,
+      fields: { title: 'visible' as const },
+      revealAt: null,
+      expiresAt: null,
+    },
+    {
+      id: 'r-colleagues',
+      scope: 'workspace' as const,
+      audience: 'group' as const,
+      audienceRef: 'colleagues',
+      groupPriority: 10,
+      timeVis: 'busy' as const,
+      fields: {},
+      revealAt: null,
+      expiresAt: null,
+    },
+  ],
+  rulesByEvent: new Map(),
+  groupsByContact: new Map([['alex', ['colleagues']]]),
+  defaultTimeVis: 'hidden' as const,
+}
+
 describe('delete metadata is owner-only', () => {
   it('gives the owner the version and recurrence flag it needs to delete', () => {
-    const redacted = redactPage(page, 'owner', NOW)
+    const redacted = redactPage(page, 'owner', NOW, CONTEXT)
 
     expect(redacted.occurrences).toHaveLength(2)
     expect(redacted.occurrences.map((o) => [o.version, o.recurring])).toEqual([
@@ -68,7 +112,7 @@ describe('delete metadata is owner-only', () => {
   it.each<AudienceId>(['contact:sarah', 'contact:alex', 'public'])(
     'withholds both from %s',
     (audience) => {
-      const redacted = redactPage(page, audience, NOW)
+      const redacted = redactPage(page, audience, NOW, CONTEXT)
 
       for (const shown of redacted.occurrences) {
         expect(shown.version).toBeUndefined()
@@ -89,6 +133,6 @@ describe('delete metadata is owner-only', () => {
   it('is not a vacuous test — sarah does receive occurrences to check', () => {
     // Without this, the loop above would pass trivially the day redaction started
     // withholding everything from Sarah for an unrelated reason.
-    expect(redactPage(page, 'contact:sarah', NOW).occurrences.length).toBeGreaterThan(0)
+    expect(redactPage(page, 'contact:sarah', NOW, CONTEXT).occurrences.length).toBeGreaterThan(0)
   })
 })

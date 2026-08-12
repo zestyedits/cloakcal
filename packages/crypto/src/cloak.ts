@@ -40,7 +40,16 @@ const KEY_BYTES = 32
  */
 export type CloakBytes = Uint8Array<ArrayBuffer>
 
-export type CloakSubjectType = 'event' | 'calendar' | 'workspace'
+/**
+ * Mirrors the `public.cloak_subject` enum. `contact` and `contact_group` were added in
+ * migration 0015 so contact names and group labels could be Cloaked (ADR 0004) — the AAD and
+ * the per-field key salt both include the subject type, so a value missing here cannot be
+ * sealed or opened at all.
+ *
+ * Adding a value to the database enum without adding it here is a silent half-migration: the
+ * row stores fine and nothing can ever read it back.
+ */
+export type CloakSubjectType = 'event' | 'calendar' | 'workspace' | 'contact' | 'contact_group'
 
 export interface CloakSubject {
   readonly type: CloakSubjectType
