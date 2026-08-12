@@ -1,7 +1,7 @@
 export { evaluate } from './evaluate.js'
 export { redact, type CiphertextField, type EventPayload, type RedactedEvent } from './redact.js'
 export { redactForRecipient } from './server.js'
-export { explainDecision, previewAs } from './view-as.js'
+export { decisionToLevel, explainDecision, previewAs, type DisclosureLevel } from './view-as.js'
 export {
   POLICY_VERSION,
   STANDARD_FIELDS,

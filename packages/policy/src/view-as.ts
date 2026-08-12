@@ -34,6 +34,33 @@ const list = (names: string[]): string =>
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
 
 /**
+ * The four-step privacy scale the product renders as chips and preset tiles.
+ *
+ * Same strings as `PRIVACY_LEVELS` in @cloakcal/ui, declared here independently because
+ * this package is deliberately dependency-free — the union is the contract, and a unit
+ * test on the UI side keeps the two aligned.
+ */
+export type DisclosureLevel = 'full' | 'limited' | 'busy' | 'hidden'
+
+/**
+ * Collapse a Decision onto the four-step scale.
+ *
+ * This lives IN the engine because it is an interpretation of a visibility decision, and
+ * rule 3 allows exactly one interpreter. A UI that mapped decisions to levels with its own
+ * if-chain would be a second implementation that drifts silently.
+ *
+ * "Limited" is anything between busy and everything: exact time plus some-but-not-all
+ * fields — including the degenerate "exact time, no fields", which still discloses more
+ * than a busy block does (the precise span, that it recurs, which calendar colours it).
+ */
+export function decisionToLevel(decision: Decision): DisclosureLevel {
+  if (!decision.eventVisible || decision.time === 'hidden') return 'hidden'
+  if (decision.time === 'busy') return 'busy'
+  const verdicts = Object.values(decision.fields)
+  return verdicts.length > 0 && verdicts.every((v) => v === 'visible') ? 'full' : 'limited'
+}
+
+/**
  * Plain-language consequence for the privacy UI (spec §2).
  *
  * Phrased from the recipient point of view, because that is the question a user is

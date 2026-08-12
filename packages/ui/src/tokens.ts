@@ -95,6 +95,17 @@ const DARK = {
   gradientDeepEnd: '#6152e6',
   gradientDeepHoverStart: '#5b21b6',
   gradientDeepHoverEnd: '#5a4cd8',
+  /* Privacy chip inks against their quiet washes COMPOSITED over --surface-raised —
+   * the alpha wash alone has no contrast to measure. Composited by the same math as
+   * textSecondary above; the alphas live in tokens.css. */
+  privacyFullInk: '#4fe0bb',
+  privacyFullChip: '#183437', // rgba(34,211,166,0.14) over #161a25
+  privacyLimitedInk: '#b8b0ff',
+  privacyLimitedChip: '#242548', // rgba(109,92,255,0.16) over #161a25
+  privacyBusyInk: '#f7b64e',
+  privacyBusyChip: '#3a3025', // rgba(245,165,36,0.16) over #161a25
+  privacyHiddenInk: '#9aa0b5',
+  privacyHiddenChip: '#1e2232', // rgba(42,47,69,0.4) over #161a25
 } as const
 
 const LIGHT = {
@@ -110,6 +121,14 @@ const LIGHT = {
   danger: '#c8355b',
   dangerSolid: '#c8355b',
   dangerSolidHover: '#b02b4e',
+  privacyFullInk: '#0b7a5e',
+  privacyFullChip: '#e2f3ef', // rgba(15,156,120,0.12) over #ffffff
+  privacyLimitedInk: '#4a3ac9',
+  privacyLimitedChip: '#eeedfc', // rgba(88,71,224,0.10) over #ffffff
+  privacyBusyInk: '#8a5600',
+  privacyBusyChip: '#f5ede0', // rgba(168,106,0,0.12) over #ffffff
+  privacyHiddenInk: '#3f4459',
+  privacyHiddenChip: '#e5e6e9', // rgba(42,47,69,0.12) over #ffffff
 } as const
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
@@ -155,6 +174,16 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'gradient/label on deep end', foreground: DARK.textPrimary, background: DARK.gradientDeepEnd, minimum: 4.5 },
   { name: 'gradient/label on deep hover start', foreground: DARK.textPrimary, background: DARK.gradientDeepHoverStart, minimum: 4.5 },
   { name: 'gradient/label on deep hover end', foreground: DARK.textPrimary, background: DARK.gradientDeepHoverEnd, minimum: 4.5 },
+  /*
+   * Privacy chip ink on its composited wash. The raw --privacy-* colours are NOT here as
+   * shapes on purpose: hidden's slate is 1.32:1 on the dark raised surface by design (a
+   * hidden event should barely be there), which is exactly why nothing may render the raw
+   * colour as the sole carrier — the chip always shows ink + icon + label.
+   */
+  { name: 'dark/privacy full ink on chip', foreground: DARK.privacyFullInk, background: DARK.privacyFullChip, minimum: 4.5 },
+  { name: 'dark/privacy limited ink on chip', foreground: DARK.privacyLimitedInk, background: DARK.privacyLimitedChip, minimum: 4.5 },
+  { name: 'dark/privacy busy ink on chip', foreground: DARK.privacyBusyInk, background: DARK.privacyBusyChip, minimum: 4.5 },
+  { name: 'dark/privacy hidden ink on chip', foreground: DARK.privacyHiddenInk, background: DARK.privacyHiddenChip, minimum: 4.5 },
 
   { name: 'light/body on base', foreground: LIGHT.textPrimary, background: LIGHT.surfaceBase, minimum: 4.5 },
   { name: 'light/body on raised', foreground: LIGHT.textPrimary, background: LIGHT.surfaceRaised, minimum: 4.5 },
@@ -168,6 +197,10 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/danger chip on raised', foreground: LIGHT.danger, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/label on solid danger', foreground: DARK.textPrimary, background: LIGHT.dangerSolid, minimum: 4.5 },
   { name: 'light/label on solid danger hover', foreground: DARK.textPrimary, background: LIGHT.dangerSolidHover, minimum: 4.5 },
+  { name: 'light/privacy full ink on chip', foreground: LIGHT.privacyFullInk, background: LIGHT.privacyFullChip, minimum: 4.5 },
+  { name: 'light/privacy limited ink on chip', foreground: LIGHT.privacyLimitedInk, background: LIGHT.privacyLimitedChip, minimum: 4.5 },
+  { name: 'light/privacy busy ink on chip', foreground: LIGHT.privacyBusyInk, background: LIGHT.privacyBusyChip, minimum: 4.5 },
+  { name: 'light/privacy hidden ink on chip', foreground: LIGHT.privacyHiddenInk, background: LIGHT.privacyHiddenChip, minimum: 4.5 },
 ]
 
 /** WCAG 2.1 relative luminance. */

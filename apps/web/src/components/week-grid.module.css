@@ -191,6 +191,20 @@
   white-space: nowrap;
 }
 
+/* The block's second line, per the board: privacy level when restricted, calendar name
+   otherwise. Secondary ink — the title keeps the emphasis — and the icon travels with the
+   label so the meaning never rides on colour. Short blocks clip it through the block's
+   own overflow: hidden, title first. */
+.privacyNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dstNote {
   color: var(--status-warning);
 }
