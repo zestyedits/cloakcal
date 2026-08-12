@@ -85,3 +85,66 @@ export async function deriveRecoveryWrapKey(phrase: string): Promise<CryptoKey> 
     ['encrypt', 'decrypt'],
   )
 }
+
+/** 24 words, 256 bits plus checksum. Exported so the UI does not hardcode the count. */
+export const RECOVERY_WORD_COUNT = 24
+
+/**
+ * Split whatever a person pasted into exactly 24 slots.
+ *
+ * People paste from a screenshot, a PDF, a password manager, or a numbered list. Line breaks,
+ * double spaces, non-breaking spaces and stray capitals are all the RIGHT phrase entered by a
+ * real person, so all of them must land in the right boxes. Short input is padded and long
+ * input keeps its overflow visible rather than being silently truncated — a phrase quietly cut
+ * to 24 words would fail the checksum with no clue why.
+ */
+export function splitRecoveryPhrase(input: string): string[] {
+  const trimmed = input.normalize('NFKD').trim()
+  if (trimmed === '') return Array.from({ length: RECOVERY_WORD_COUNT }, () => '')
+
+  const words = trimmed
+    .toLowerCase()
+    // Numbered lists paste as "1. abandon 2. ability". Strip the ordinals rather than
+    // treating them as words, because that is a real thing our own kit file produces.
+    .replace(/\b\d{1,2}[.)]\s*/gu, '')
+    .split(/\s+/u)
+
+  return words.length >= RECOVERY_WORD_COUNT
+    ? words
+    : [...words, ...Array.from({ length: RECOVERY_WORD_COUNT - words.length }, () => '')]
+}
+
+/**
+ * Is this a word from the BIP-39 English list?
+ *
+ * SAFE TO SHOW, and worth being explicit about why: the wordlist is a public constant, so
+ * telling someone "zzzz is not a BIP-39 word" reveals nothing about THEIR phrase. What must
+ * never be offered is validation against the real phrase — "word 7 is wrong" would turn the
+ * form into an oracle that recovers the phrase one word at a time.
+ *
+ * So the UI may flag a word that is not in the list, and may report that the whole phrase
+ * fails its checksum, and nothing finer than that.
+ */
+export function isRecoveryWord(word: string): boolean {
+  return wordlist.includes(word.normalize('NFKD').trim().toLowerCase())
+}
+
+/**
+ * Autocomplete candidates for a partly-typed word.
+ *
+ * BIP-39's English list is mutual-prefix-unique at four letters, so four characters always
+ * narrows to one. Fewer than two is not worth suggesting — the list is 2048 words and a
+ * single letter matches over a hundred.
+ */
+export function completeRecoveryWord(prefix: string, limit = 8): string[] {
+  const p = prefix.normalize('NFKD').trim().toLowerCase()
+  if (p.length < 2) return []
+  const out: string[] = []
+  for (const word of wordlist) {
+    if (word.startsWith(p)) {
+      out.push(word)
+      if (out.length === limit) break
+    }
+  }
+  return out
+}

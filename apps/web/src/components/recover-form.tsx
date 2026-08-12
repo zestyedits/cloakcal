@@ -11,6 +11,7 @@ import {
 } from '@/lib/cloak-session'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { CloakLockup } from './cloak-logo'
+import { RecoveryPhraseInput } from './recovery-phrase-input'
 import styles from './auth.module.css'
 
 /**
@@ -228,24 +229,12 @@ export function RecoverForm() {
       {screen === 'reset' && (
         <div className={styles.form}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="recover-phrase">
-              Your 24-word recovery phrase
-            </label>
-            <textarea
-              id="recover-phrase"
-              className={styles.textarea}
-              required
-              rows={3}
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={busy}
+            <RecoveryPhraseInput
+              label="Your 24-word recovery phrase"
               value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              aria-describedby="recover-phrase-hint"
+              disabled={busy}
+              onChange={setPhrase}
             />
-            <p id="recover-phrase-hint" className={styles.hint}>
-              Separated by spaces. Extra spacing and capitals do not matter.
-            </p>
           </div>
 
           <div className={styles.field}>

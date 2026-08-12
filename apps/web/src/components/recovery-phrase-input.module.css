@@ -1,0 +1,98 @@
+/* Twenty-four word boxes. Dense enough to see the whole phrase at once, because "is word 19
+   missing" is a question you can only answer by looking at all of them together. */
+
+.wrap {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.hint {
+  margin: var(--space-2) 0 var(--space-3) 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--text-tertiary);
+}
+
+.grid {
+  display: grid;
+  /* Three columns on a phone, four once there is room. Fixed counts rather than auto-fit:
+     the ordinals are the point, and a reflow that puts word 13 under word 11 makes checking
+     against a numbered list harder than no numbers at all. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 520px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ordinal {
+  flex: none;
+  /* 2ch, not 1.6: the two-digit ordinals (10-24) were stealing width from the input and
+     clipping the longer BIP-39 words. A phrase you cannot read back is not much use. */
+  width: 2ch;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.input {
+  min-width: 0;
+  width: 100%;
+  /* Below --touch-min on purpose, and the only place in the app that is true: 24 targets at
+     44px is a 500px-tall wall of boxes. They sit in a grid with generous gaps, they are text
+     inputs rather than buttons, and the whole field is reachable by Tab. */
+  min-height: 36px;
+  /* Tight horizontal padding. The longest words in the list are eight characters and they
+     have to fit inside a third of a phone screen; "sausage" was being cut off. */
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.input:focus-visible {
+  border-color: var(--accent);
+}
+
+/* Not an error state — a "that is not a BIP-39 word" state, which is often just a half-typed
+   word. Amber rather than red, and no icon, so it reads as guidance while you are typing. */
+.unknown {
+  border-color: var(--status-warning);
+}
+
+.status {
+  margin: var(--space-3) 0 0 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}

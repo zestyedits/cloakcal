@@ -9,6 +9,7 @@ import {
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
 import { RecoveryPhrase } from './recovery-phrase'
+import { RecoveryPhraseInput } from './recovery-phrase-input'
 import styles from './auth.module.css'
 
 /**
@@ -170,17 +171,11 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
         </div>
       ) : (
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="reissue-phrase">
-            Current recovery phrase
-          </label>
-          <textarea
-            id="reissue-phrase"
-            className={styles.textarea}
-            rows={3}
-            required
+          <RecoveryPhraseInput
+            label="Current recovery phrase"
             value={phrase}
             disabled={working !== null}
-            onChange={(e) => setPhrase(e.target.value)}
+            onChange={setPhrase}
           />
         </div>
       )}
