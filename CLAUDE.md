@@ -81,11 +81,12 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 681 unit tests
+pnpm test                # 708 unit tests
 pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
+pnpm email:templates     # write the branded emails to .email-preview/ to read or paste
 ```
 
 **`pnpm build` comes before `pnpm test` on a fresh clone.** `build-output.leak.test.ts`
@@ -359,6 +360,33 @@ and re-add.
   one (`touch_updated_at`, fixed in 0010). Use `db.asUnauthenticated(...)`, not
   `db.asAnon(...)`, for privilege assertions: `asAnon` is the `authenticated` role without a
   subject, which is a different thing entirely.
+
+## Email, and the two things that surprised us
+
+**Delivery works.** Confirmed 2026-08-12: a real password reset landed in a real inbox, from
+Resend via Supabase SMTP. That had been unverified since `pnpm email:setup` ran.
+
+**Signing up with an address that already has an account sends NOTHING, and returns success.**
+Supabase does that on purpose — a form that said "that address is taken" is an account
+enumeration oracle, and for this product "does this person use a privacy calendar" is often
+more sensitive than any event it holds. The confirmation screen used to claim "We sent a
+confirmation link to X", which was simply false in that case and left the user waiting.
+It now covers both cases without resolving which, and offers sign-in AND reset either way.
+`signup-enumeration.client.test.ts` forbids branching on `data.user.identities`, which is the
+documented tell and the tempting "fix".
+
+**The recovery link is PKCE, so it comes back as `?code=`, not a URL fragment.**
+`@supabase/ssr`'s `createBrowserClient` hardcodes `flowType: 'pkce'`. The consequence is real:
+the exchange needs a `code_verifier` stored in the browser that ASKED, so requesting on a
+laptop and opening on a phone cannot work. It used to fail silently — no session, so
+`/recover` fell back to the "enter your email" form and the user requested another link that
+would fail identically, forever. It now says which of the two things went wrong.
+
+**Templates live in `tools/email-templates.ts`** and are installed by `pnpm email:setup`.
+**No remote images, deliberately** — an `<img>` in an email is a tracking pixel, and shipping
+one from a privacy product is indefensible even if nobody reads the logs. The wordmark is
+text, so it always renders and cannot be blocked. Both templates warn about the two things
+above: recovery says you need the 24 words and must open it in the same browser.
 
 ## Working style
 

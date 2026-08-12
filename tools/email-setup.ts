@@ -37,6 +37,12 @@
 import { execFile } from 'node:child_process'
 import { isSpfRecord, mergeSpf } from './spf.js'
 import { promisify } from 'node:util'
+import {
+  CONFIRMATION_HTML,
+  CONFIRMATION_SUBJECT,
+  RECOVERY_HTML,
+  RECOVERY_SUBJECT,
+} from './email-templates.js'
 
 const run = promisify(execFile)
 
@@ -505,6 +511,27 @@ async function configureSupabaseSmtp(config: Config, sendKey: string): Promise<v
     site_url: config.siteUrl,
   }
 
+  // Branded templates. Supabase's defaults are an unstyled sentence and a naked link, which
+  // is both off-brand and the exact shape of a phishing mail — a bad look for the one message
+  // that asks somebody to click through and change a credential.
+  //
+  // Same read-then-write discipline as the SMTP keys above: set these only if the live config
+  // actually exposes them, so a renamed field fails loudly here instead of silently no-opping
+  // and leaving the defaults in place looking configured.
+  const templateFields: Record<string, string> = {
+    mailer_subjects_recovery: RECOVERY_SUBJECT,
+    mailer_templates_recovery_content: RECOVERY_HTML,
+    mailer_subjects_confirmation: CONFIRMATION_SUBJECT,
+    mailer_templates_confirmation_content: CONFIRMATION_HTML,
+  }
+  for (const [key, value] of Object.entries(templateFields)) {
+    if (key in before) {
+      patch[key] = value
+    } else {
+      warn(`no ${key} field in this API version — set that template in the dashboard`)
+    }
+  }
+
   // The redirect allowlist key is not in the documented example, so set it only if the live
   // config confirms it exists. Guessing here would silently drop the setting.
   if ('uri_allow_list' in before) {
@@ -519,7 +546,7 @@ async function configureSupabaseSmtp(config: Config, sendKey: string): Promise<v
   }
 
   await supabase(config, `/projects/${config.supabaseRef}/config/auth`, { method: 'PATCH', body: patch })
-  ok('SMTP configured, confirmation emails enabled, site URL set')
+  ok('SMTP configured, branded templates installed, confirmation enabled, site URL set')
 }
 
 async function pushVercelEnv(config: Config, sendKey: string): Promise<void> {

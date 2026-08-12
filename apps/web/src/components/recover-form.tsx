@@ -51,22 +51,67 @@ export function RecoverForm() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  // The emailed link carries its token in the URL fragment, which supabase-js consumes on
-  // load. That is asynchronous, so a session can appear a tick after mount — hence listening
-  // rather than checking once and concluding nobody is here.
+  /**
+   * Work out whether the visitor arrived from a recovery link, and say so when they did but
+   * it did not work.
+   *
+   * THE LINK COMES BACK AS `?code=`, NOT A FRAGMENT. An earlier version of this comment said
+   * the token arrives in the URL hash. That is the IMPLICIT flow; `@supabase/ssr`'s
+   * `createBrowserClient` hardcodes `flowType: 'pkce'`, so GoTrue redirects here with an
+   * authorisation code in the query string which supabase-js exchanges for a session.
+   *
+   * PKCE has a consequence that WILL happen to real people: the exchange needs a
+   * `code_verifier` that was stored in this browser when the reset was requested. Request the
+   * link on a laptop, open it on a phone, and the code is worthless — which is the whole
+   * point of PKCE, and is more secure than the alternative, but it is not nothing to the
+   * person holding the phone.
+   *
+   * Until now that failed SILENTLY. No session appeared, so the screen fell back to "enter
+   * your email", and the user concluded the link was broken and requested another one, which
+   * would fail the same way forever. A dead end that looks like a working form is worse than
+   * an error.
+   *
+   * So a code in the URL is treated as a promise: if it does not produce a session, say why.
+   */
   useEffect(() => {
     const supabase = supabaseBrowser()
     let cancelled = false
 
+    const url = new URL(globalThis.location.href)
+    const hasCode = url.searchParams.has('code')
+    // GoTrue reports an unusable link in the FRAGMENT, even under PKCE — an expired or
+    // already-used token never becomes a code, so it never reaches the query string.
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ''))
+    const linkError = hash.get('error_description') ?? hash.get('error')
+
     void supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setScreen(data.session === null ? 'request' : 'reset')
+      if (cancelled) return
+      if (data.session !== null) {
+        setScreen('reset')
+        return
+      }
+      if (linkError !== null) {
+        setError(
+          'That link has expired or was already used. Request a new one below — they are ' +
+            'single-use and short-lived on purpose.',
+        )
+      } else if (hasCode) {
+        // Only reachable when the exchange failed, which in practice means a different
+        // browser or cleared storage.
+        setError(
+          'This link has to be opened in the same browser that asked for it, on the same ' +
+            'device. Request a new one here and open it from this browser.',
+        )
+      }
+      setScreen('request')
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled || session === null) return
       // Only ever moves forward. Sending a half-filled reset form back to the email step
       // because a token refreshed would discard a phrase the user just typed.
-      setScreen((current) => (current === 'reset' ? current : 'reset'))
+      setScreen('reset')
+      setError(null)
     })
 
     return () => {

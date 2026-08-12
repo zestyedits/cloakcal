@@ -31,3 +31,7 @@ apps/web/next-env.d.ts
 *\ [0-9].css
 *\ [0-9].json
 *\ [0-9].md
+
+# Generated previews of the transactional emails (tools/render-email-templates.ts).
+# Artefacts of email-templates.ts; committing them would create a second copy to drift.
+.email-preview/

@@ -107,14 +107,47 @@ export function AuthForm({ mode }: { mode: Mode }) {
   if (stage.kind === 'confirm-email') {
     return (
       <div className={styles.card}>
-        <h1 className={styles.title}>Check your email</h1>
+        <h1 className={styles.title}>Check your inbox</h1>
+        {/*
+          THIS SCREEN MUST NOT SAY WHETHER THE ADDRESS IS ALREADY REGISTERED, and it also must
+          not claim an email was definitely sent.
+
+          Signing up with an address that already has an account returns success and sends
+          NOTHING. That is Supabase behaving correctly: a form that answered "that address is
+          taken" would be a free tool for discovering who uses CloakCal — account enumeration
+          — and for a privacy product that is a worse leak than most of what the app encrypts.
+
+          The old copy here read "We sent a confirmation link to {email}", which is a claim
+          this page cannot make. Someone who already had an account was told to wait for mail
+          that was never coming, with no way to tell that from a delivery failure. That is how
+          this was found.
+
+          So the copy covers both cases without resolving which, and — the part that actually
+          matters — hands over the two escape routes either way.
+
+          DO NOT "improve" this by branching on `data.user.identities.length === 0`, which is
+          the documented tell for an existing account. It would reintroduce the leak in
+          client-side code, where it is easiest to miss and easiest to script against.
+        */}
         <p className={styles.lede}>
-          We sent a confirmation link to {email}. Open it, then sign in — your keys are generated on
-          your first sign-in, on your device.
+          If <strong>{email}</strong> is new here, a confirmation link is on its way. Open it,
+          then sign in — your keys are created on your device, at first sign-in.
         </p>
-        <Link href="/sign-in" className={styles.submit} style={{ textAlign: 'center', lineHeight: '44px', textDecoration: 'none' }}>
+        <p className={styles.lede}>
+          <strong>Nothing arrives?</strong> You may already have an account. This page will not
+          say which, deliberately: if it did, anyone could use it to find out who has a CloakCal
+          account. Try signing in, or reset your password.
+        </p>
+        <Link
+          href="/sign-in"
+          className={styles.submit}
+          style={{ textAlign: 'center', lineHeight: '44px', textDecoration: 'none' }}
+        >
           Go to sign in
         </Link>
+        <p className={styles.hint} style={{ textAlign: 'center' }}>
+          <Link href="/recover">Reset your password</Link>
+        </p>
       </div>
     )
   }
