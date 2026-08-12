@@ -1,0 +1,22 @@
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-overlay);
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning);
+}

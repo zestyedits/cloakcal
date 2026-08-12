@@ -11,6 +11,7 @@ import {
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
 import { CloakLockup } from './cloak-logo'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -90,11 +91,7 @@ export function ChangePassword({ email }: { email: string }) {
         phrase keeps working.
       </p>
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError>{error}</InlineError>
 
       {done && (
         <p className={styles.notice} role="status">

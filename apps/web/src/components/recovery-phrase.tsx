@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { normalizeRecoveryPhrase } from '@cloakcal/crypto'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -172,11 +173,7 @@ export function RecoveryPhrase({
         thing that matters.
       </p>
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError>{error}</InlineError>
 
       <div className={styles.form}>
         {challenge.map((index) => (

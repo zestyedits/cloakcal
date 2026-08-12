@@ -10,6 +10,7 @@ import {
 } from '@/lib/cloak-session'
 import { RecoveryPhrase } from './recovery-phrase'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
+import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
 /**
@@ -180,11 +181,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
         </div>
       )}
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError>{error}</InlineError>
 
       <button type="submit" className={styles.submit} disabled={working !== null}>
         {working ?? 'Issue a new phrase'}
