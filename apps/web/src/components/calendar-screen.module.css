@@ -181,6 +181,25 @@
   background: var(--surface-overlay);
 }
 
+/* Availability's new home, once the chip slot went to privacy: a quiet word under the
+   time. Success ink on the raised row is a 3:1-checked pair, and "Free" is never the
+   only carrier — the time itself is right above it. */
+.freeNote {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--status-success);
+}
+
+/* The unrestricted case: the second label is the calendar name, quiet, no chip dress. */
+.calendarNote {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .busy[data-busy='free'] {
   color: var(--status-success);
   background: var(--privacy-full-quiet);

@@ -271,20 +271,58 @@
  *
  * Colour is never the sole carrier of this meaning: every privacy state also has an
  * icon and a text label. See docs/screen-inventory.md.
+ *
+ * Three tokens per level, and the split is load-bearing:
+ *   --privacy-*        the expressive colour. A SHAPE colour at best — hidden's slate is
+ *                      1.32:1 on the dark raised surface, deliberately (hidden should
+ *                      barely be there), so nothing may render it as ink or rely on it
+ *                      being seen at all.
+ *   --privacy-*-quiet  the chip background, an alpha wash over the surface beneath.
+ *   --privacy-*-ink    what text and icons on that wash use. Each ink is verified at
+ *                      4.5:1 against its quiet wash COMPOSITED over --surface-raised —
+ *                      the same twice-shipped lesson as the accent: a colour that passes
+ *                      as a shape says nothing about the label sitting on it. The
+ *                      composited hexes live in tokens.ts CONTRAST_PAIRS.
+ *
+ * Theme-scoped because the light washes need lower alpha over white, and the light inks
+ * must run darker, not lighter.
  * --------------------------------------------------------------------- */
 
-:root {
+:root,
+:root[data-theme='dark'] {
   --privacy-full: var(--status-success);
   --privacy-full-quiet: rgba(34, 211, 166, 0.14);
+  --privacy-full-ink: #4fe0bb;
 
   --privacy-limited: var(--brand-indigo);
   --privacy-limited-quiet: rgba(109, 92, 255, 0.16);
+  --privacy-limited-ink: #b8b0ff;
 
   --privacy-busy: var(--status-warning);
   --privacy-busy-quiet: rgba(245, 165, 36, 0.16);
+  --privacy-busy-ink: #f7b64e;
 
   --privacy-hidden: var(--brand-slate);
   --privacy-hidden-quiet: rgba(42, 47, 69, 0.4);
+  --privacy-hidden-ink: #9aa0b5;
+}
+
+:root[data-theme='light'] {
+  --privacy-full: var(--status-success);
+  --privacy-full-quiet: rgba(15, 156, 120, 0.12);
+  --privacy-full-ink: #0b7a5e;
+
+  --privacy-limited: var(--accent);
+  --privacy-limited-quiet: rgba(88, 71, 224, 0.1);
+  --privacy-limited-ink: #4a3ac9;
+
+  --privacy-busy: var(--status-warning);
+  --privacy-busy-quiet: rgba(168, 106, 0, 0.12);
+  --privacy-busy-ink: #8a5600;
+
+  --privacy-hidden: var(--brand-slate);
+  --privacy-hidden-quiet: rgba(42, 47, 69, 0.12);
+  --privacy-hidden-ink: #3f4459;
 }
 
 /* -----------------------------------------------------------------------

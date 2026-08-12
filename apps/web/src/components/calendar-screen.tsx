@@ -14,6 +14,7 @@ import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
 import { CloakLockup } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
+import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -222,7 +223,15 @@ export function CalendarScreen({
                         } as CSSProperties
                       }
                     >
-                      <span className={styles.time}>{timeOf(occurrence.start)}</span>
+                      <span className={styles.time}>
+                        {timeOf(occurrence.start)}
+                        {/* Availability, un-conflated from privacy: the old chip said
+                            Busy/Free where the board draws the privacy level. Free is
+                            still worth a word; it just lives with the time now. */}
+                        {page.audience === 'owner' && occurrence.busy === 'free' && (
+                          <span className={styles.freeNote}>Free</span>
+                        )}
+                      </span>
                       <span className={styles.eventBody}>
                         {/* Owner-only, same guard as Delete below. For every other audience
                             the body renders exactly as it always did — a non-owner has
@@ -267,9 +276,29 @@ export function CalendarScreen({
                           </span>
                         )}
                       </span>
-                      <span className={styles.busy} data-busy={occurrence.busy ?? 'busy'}>
-                        {occurrence.busy === 'free' ? 'Free' : 'Busy'}
-                      </span>
+                      {/* The board's rule for the second label: the privacy level when it
+                          is anything other than full — the product's whole argument, at a
+                          glance — otherwise the calendar, which is the useful fact about
+                          an unrestricted event. Non-owners keep the availability chip:
+                          the redaction they received IS their privacy information. */}
+                      {page.audience === 'owner' && occurrence.privacyLevel !== undefined ? (
+                        occurrence.privacyLevel === 'full' &&
+                        occurrence.calendarId !== undefined ? (
+                          <CloakedText
+                            className={styles.calendarNote}
+                            subjectType="calendar"
+                            subjectId={occurrence.calendarId}
+                            fieldName="display_name"
+                            placeholder="Calendar"
+                          />
+                        ) : (
+                          <PrivacyChip level={occurrence.privacyLevel} />
+                        )
+                      ) : (
+                        <span className={styles.busy} data-busy={occurrence.busy ?? 'busy'}>
+                          {occurrence.busy === 'free' ? 'Free' : 'Busy'}
+                        </span>
+                      )}
                       {/* Owner only, and only when the server actually sent a version to
                           guard the write with. Both conditions are already true together —
                           audience.ts only attaches `version` for the owner — but relying on

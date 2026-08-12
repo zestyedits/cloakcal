@@ -1,5 +1,8 @@
 import {
+  decisionToLevel,
+  evaluate,
   redactForRecipient,
+  type DisclosureLevel,
   type EvaluateInput,
   type EventPayload,
   type RedactedEvent,
@@ -47,6 +50,14 @@ export interface RedactedOccurrence extends RedactedEvent {
   readonly version?: number
   readonly recurring?: boolean
   readonly series?: OccurrenceView['series']
+  /**
+   * Owner-only, like everything above it: the MOST anyone other than the owner can see of
+   * this event — the widest disclosure across every audience that has a rule, plus the
+   * public baseline. This is the one-line answer to "how exposed is this event", which is
+   * the second line the brand board draws on every block. Computed by the engine
+   * (`decisionToLevel` over real evaluations), never by re-reading the rules here.
+   */
+  readonly privacyLevel?: DisclosureLevel
 }
 
 /**
@@ -134,27 +145,70 @@ export interface RedactionContext {
   readonly defaultTimeVis: 'exact' | 'busy' | 'hidden'
 }
 
+/** Widest first, so "the most anyone can see" is a minimum over this ranking. */
+const OPENNESS: Record<DisclosureLevel, number> = { full: 0, limited: 1, busy: 2, hidden: 3 }
+
+/**
+ * The viewers whose sightline the owner's privacy chip summarises: one per audience that
+ * a set of rules names, keyed so a contact appearing in several rules is evaluated once.
+ * Evaluating only rule-bearing audiences is not a shortcut past the engine — an audience
+ * with no rule lands on the hidden default, which cannot widen a maximum that already
+ * includes the public baseline.
+ */
+const collectRuleViewers = (
+  rules: readonly VisibilityRule[],
+  groupsFor: (contactId: string) => readonly string[],
+  into: Map<string, ViewerIdentity>,
+): void => {
+  for (const rule of rules) {
+    if (rule.audience === 'individual' && rule.audienceRef !== null) {
+      into.set(`contact:${rule.audienceRef}`, {
+        kind: 'individual',
+        contactId: rule.audienceRef,
+        groupIds: groupsFor(rule.audienceRef),
+      })
+    } else if (rule.audience === 'group' && rule.audienceRef !== null) {
+      // A group is previewed as a person whose only membership is that group — the same
+      // modelling viewerFor uses, for the same reason.
+      into.set(`group:${rule.audienceRef}`, {
+        kind: 'individual',
+        contactId: `group:${rule.audienceRef}`,
+        groupIds: [rule.audienceRef],
+      })
+    } else if (rule.audience === 'public') {
+      into.set('public', { kind: 'public' })
+    }
+  }
+}
+
 export function redactPage(
   page: CalendarPage,
   audience: AudienceId,
   now: string,
   context: RedactionContext,
 ): RedactedPage {
-  const viewer = viewerFor(audience, (id) => context.groupsByContact.get(id) ?? [])
+  const groupsFor = (id: string) => context.groupsByContact.get(id) ?? []
+  const viewer = viewerFor(audience, groupsFor)
   const occurrences: RedactedOccurrence[] = []
   let withheldCount = 0
 
+  // Shared across every occurrence; per-event rules can only add viewers on top.
+  const workspaceViewers = new Map<string, ViewerIdentity>()
+  collectRuleViewers(context.workspaceRules, groupsFor, workspaceViewers)
+  workspaceViewers.set('public', { kind: 'public' })
+
   for (const occurrence of page.occurrences) {
-    const input: EvaluateInput = {
+    const eventRules = context.rulesByEvent.get(occurrence.eventId) ?? []
+    const inputFor = (asViewer: ViewerIdentity): EvaluateInput => ({
       event: {
         eventId: occurrence.eventId,
         workspaceId: context.workspaceId,
         lifecycle: 'active',
         // Per-event overrides. This was always `[]`, so an event-scoped rule could be stored
         // and would never be applied — the engine supported them and nothing fed them in.
-        rules: context.rulesByEvent.get(occurrence.eventId) ?? [],
+        rules: eventRules,
       },
-      viewer,
+      viewer: asViewer,
       workspace: {
         workspaceId: context.workspaceId,
         timeVis: context.defaultTimeVis,
@@ -163,9 +217,23 @@ export function redactPage(
       },
       now,
       policyVersion: 'v1',
+    })
+
+    // The owner's chip: the widest disclosure any non-owner audience gets, each one asked
+    // of the real engine. Owner-only work for owner-only metadata — no other audience
+    // pays for it or receives it.
+    let privacyLevel: DisclosureLevel | undefined
+    if (audience === 'owner') {
+      const viewers = new Map(workspaceViewers)
+      collectRuleViewers(eventRules, groupsFor, viewers)
+      privacyLevel = 'hidden'
+      for (const candidate of viewers.values()) {
+        const level = decisionToLevel(evaluate(inputFor(candidate)))
+        if (OPENNESS[level] < OPENNESS[privacyLevel]) privacyLevel = level
+      }
     }
 
-    const { event } = redactForRecipient(input, toPayload(occurrence, page.timezone))
+    const { event } = redactForRecipient(inputFor(viewer), toPayload(occurrence, page.timezone))
     if (event === null) {
       withheldCount += 1
       continue
@@ -185,6 +253,7 @@ export function redactPage(
             // March" is still the shape of somebody's life, and only the owner has a split
             // to plan with it.
             series: occurrence.series,
+            ...(privacyLevel === undefined ? {} : { privacyLevel }),
           }
         : {}),
     })

@@ -1,8 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
+import { PRIVACY_LEVELS } from '@cloakcal/ui'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
+import { Icon, type IconName } from './ui/icons'
 import styles from './week-grid.module.css'
 
 /**
@@ -259,6 +261,29 @@ export function WeekGrid({
                       />
                     )}
                   </span>
+                  {/* The board's second line: privacy level when restricted, calendar
+                      name otherwise. Rendered in the block's own ink — the blocks sit on
+                      calendar-coloured washes the chip ink pairs were never computed
+                      against, and the icon + label carry the meaning without colour.
+                      Short blocks clip it via overflow; the title always wins. */}
+                  {occurrence.privacyLevel !== undefined &&
+                    (occurrence.privacyLevel !== 'full' ? (
+                      <span className={styles.privacyNote}>
+                        <Icon
+                          name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}
+                          size={11}
+                        />
+                        {PRIVACY_LEVELS[occurrence.privacyLevel].label}
+                      </span>
+                    ) : occurrence.calendarId !== undefined ? (
+                      <CloakedText
+                        className={styles.privacyNote}
+                        subjectType="calendar"
+                        subjectId={occurrence.calendarId}
+                        fieldName="display_name"
+                        placeholder="Calendar"
+                      />
+                    ) : null)}
                   {occurrence.dst !== 'none' && (
                     <span className={styles.dstNote}>
                       {occurrence.dst === 'nonexistent-shifted' ? 'DST shifted' : 'Repeated hour'}
