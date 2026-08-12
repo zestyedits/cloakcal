@@ -15,14 +15,34 @@ import type { CalendarRange } from './events'
  */
 
 /**
- * Display timezone.
+ * The FALLBACK display timezone.
  *
- * Per-user timezone is a settings-screen concern and does not exist yet — there is no
- * column for it, and inventing one here would put a user preference in a read path with no
- * way to change it. Stated as a constant so it is obvious rather than buried in a default
- * argument. Events carry their own IANA zone; this is only the zone the *view* is framed in.
+ * Since 0018 the real preference lives on `workspaces.timezone` and the settings screen
+ * changes it; this constant remains for the fixture, for accounts with no workspace yet,
+ * and as the value a broken stored zone degrades to. Events carry their own IANA zone;
+ * this is only the zone the *view* is framed in (ADR 0001 — display framing, never
+ * storage).
  */
 export const DISPLAY_TIMEZONE = 'America/New_York'
+
+/**
+ * A stored zone the runtime cannot use degrades to the default instead of throwing.
+ *
+ * The column's CHECK is a shape check only — deliberately, because PGlite's tz table must
+ * not be load-bearing — so a value can be well-shaped and still unknown to this runtime
+ * (or valid in a future tz database and unknown to an older one). A calendar that 500s
+ * over a timezone string fails its actual job; a calendar framed in the default is wrong
+ * in a way the settings screen can fix.
+ */
+export function safeTimezone(zone: string | undefined): string {
+  if (zone === undefined) return DISPLAY_TIMEZONE
+  try {
+    Temporal.Now.zonedDateTimeISO(zone)
+    return zone
+  } catch {
+    return DISPLAY_TIMEZONE
+  }
+}
 
 /** 0 = Sunday, matching workspaces.week_start. */
 export type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6

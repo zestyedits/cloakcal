@@ -1,9 +1,15 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { createCloakStore, type CloakStore, type EncryptedFieldRecord } from '@cloakcal/cloak-store'
+import {
+  createCloakStore,
+  type CloakStore,
+  type CloakSubjectType,
+  type EncryptedFieldRecord,
+} from '@cloakcal/cloak-store'
 import { getDevRootKey, isDevUnlockEnabled } from '@/lib/dev-key'
 import { resumeSession } from '@/lib/cloak-session'
+import type { CiphertextField } from '@/server/events'
 import type { RedactedPage } from '@/server/audience'
 import { UnlockPanel } from './unlock-panel'
 
@@ -31,6 +37,34 @@ const StoreContext = createContext<CloakStore | null>(null)
 
 const toBytes = (hex: string): Uint8Array =>
   Uint8Array.from(hex.match(/.{2}/g) ?? [], (byte) => Number.parseInt(byte, 16))
+
+/**
+ * Sealed fields that do not ride on the page's occurrences or calendars — contact and
+ * group names, mostly.
+ *
+ * This prop exists because of a real defect: `loadWorkspaceVisibility` attached sealed
+ * contact names to every audience option, `useCloakedLabels` subscribed to them — and
+ * nothing ever INGESTED them, so on a real account the View As picker showed
+ * `Contact 4f2a…` forever, even unlocked. The fixture audiences carry no nameField, so
+ * every e2e run sailed past it. Ingestion and subscription must use the same store, and
+ * this is the one door into it.
+ */
+export interface ExtraSealedField {
+  readonly subjectType: CloakSubjectType
+  readonly subjectId: string
+  readonly field: CiphertextField
+}
+
+const toExtraRecords = (extra: readonly ExtraSealedField[]): EncryptedFieldRecord[] =>
+  extra.map(({ subjectType, subjectId, field }) => ({
+    subjectType,
+    subjectId,
+    fieldName: field.fieldName,
+    ciphertext: toBytes(field.ciphertext),
+    nonce: toBytes(field.nonce),
+    alg: field.alg,
+    keyVersion: field.keyVersion,
+  }))
 
 /** Flatten a page's ciphertext into the records the store ingests. */
 function toRecords(page: RedactedPage): EncryptedFieldRecord[] {
@@ -75,11 +109,14 @@ function toRecords(page: RedactedPage): EncryptedFieldRecord[] {
 export function CloakProvider({
   page,
   email,
+  extraFields = [],
   children,
 }: {
   page: RedactedPage
   /** Empty in tests and on the fixture path, where there is no signed-in user. */
   email?: string | undefined
+  /** Memoise in the caller: this participates in the effect's dependency array. */
+  extraFields?: readonly ExtraSealedField[]
   children: ReactNode
 }) {
   const [store, setStore] = useState<CloakStore | null>(null)
@@ -107,20 +144,22 @@ export function CloakProvider({
         }
       }
 
-      await instance.ingest(toRecords(page))
+      await instance.ingest([...toRecords(page), ...toExtraRecords(extraFields)])
       if (cancelled) return
 
       setStore(instance)
       // Only prompt when there is something sealed to open. An empty calendar behind a
       // locked panel would be a wall in front of nothing.
-      setLocked(!unlocked && page.occurrences.length + page.calendars.length > 0)
+      setLocked(
+        !unlocked && page.occurrences.length + page.calendars.length + extraFields.length > 0,
+      )
     })()
 
     return () => {
       cancelled = true
       instance.lock()
     }
-  }, [page, attempt])
+  }, [page, extraFields, attempt])
 
   const onUnlocked = useCallback(() => {
     setLocked(false)

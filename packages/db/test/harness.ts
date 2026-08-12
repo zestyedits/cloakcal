@@ -108,6 +108,9 @@ const MIGRATIONS = [
   '0015_cloak_subject_contacts.sql',
   '0016_contacts_and_groups.sql',
   '0017_contact_and_rule_rpcs.sql',
+  '0018_workspace_prefs.sql',
+  '0019_update_calendar.sql',
+  '0020_contact_group_rpcs.sql',
 ] as const
 
 export interface QueryResult {
