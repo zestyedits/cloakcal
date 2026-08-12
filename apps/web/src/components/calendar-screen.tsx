@@ -2,6 +2,7 @@
 
 import { Suspense, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
+import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
 import { withViewTransition } from '@/lib/view-transition'
@@ -9,11 +10,15 @@ import { CloakProvider, type ExtraSealedField } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
 import { WeekGrid } from './week-grid'
-import { NewEvent } from './new-event'
+import { NewEvent, NewEventButton } from './new-event'
 import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
-import { CloakLockup } from './cloak-logo'
+import { CloakLockup, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
+import { MiniMonth } from './mini-month'
+import { WeekStrip } from './week-strip'
+import { CloakSheet } from './cloak-sheet'
+import { ButtonLink } from './ui/button'
 import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
 
@@ -70,6 +75,9 @@ export function CalendarScreen({
   previousHref,
   nextHref,
   timezone,
+  weekStart = 0,
+  workspaceRules = [],
+  groupsByContact = {},
   email,
   composeDate,
 }: {
@@ -82,11 +90,17 @@ export function CalendarScreen({
   previousHref: WeekLink
   nextHref: WeekLink
   timezone: string
+  weekStart?: number
+  /** Workspace-level rules, for the Cloak sheet's per-audience summaries. */
+  workspaceRules?: readonly VisibilityRule[]
+  groupsByContact?: Readonly<Record<string, readonly string[]>>
   email?: string | undefined
   /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
   composeDate?: string | undefined
 }) {
   const [view, setView] = useState<string>('agenda')
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [cloakOpen, setCloakOpen] = useState(false)
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
 
   // Running index of each day's first row across the whole agenda, so the entrance
@@ -148,10 +162,42 @@ export function CalendarScreen({
             </Link>
           </nav>
 
+          {/* Today is a navigation, so it is a link: the server defaults to the current
+              week, and View As survives via the query exactly as it does on the steppers.
+              The wrapper span owns visibility — hiding the ButtonLink itself would fight
+              the Button class's own display in the cascade and lose on import order. */}
+          <span className={styles.today}>
+            <ButtonLink
+              variant="outline"
+              size="sm"
+              href={{
+                pathname: '/',
+                query: page.audience === 'owner' ? {} : { as: page.audience },
+              }}
+            >
+              Today
+            </ButtonLink>
+          </span>
+
           <ThemeToggle />
         </header>
 
         <aside className={styles.sidebar} aria-label="Calendars">
+          {composeDate !== undefined && page.audience === 'owner' && (
+            <span className={styles.sidebarCompose}>
+              <NewEventButton variant="block" onOpen={() => setComposeOpen(true)} />
+            </span>
+          )}
+
+          <span className={styles.sidebarMonth}>
+            <MiniMonth
+              from={page.from}
+              timezone={timezone}
+              weekStart={weekStart}
+              audience={page.audience}
+            />
+          </span>
+
           <Suspense fallback={null}>
             <ViewAsBar
               audiences={audiences}
@@ -194,6 +240,12 @@ export function CalendarScreen({
         </aside>
 
         <main id="main" className={styles.main}>
+          {/* Mobile only (CSS): the board's week strip, seven in-page anchors into the
+              agenda below. The sidebar's mini month does this job from 900px. */}
+          {view === 'agenda' && days.length > 0 && (
+            <WeekStrip from={page.from} timezone={timezone} />
+          )}
+
           {/* Two different facts, and conflating them was wrong. "Everything is hidden from
               this audience" is a privacy statement; an owner looking at a quiet week is not
               being told anything about privacy, and a fresh account read the old copy as a
@@ -225,7 +277,9 @@ export function CalendarScreen({
           {view === 'agenda' && (
           <ol className={styles.agenda}>
             {days.map(([day, occurrences]) => (
-              <li key={day} className={styles.day}>
+              // The id is the week strip's anchor target; scroll-margin in CSS keeps the
+              // heading clear of the sticky chrome.
+              <li key={day} id={`day-${day}`} className={styles.day}>
                 <h2 className={styles.dayHeading}>
                   {DAY_LABEL.format(new Date(`${day}T00:00:00Z`))}
                 </h2>
@@ -345,30 +399,70 @@ export function CalendarScreen({
           )}
         </main>
 
+        {/* Five slots, Cloak in the privileged centre — the board's statement that privacy
+            is a place you go, not a setting buried in an event. The four view switches
+            keep their exact semantics (Day and Month honestly disabled); only the middle
+            slot is new, and it is a destination rather than a view. */}
         <nav className={styles.nav} aria-label="Calendar views">
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={styles.navItem}
-              aria-current={view === item.id ? 'page' : undefined}
-              disabled={!item.ready}
-              title={item.ready ? undefined : 'Coming in a later milestone'}
-              // Wrapped in a View Transition so the two layouts cross-fade where the
-              // browser supports it; everywhere else this is exactly setView.
-              onClick={() => withViewTransition(() => setView(item.id))}
-            >
-              {item.label}
-            </button>
-          ))}
+          {NAV.slice(0, 2).map((item) => navButton(item))}
+          <button
+            type="button"
+            className={styles.cloakTile}
+            aria-expanded={cloakOpen}
+            onClick={() => setCloakOpen(true)}
+          >
+            <CloakMark size={18} />
+            Cloak
+          </button>
+          {NAV.slice(2).map((item) => navButton(item))}
         </nav>
 
         {/* Composing is owner-only. Creating an event while viewing as someone else would
             be a confusing thing to offer and an easy thing to get wrong. */}
         {composeDate !== undefined && page.audience === 'owner' && (
-          <NewEvent timezone={timezone} defaultDate={composeDate} />
+          <>
+            <NewEventButton variant="fab" onOpen={() => setComposeOpen(true)} />
+            {composeOpen && (
+              <NewEvent
+                timezone={timezone}
+                defaultDate={composeDate}
+                onClose={() => setComposeOpen(false)}
+              />
+            )}
+          </>
+        )}
+
+        {cloakOpen && (
+          <Suspense fallback={null}>
+            <CloakSheet
+              audiences={audiences}
+              currentAudience={page.audience}
+              withheldCount={page.withheldCount}
+              workspaceRules={workspaceRules}
+              groupsByContact={groupsByContact}
+              onClose={() => setCloakOpen(false)}
+            />
+          </Suspense>
         )}
       </div>
     </CloakProvider>
   )
+
+  function navButton(item: (typeof NAV)[number]) {
+    return (
+      <button
+        key={item.id}
+        type="button"
+        className={styles.navItem}
+        aria-current={view === item.id ? 'page' : undefined}
+        disabled={!item.ready}
+        title={item.ready ? undefined : 'Coming in a later milestone'}
+        // Wrapped in a View Transition so the two layouts cross-fade where the
+        // browser supports it; everywhere else this is exactly setView.
+        onClick={() => withViewTransition(() => setView(item.id))}
+      >
+        {item.label}
+      </button>
+    )
+  }
 }

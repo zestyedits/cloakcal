@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
 import { useCloakedLabels } from './use-cloaked-labels'
@@ -21,6 +22,9 @@ export function ViewAsBar({
 }) {
   const router = useRouter()
   const params = useSearchParams()
+  // useId, not a literal: this renders in the sidebar AND in the Cloak sheet, and two
+  // controls sharing id="view-as" would break the label association on both.
+  const selectId = useId()
 
   // Contact and group names are Cloaked (ADR 0004), so the server sends ids and ciphertext
   // and the labels are opened here. An `<option>` holds text rather than elements, which is
@@ -63,11 +67,11 @@ export function ViewAsBar({
 
   return (
     <div className={styles.viewAs}>
-      <label className={styles.viewAsLabel} htmlFor="view-as">
+      <label className={styles.viewAsLabel} htmlFor={selectId}>
         Viewing as
       </label>
       <select
-        id="view-as"
+        id={selectId}
         className={styles.viewAsSelect}
         value={current}
         onChange={(event) => select(event.target.value)}

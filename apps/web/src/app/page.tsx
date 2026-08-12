@@ -113,6 +113,12 @@ export default async function Page({
       previousHref={linkFor(-1)}
       nextHref={linkFor(1)}
       timezone={timezone}
+      weekStart={weekStart}
+      workspaceRules={visibility.workspaceRules}
+      // A Record, not a Map: this crosses the RSC boundary. Ids about ids, nothing more.
+      groupsByContact={Object.fromEntries(
+        fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
+      )}
       email={email}
       composeDate={composeDate}
     />

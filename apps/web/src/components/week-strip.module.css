@@ -1,0 +1,52 @@
+/* The mobile week strip: seven anchor targets under the header, today filled. Hidden
+   from 900px, where the sidebar's mini month takes over the same job. */
+
+.root {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+@media (min-width: 900px) {
+  .root {
+    display: none;
+  }
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-secondary);
+}
+
+.day:hover {
+  background: var(--surface-overlay);
+}
+
+.name {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.day[data-today='true'] .number {
+  background: var(--accent);
+  color: var(--brand-white);
+}
