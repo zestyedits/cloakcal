@@ -86,6 +86,8 @@ const DARK = {
   success: '#22d3a6',
   warning: '#f5a524',
   danger: '#f4577b',
+  dangerSolid: '#c8355b',
+  dangerSolidHover: '#b02b4e',
 } as const
 
 const LIGHT = {
@@ -99,6 +101,8 @@ const LIGHT = {
   success: '#0f9c78',
   warning: '#a86a00',
   danger: '#c8355b',
+  dangerSolid: '#c8355b',
+  dangerSolidHover: '#b02b4e',
 } as const
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
@@ -125,6 +129,17 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'dark/success chip on raised', foreground: DARK.success, background: DARK.surfaceRaised, minimum: 3 },
   { name: 'dark/warning chip on raised', foreground: DARK.warning, background: DARK.surfaceRaised, minimum: 3 },
   { name: 'dark/danger chip on raised', foreground: DARK.danger, background: DARK.surfaceRaised, minimum: 3 },
+  /*
+   * Text ON danger — the Delete button, and the second time this exact gap has bitten.
+   * The pair above checks danger as a SHAPE against the page; nothing checked the label on
+   * top of it, so white-on-#F4577B sat at 2.99:1 on the one control in the app that cannot
+   * be undone. Found by an axe run that finally opened a delete confirmation, not by review.
+   *
+   * Hover is asserted separately because brightening a red REDUCES its contrast, which is
+   * the opposite of the instinct and exactly the state a user is looking at as they commit.
+   */
+  { name: 'dark/label on solid danger', foreground: DARK.textPrimary, background: DARK.dangerSolid, minimum: 4.5 },
+  { name: 'dark/label on solid danger hover', foreground: DARK.textPrimary, background: DARK.dangerSolidHover, minimum: 4.5 },
 
   { name: 'light/body on base', foreground: LIGHT.textPrimary, background: LIGHT.surfaceBase, minimum: 4.5 },
   { name: 'light/body on raised', foreground: LIGHT.textPrimary, background: LIGHT.surfaceRaised, minimum: 4.5 },
@@ -136,6 +151,8 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/success chip on raised', foreground: LIGHT.success, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/warning chip on raised', foreground: LIGHT.warning, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/danger chip on raised', foreground: LIGHT.danger, background: LIGHT.surfaceRaised, minimum: 3 },
+  { name: 'light/label on solid danger', foreground: DARK.textPrimary, background: LIGHT.dangerSolid, minimum: 4.5 },
+  { name: 'light/label on solid danger hover', foreground: DARK.textPrimary, background: LIGHT.dangerSolidHover, minimum: 4.5 },
 ]
 
 /** WCAG 2.1 relative luminance. */

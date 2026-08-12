@@ -34,6 +34,13 @@ const BY_SLUG: Record<string, string> = {
   incomplete_retime: 'Something went wrong with the date on this event. Nothing was saved.',
   inverted_range: 'That would end the event before it starts.',
 
+  // Reachable only by asking to cancel an occurrence that a split already detached. Says
+  // where the event went, because "it failed" would leave the user hunting for a row that is
+  // still on their calendar and still deletable — just not from here.
+  occurrence_detached:
+    'This occurrence was edited separately, so it is its own event now. Delete it from there.',
+  not_a_series: 'This event does not repeat, so there are no occurrences to remove.',
+
   retime_recurring_unsupported:
     'Changing when a repeating event happens is not built yet. You can still change its details.',
   all_day_unsupported: 'Editing the timing of an all-day event is not built yet.',

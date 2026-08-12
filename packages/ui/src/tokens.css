@@ -159,6 +159,24 @@
   --status-warning: var(--brand-amber);
   --status-danger: var(--brand-rose);
 
+  /* Danger as a FILLED BUTTON, which is a different job from danger as ink.
+   *
+   * --status-danger is the expressive colour: chips, borders, a hover on a text trigger.
+   * As a background under a white label it is 2.99:1 and fails AA — and it shipped that way
+   * on the Delete confirmation, unnoticed, because no test had ever opened one. Exactly the
+   * gap that let white-on-#6D5CFF ship on Save (see --accent above); the pairs list checked
+   * the colour as a SHAPE at 3:1 and nothing checked the text sitting on top of it.
+   *
+   * Solid danger is the same value in both themes, for the same reason the accent is: a
+   * destructive button carries a white label either way, so the background has to be dark
+   * enough for white in either.
+   *
+   * The hover DARKENS. Brightening a red toward white is the instinct and it is backwards —
+   * it takes 4.73:1 down to 4.16:1, so the state a user is actually looking at when they
+   * commit to a deletion would be the one that fails. */
+  --status-danger-solid: #c8355b;
+  --status-danger-solid-hover: #b02b4e;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
@@ -196,6 +214,8 @@
   --status-success: #0f9c78;
   --status-warning: #a86a00;
   --status-danger: #c8355b;
+  --status-danger-solid: #c8355b;
+  --status-danger-solid-hover: #b02b4e;
 
   --shadow-sm: 0 1px 2px rgba(11, 13, 20, 0.06);
   --shadow-md: 0 4px 16px rgba(11, 13, 20, 0.1);

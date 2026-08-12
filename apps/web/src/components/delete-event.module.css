@@ -59,8 +59,52 @@
 
 .question {
   margin: 0;
+  padding: 0;
   font-size: var(--text-sm);
   color: var(--text-primary);
+}
+
+/* The scope picker, for a repeating event. Same shape as the edit sheet's so the two
+   decisions look like the same kind of decision — but it takes the whole row rather than
+   sitting beside the buttons, because three stacked radio labels and two buttons on one line
+   is where the phone layout gave up last time. */
+.scope {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.scopeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.scopeRow:hover {
+  background: var(--surface-overlay);
+}
+
+.scopeRow input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--accent);
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .error {
@@ -102,14 +146,21 @@
   background: var(--surface-raised);
 }
 
+/* --status-danger-solid, not --status-danger. The expressive rose is 2.99:1 under a white
+   label and failed AA on this exact button for months; the solid variant is the one that is
+   dark enough to be written on. Both are pinned by CONTRAST_PAIRS. */
 .destroy {
-  border: 1px solid var(--status-danger);
-  background: var(--status-danger);
+  border: 1px solid var(--status-danger-solid);
+  background: var(--status-danger-solid);
   color: var(--brand-white);
 }
 
+/* Darkens rather than brightening. `filter: brightness(1.08)` was here, and it moved the
+   button toward white — dropping contrast to 4.16:1 in the one state the user is looking at
+   as they commit to an irreversible deletion. */
 .destroy:hover:not(:disabled) {
-  filter: brightness(1.08);
+  border-color: var(--status-danger-solid-hover);
+  background: var(--status-danger-solid-hover);
 }
 
 .cancel:disabled,

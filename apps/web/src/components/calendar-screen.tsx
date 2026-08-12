@@ -257,6 +257,11 @@ export function CalendarScreen({
                           eventId={occurrence.eventId}
                           version={occurrence.version}
                           recurring={occurrence.recurring ?? false}
+                          // The occurrence's ORIGINAL local wall time, straight from the
+                          // server. Never re-derived from `start`, which is a resolved
+                          // instant — deriving it back would put a second wall-clock
+                          // resolution in the codebase, and ADR 0001 allows exactly one.
+                          occurrenceLocal={occurrence.occurrenceLocal}
                           label={`the event at ${timeOf(occurrence.start)}`}
                         />
                       )}

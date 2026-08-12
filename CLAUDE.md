@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 651 unit tests
-pnpm test:e2e            # 74 Playwright tests, runs its own dev server
+pnpm test                # 667 unit tests
+pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
@@ -129,9 +129,10 @@ generate from that one SVG. Inter is loaded for the first time. `docs/brand.md` 
 parts of the mark the references specify and which are extrapolated.
 
 **Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
-`update_cloaked_event` (0011), `split_cloaked_event` (0013). All SECURITY INVOKER, so RLS
-decides what they can touch; all version-guarded; all audited without naming anything. Follow that shape for the next one —
-one RPC per user action, an expected version in, a distinguishable slug out.
+`update_cloaked_event` (0011), `split_cloaked_event` (0013), `cancel_occurrence` (0014). All
+SECURITY INVOKER, so RLS decides what they can touch; all version-guarded; all audited without
+naming anything. Follow that shape for the next one — one RPC per user action, an expected
+version in, a distinguishable slug out.
 
 **Series splits work.** Editing a repeating event asks which occurrences to change — this
 one, this and all following, or all of them. The first two go through `split_cloaked_event`;
@@ -158,10 +159,21 @@ occurrence COUNT is unchanged, so only the start check can see it.
 to nothing — a row that produces no occurrences. Lossless and harmless, but it should
 collapse into a plain whole-series edit instead of leaving a dead row behind.
 
-**Deleting is still whole-series.** `recurrence_exceptions` now has everything a
-per-occurrence delete needs (0013 writes and migrates them); the UI has not been wired.
+**Deleting one occurrence works.** The confirmation on a repeating event asks "only this
+one" or "the whole series", and defaults to the smaller blast radius. The first goes through
+`cancel_occurrence` (0014), which writes a `kind = 'cancelled'` exception keyed by local wall
+time; the second is the existing trash. The read path has honoured cancelled rows since M1 —
+nothing had ever written one.
+
+**"This and all following" is deliberately NOT offered on delete.** It is a truncation of the
+recurrence rule rather than a subtraction, and a wrong UNTIL silently eats the occurrence the
+user was standing on. `split-plan.ts` exists to prove a truncation is lossless before it is
+written and the delete path has no equivalent; shipping the option without one would make the
+only irreversible action the least verified. Two honest choices beat three where the third is
+unchecked.
 
 **Then, in order:**
+0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Read `visibility_rules` from the database. `apps/web/src/server/audience.ts` uses
    hardcoded demo rules, so View As currently demonstrates the engine rather than
    controlling anything.
@@ -210,6 +222,23 @@ and re-add.
   create already existed. `isBootstrappingSnapshots()` is the escape hatch that closes that
   loop. `-darwin` baselines now exist; run the `Visual baselines (linux)` workflow and commit
   its artifact to make CI check anything.
+- **A colour is checked as a SHAPE and as TEXT, and those are different pairs.** This gap has
+  now shipped an AA failure twice. White on `--accent` was 4.20:1 on the Save button; white on
+  `--status-danger` was **2.99:1 on the Delete button**, which is the one control in the app
+  that cannot be undone. Both times `CONTRAST_PAIRS` checked the colour against the page at
+  3:1 and nothing checked the label sitting on top of it. `--status-danger-solid` now exists
+  for the filled case, as `--accent` already did. **A hover on a dark filled button must
+  DARKEN**: `brightness(1.08)` on the danger red took 4.73:1 down to 4.16:1, in exactly the
+  state a user is looking at as they commit.
+- **axe only sees what is on screen, so a control behind a click is a control nobody tested.**
+  The delete confirmation had no e2e coverage at all, which is how the contrast failure above
+  survived — `a11y.spec.ts` scans the agenda, and the Delete button only exists after you ask
+  for it. `e2e/delete-event.spec.ts` opens it. When adding a control that appears on
+  interaction, add the spec that opens it.
+- **A new e2e spec runs nowhere until it is named in `playwright.config.ts`.** The device
+  projects use an explicit `testMatch` allowlist, so a spec file that is not listed is
+  collected by no project and silently never runs. Exactly the orphan problem the visual
+  baselines had.
 - **These screenshots catch layout, not colour.** `maxDiffPixelRatio` is 0.02, and repointing
   `--brand-teal` at red measured 0.04% of the page and passed; a background change failed all
   three immediately. No whole-page ratio fixes that. Colour is covered by `CONTRAST_PAIRS` in
