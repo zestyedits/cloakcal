@@ -57,7 +57,29 @@ const TIER_B_NAMES = [
   'display_name',
   'name',
   'slug',
+  // Added with contacts (ADR 0004). A contact's name and email are Cloaked for the same
+  // reason `attendees` is: if the same people were readable one table over, encrypting the
+  // attendee list would buy nothing.
+  'email',
+  'phone',
+  'first_name',
+  'last_name',
 ]
+
+/**
+ * `label` is deliberately NOT on that list, and the reason is worth recording because it
+ * looks like an omission.
+ *
+ * `devices.label` is a plaintext device nickname, and it has to be. A device writes its own
+ * label at the moment it introduces itself for pairing — before it holds the root key, and
+ * therefore before it can encrypt anything. Cloaking it would mean either the label arrives
+ * after the pairing it exists to describe, or the pairing screen shows "unknown device"
+ * twice and asks you to guess.
+ *
+ * Adding `label` to the blocklist flags that column, which is a false positive rather than a
+ * finding. Contact and group names are a different case: they are written by an unlocked
+ * client that already holds the key, so ADR 0004 encrypts them.
+ */
 
 const TIER_A_TABLES = [
   'workspaces',
@@ -70,6 +92,9 @@ const TIER_A_TABLES = [
   'access_envelopes',
   'applied_ops',
   'audit_log',
+  'contacts',
+  'contact_groups',
+  'contact_group_members',
 ]
 
 beforeAll(async () => {

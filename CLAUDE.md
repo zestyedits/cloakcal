@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 667 unit tests
+pnpm test                # 681 unit tests
 pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -171,6 +171,16 @@ user was standing on. `split-plan.ts` exists to prove a truncation is lossless b
 written and the delete path has no equivalent; shipping the option without one would make the
 only irreversible action the least verified. Two honest choices beat three where the third is
 unchecked.
+
+**Contacts and groups exist (0015/0016, ADR 0004).** `contacts`, `contact_groups` and
+`contact_group_members` are the people `visibility_rules.audience_ref` has pointed at since
+0001. **They carry no name, email or label column** — those are Cloaked under the new
+`contact` and `contact_group` subject types, because `attendees` is already encrypted and
+storing the same people in the clear one table over would make that pointless. The cost is
+that the server cannot answer "is this email a contact of yours?", which booking will
+eventually need; ADR 0004 lists the options and rules out "add a plaintext column".
+
+Schema only so far. Nothing reads or writes these yet, so `audience.ts` still uses demo rules.
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
