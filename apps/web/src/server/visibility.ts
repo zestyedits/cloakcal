@@ -33,6 +33,14 @@ export interface WorkspaceVisibility {
   readonly audiences: readonly AudienceOption[]
   readonly workspaceRules: readonly VisibilityRule[]
   readonly rulesByEvent: ReadonlyMap<string, readonly VisibilityRule[]>
+  /**
+   * Group membership, both ways round. `groupsByContact` is what the ENGINE needs — until
+   * this was loaded, the calendar passed an empty map for real accounts, so a group rule
+   * never applied when previewing an individual who belonged to one. `membersByGroup` is
+   * what the settings checkboxes render.
+   */
+  readonly groupsByContact: ReadonlyMap<string, readonly string[]>
+  readonly membersByGroup: ReadonlyMap<string, readonly string[]>
 }
 
 /** Owner and public always exist; they are not rows and cannot be deleted. */
@@ -46,6 +54,8 @@ export const EMPTY_VISIBILITY = (workspaceId: string): WorkspaceVisibility => ({
   audiences: FIXED,
   workspaceRules: [],
   rulesByEvent: new Map(),
+  groupsByContact: new Map(),
+  membersByGroup: new Map(),
 })
 
 export async function loadWorkspaceVisibility(
@@ -53,9 +63,13 @@ export async function loadWorkspaceVisibility(
 ): Promise<WorkspaceVisibility> {
   const supabase = await supabaseServer()
 
-  const [contactResult, groupResult, ruleResult, nameResult] = await Promise.all([
+  const [contactResult, groupResult, memberResult, ruleResult, nameResult] = await Promise.all([
     supabase.from('contacts').select('id').eq('workspace_id', workspaceId),
     supabase.from('contact_groups').select('id').eq('workspace_id', workspaceId),
+    supabase
+      .from('contact_group_members')
+      .select('group_id, contact_id')
+      .eq('workspace_id', workspaceId),
     supabase
       .from('visibility_rules')
       .select(
@@ -73,8 +87,19 @@ export async function loadWorkspaceVisibility(
 
   if (contactResult.error !== null) throw contactResult.error
   if (groupResult.error !== null) throw groupResult.error
+  if (memberResult.error !== null) throw memberResult.error
   if (ruleResult.error !== null) throw ruleResult.error
   if (nameResult.error !== null) throw nameResult.error
+
+  const groupsByContact = new Map<string, string[]>()
+  const membersByGroup = new Map<string, string[]>()
+  for (const row of (memberResult.data ?? []) as Array<{ group_id: string; contact_id: string }>) {
+    groupsByContact.set(row.contact_id, [
+      ...(groupsByContact.get(row.contact_id) ?? []),
+      row.group_id,
+    ])
+    membersByGroup.set(row.group_id, [...(membersByGroup.get(row.group_id) ?? []), row.contact_id])
+  }
 
   const sealed = new Map<string, CiphertextField>()
   for (const row of (nameResult.data ?? []) as Array<{
@@ -116,5 +141,12 @@ export async function loadWorkspaceVisibility(
     (ruleResult.data ?? []) as unknown as VisibilityRuleRow[],
   )
 
-  return { workspaceId, audiences, workspaceRules: workspace, rulesByEvent: byEvent }
+  return {
+    workspaceId,
+    audiences,
+    workspaceRules: workspace,
+    rulesByEvent: byEvent,
+    groupsByContact,
+    membersByGroup,
+  }
 }

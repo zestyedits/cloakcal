@@ -83,7 +83,10 @@ export default async function Page({
     workspaceId: visibility.workspaceId,
     workspaceRules: visibility.workspaceRules,
     rulesByEvent: visibility.rulesByEvent,
-    groupsByContact: fixtureMode ? FIXTURE_GROUPS : new Map(),
+    // Real membership now loads with the rest of the visibility data. Until it did, real
+    // accounts passed an empty map here, so a group rule never applied when previewing an
+    // individual who belonged to one — the fixture was the only place group rules worked.
+    groupsByContact: fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
     // No rule means hidden. A calendar that defaulted to visible would disclose everything
     // the moment someone was added as a contact, before anyone decided what they should see.
     defaultTimeVis: 'hidden',
