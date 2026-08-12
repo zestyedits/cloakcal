@@ -35,16 +35,30 @@ const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
 
 export function MiniMonth({
   from,
+  anchorDate,
   timezone,
   weekStart,
   audience,
+  view = 'agenda',
 }: {
-  /** ISO instant of the visible week's first day. */
+  /** ISO instant of the visible range's first day. */
   from: string
+  /**
+   * YYYY-MM-DD the page is anchored on. Preferred over `from` for deciding which month
+   * to draw: a month view's RANGE starts in the previous month's grid margin, and a mini
+   * month that says April over a page that says May is wrong in the way users notice.
+   */
+  anchorDate?: string | undefined
   timezone: string
   weekStart: number
   /** Carried into every link so View As survives navigation, like the steppers. */
   audience: string
+  /**
+   * The current view; links preserve it. Clicking a date on the day view opens that day,
+   * on the month view that month — the mini month navigates, it never changes what kind
+   * of thing you are looking at.
+   */
+  view?: 'agenda' | 'week' | 'day' | 'month'
 }) {
   const { title, cells, names } = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -59,7 +73,7 @@ export function MiniMonth({
       Array.from({ length: 7 }, (_, i) => toDay(toUtc(weekFirst) + i * DAY_MS)),
     )
 
-    const [year, month] = weekFirst.split('-').map(Number)
+    const [year, month] = (anchorDate ?? weekFirst).split('-').map(Number)
     const monthStart = Date.UTC(year!, month! - 1, 1)
     // Back up from the 1st to the configured week start, then six rows always — a fixed
     // height keeps the sidebar from jumping as the user steps across month boundaries.
@@ -83,13 +97,18 @@ export function MiniMonth({
     )
 
     return { title: `${MONTHS[month! - 1]} ${year}`, cells, names }
-  }, [from, timezone, weekStart])
+  }, [from, anchorDate, timezone, weekStart])
 
-  const queryFor = (day: string): Record<string, string> =>
-    audience === 'owner' ? { week: day } : { week: day, as: audience }
+  const queryFor = (day: string): Record<string, string> => ({
+    date: day,
+    ...(view !== 'agenda' ? { view } : {}),
+    ...(audience === 'owner' ? {} : { as: audience }),
+  })
+
+  const unit = view === 'day' ? 'day' : view === 'month' ? 'month' : 'week'
 
   return (
-    <nav className={styles.root} aria-label="Jump to a week">
+    <nav className={styles.root} aria-label={`Jump to a ${unit}`}>
       <h2 className={styles.title}>{title}</h2>
       <div className={styles.grid}>
         {names.map((name, i) => (
@@ -105,7 +124,7 @@ export function MiniMonth({
             data-outside={cell.outside || undefined}
             data-today={cell.today || undefined}
             data-in-week={cell.inWeek || undefined}
-            aria-label={`Week of ${cell.day}`}
+            aria-label={unit === 'week' ? `Week of ${cell.day}` : `Open ${cell.day}`}
             aria-current={cell.today ? 'date' : undefined}
           >
             <span className={styles.disc}>{cell.number}</span>

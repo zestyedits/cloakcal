@@ -1,0 +1,55 @@
+.page {
+  min-height: 100dvh;
+  background: var(--surface-base);
+}
+
+.headerBar {
+  display: flex;
+  align-items: center;
+  min-height: 3.5rem;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.body {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  height: 2rem;
+  width: 10rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.chips {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.chip {
+  height: 2rem;
+  width: 5.5rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.section {
+  height: 4.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.pulse {
+  animation: skeleton-pulse 1.2s var(--ease-standard) infinite alternate;
+}
+
+@keyframes skeleton-pulse {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}

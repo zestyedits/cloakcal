@@ -18,8 +18,14 @@ import { NextResponse, type NextRequest } from 'next/server'
  * itself, and D2 exists to stop exactly that.
  */
 
-/** Reachable without a session. */
-export const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/recover', '/auth/callback']
+/**
+ * Reachable without a session.
+ *
+ * `/` is here because it is the LANDING PAGE for a signed-out visitor and the calendar
+ * for a signed-in one — page.tsx branches on the session. The prefix check appends a
+ * slash before matching, so listing '/' makes exactly the root public, nothing else.
+ */
+export const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/recover', '/auth/callback']
 
 /**
  * Public paths a signed-in user has no business on, and gets bounced home from.

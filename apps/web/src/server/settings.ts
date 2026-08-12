@@ -70,15 +70,17 @@ export interface SettingsData {
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
-  const prefs = await loadWorkspacePrefs()
+  // Prefs and devices start together — devices are user-scoped, not workspace-scoped, so
+  // neither needs the other, and this page is the first thing a settings click waits on.
+  const prefsPromise = loadWorkspacePrefs()
   const supabase = await supabaseServer()
 
-  // Devices are user-scoped, not workspace-scoped, so they load even for an account whose
-  // key ceremony never ran and left it workspace-less.
   const devicesPromise = supabase
     .from('devices')
     .select('id, label, last_seen_at, revoked_at')
     .order('created_at', { ascending: true })
+
+  const prefs = await prefsPromise
 
   if (prefs === null) {
     const devices = await devicesPromise

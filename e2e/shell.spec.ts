@@ -13,26 +13,57 @@ const settle = async (page: import('@playwright/test').Page) => {
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
 }
 
-test('the bottom nav has five slots with Cloak in the centre', async ({ page }) => {
+test('the bottom nav has five slots with Cloak in the centre', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'the bottom bar is phone chrome; desktop has the header control')
   await page.goto('/')
   await settle(page)
 
   const nav = page.getByRole('navigation', { name: 'Calendar views' })
-  const labels = await nav.locator('button').allTextContents()
+  const labels = await nav.locator('button, a').allTextContents()
   expect(labels).toEqual(['Day', 'Week', 'Cloak', 'Agenda', 'Month'])
 
-  // The four view switches keep their exact semantics.
-  await expect(nav.getByRole('button', { name: 'Day', exact: true })).toBeDisabled()
-  await expect(nav.getByRole('button', { name: 'Month', exact: true })).toBeDisabled()
+  // Agenda/Week are instant toggles over the shared fetch; Day/Month are navigations.
+  await expect(nav.getByRole('link', { name: 'Day', exact: true })).toHaveAttribute(
+    'href',
+    /view=day/,
+  )
+  await expect(nav.getByRole('link', { name: 'Month', exact: true })).toHaveAttribute(
+    'href',
+    /view=month/,
+  )
   await expect(nav.getByRole('button', { name: 'Week', exact: true })).toBeEnabled()
   await expect(nav.getByRole('button', { name: 'Agenda', exact: true })).toBeEnabled()
+})
+
+test('desktop gets the segmented view control instead of the phone bar', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'the segmented control is desktop chrome')
+  await page.goto('/')
+  await settle(page)
+
+  // Two navs exist with this name; the phone bar is display:none here, so the visible
+  // one is the header's segmented control.
+  const controls = page.getByRole('navigation', { name: 'Calendar views' })
+  const header = controls.first()
+  await expect(header).toBeVisible()
+  await expect(controls.nth(1)).toBeHidden()
+
+  await expect(header.getByRole('button', { name: 'Agenda', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(header.getByRole('link', { name: 'Month', exact: true })).toBeVisible()
+  // The compact Cloak door lives beside it.
+  await expect(page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true })).toBeVisible()
 })
 
 test('the Cloak sheet opens, says who sees what, and passes axe', async ({ page }) => {
   await page.goto('/')
   await settle(page)
 
-  await page.getByRole('button', { name: 'Cloak', exact: true }).click()
+  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Cloak' })).toBeVisible()
   await expect(dialog.getByText('Viewing as')).toBeVisible()
@@ -77,5 +108,5 @@ test('the sidebar mini month navigates by week', async ({ page, isMobile }) => {
   const month = page.getByRole('navigation', { name: 'Jump to a week' })
   await expect(month.locator('a')).toHaveCount(42)
   await month.locator('a').first().click()
-  await expect(page).toHaveURL(/week=\d{4}-\d{2}-\d{2}/)
+  await expect(page).toHaveURL(/date=\d{4}-\d{2}-\d{2}/)
 })

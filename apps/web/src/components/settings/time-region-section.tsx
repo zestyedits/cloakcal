@@ -67,10 +67,7 @@ export function TimeRegionSection({
   }
 
   return (
-    <section id="time-region" className={styles.section} aria-labelledby="time-region-title">
-      <h2 id="time-region-title" className={styles.sectionTitle}>
-        Time &amp; region
-      </h2>
+    <>
       <p className={styles.sectionLede}>
         Changes how your calendar is displayed. Events keep their local times — a 9:00
         meeting stays at 9:00.
@@ -125,6 +122,6 @@ export function TimeRegionSection({
           </select>
         </div>
       </div>
-    </section>
+    </>
   )
 }

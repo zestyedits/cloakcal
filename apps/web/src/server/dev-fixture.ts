@@ -102,11 +102,17 @@ export function assertDevFixtureAllowed(): void {
   }
 }
 
-/** Ignores the requested range and always returns the reference week from the brand board. */
-export function getFixturePage(): CalendarPage {
+/**
+ * Returns the fixture expanded against the REQUESTED range, defaulting to the reference
+ * week from the brand board. It ignored its range entirely until day and month views
+ * existed; now the caller decides — page.tsx still pins week/agenda to DEMO_WEEK, clamps
+ * day anchors into it, and pins month to May 2026, so the demo stays deterministic while
+ * the other views genuinely render their ranges.
+ */
+export function getFixturePage(requested: CalendarRange = DEMO_WEEK): CalendarPage {
   assertDevFixtureAllowed()
 
-  const range = DEMO_WEEK
+  const range = requested
   const occurrences: OccurrenceView[] = []
 
   for (const event of fixture.events) {

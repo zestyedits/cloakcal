@@ -16,16 +16,34 @@ test.beforeEach(async ({ page }) => {
 test('every section is present, anchored, and in the stated order', async ({ page }) => {
   const sections = ['Appearance', 'Time & region', 'Calendars', 'People', 'Visibility', 'Security', 'Coming soon']
   for (const name of sections) {
+    // The h2 lives in the summary row, so it stays visible while the card is closed.
     await expect(page.getByRole('heading', { level: 2, name })).toBeVisible()
   }
-  // The nav chip navigates to its anchor.
+  // The nav chip navigates to its anchor AND opens the card it points at — a deep link
+  // that lands on a closed row would be a link that appears to do nothing.
   await page.getByRole('link', { name: 'Security' }).click()
   await expect(page).toHaveURL(/#security$/)
+  await expect(page.locator('#security')).toHaveAttribute('open', '')
+})
+
+test('sections are closed by default with their state on the row', async ({ page }) => {
+  // The page reads as a table of contents: only Appearance opens by default, and every
+  // closed row still says what its current value is.
+  await expect(page.locator('#appearance')).toHaveAttribute('open', '')
+  for (const id of ['time-region', 'calendars', 'people', 'visibility', 'security', 'more']) {
+    await expect(page.locator(`#${id}`)).not.toHaveAttribute('open', '')
+  }
+  await expect(page.getByText('Password & recovery phrase')).toBeVisible()
+
+  // Clicking a summary opens the card.
+  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
+  await expect(page.locator('#calendars')).toHaveAttribute('open', '')
 })
 
 test('demo mode says so instead of offering dead controls', async ({ page }) => {
   // Sections that need a workspace disable with the same honest sentence, not a spinner
   // and not a silent no-op.
+  await page.getByRole('heading', { level: 2, name: 'Time & region' }).click()
   await expect(page.getByText(/Demo data — sign in/).first()).toBeVisible()
   await expect(page.getByLabel('Timezone')).toBeDisabled()
   await expect(page.getByLabel('Week starts on')).toBeDisabled()
@@ -45,6 +63,7 @@ test('the theme radios switch the page and persist across reload', async ({ page
 })
 
 test('the deferred rows are named and quiet', async ({ page }) => {
+  await page.getByRole('heading', { level: 2, name: 'Coming soon' }).click()
   for (const name of ['Device pairing', 'Booking', 'Export']) {
     await expect(page.getByText(name, { exact: true })).toBeVisible()
   }

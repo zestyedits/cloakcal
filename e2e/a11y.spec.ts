@@ -65,18 +65,43 @@ test('gives every interactive control a 44px touch target', async ({ page }) => 
   expect(tooSmall).toEqual([])
 })
 
-test('marks unbuilt views as disabled rather than shipping dead controls', async ({ page }) => {
-  // Spec §10: a control that does not work is not shipped. Disabled and labelled is
-  // honest; a button that silently does nothing is not.
+test('every view is a real control: toggles for the shared fetch, links for the rest', async ({
+  page,
+}) => {
+  // Day and Month were disabled-with-a-tooltip for two milestones; now they are server
+  // navigations. Agenda/Week stay instant client toggles because they share one fetch.
+  const bar = page.getByRole('navigation', { name: 'Calendar views' }).first()
   for (const name of ['Day', 'Month']) {
-    const control = page.getByRole('button', { name, exact: true })
-    await expect(control).toBeDisabled()
-    await expect(control).toHaveAttribute('title', /later milestone/i)
+    await expect(bar.getByRole('link', { name, exact: true })).toHaveAttribute('href', /view=/)
   }
   for (const name of ['Agenda', 'Week']) {
-    await expect(page.getByRole('button', { name, exact: true })).toBeEnabled()
+    await expect(bar.getByRole('button', { name, exact: true })).toBeEnabled()
   }
 })
+
+for (const [label, path] of [
+  ['day', '/?view=day&date=2026-05-19'],
+  ['month', '/?view=month'],
+] as const) {
+  test(`the ${label} view has no accessibility violations and sane headings`, async ({ page }) => {
+    await page.goto(path)
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+
+    const levels = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).map((h) =>
+        Number(h.tagName.slice(1)),
+      ),
+    )
+    for (let i = 1; i < levels.length; i += 1) {
+      expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1)
+    }
+  })
+}
 
 test('the week view renders the same occurrences the agenda does', async ({ page }) => {
   // Both read one already-redacted page, so switching views can never disclose an

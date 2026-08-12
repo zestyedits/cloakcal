@@ -25,10 +25,7 @@ export function AppearanceSection() {
   }
 
   return (
-    <section id="appearance" className={styles.section} aria-labelledby="appearance-title">
-      <h2 id="appearance-title" className={styles.sectionTitle}>
-        Appearance
-      </h2>
+    <>
       <p className={styles.sectionLede}>
         Saved in this browser. Each of your devices keeps its own choice.
       </p>
@@ -49,6 +46,6 @@ export function AppearanceSection() {
           </label>
         ))}
       </div>
-    </section>
+    </>
   )
 }

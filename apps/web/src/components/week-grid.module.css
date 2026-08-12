@@ -22,7 +22,8 @@
   --day-min-width: 6.5rem;
 
   display: grid;
-  grid-template-columns: var(--gutter-width) repeat(7, minmax(var(--day-min-width), 1fr));
+  /* --day-count is 7 for the week and 1 for the day view; set inline by the component. */
+  grid-template-columns: var(--gutter-width) repeat(var(--day-count, 7), minmax(var(--day-min-width), 1fr));
   /* Header row, optional all-day row, then the body. auto handles the all-day row being
      absent without a second template. */
   grid-auto-rows: auto;

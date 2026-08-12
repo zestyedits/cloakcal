@@ -16,6 +16,7 @@ import { EditableEvent } from './editable-event'
 import { CloakLockup, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
 import { MiniMonth } from './mini-month'
+import { MonthGrid } from './month-grid'
 import { WeekStrip } from './week-strip'
 import { CloakSheet } from './cloak-sheet'
 import { VisibilitySheet } from './visibility-sheet'
@@ -33,16 +34,23 @@ import styles from './calendar-screen.module.css'
 
 /**
  * Agenda and Week read the SAME page of occurrences — one server fetch, already redacted —
- * so switching between them is a pure presentation choice and can stay on the client. Day
- * and Month need a different range, so they will be server navigations like the ‹ › steps
- * are, not additions to this list.
+ * so switching between them is a pure presentation choice and stays on the client. Day
+ * and Month need a different range, so they are SERVER NAVIGATIONS like the ‹ › steps.
+ * The nav therefore renders two kinds of control from one descriptor list: toggles
+ * (agenda/week, only while the page holds the week fetch) and links (everything else).
  */
-const NAV = [
-  { id: 'day', label: 'Day', ready: false },
-  { id: 'week', label: 'Week', ready: true },
-  { id: 'agenda', label: 'Agenda', ready: true },
-  { id: 'month', label: 'Month', ready: false },
-] as const
+export type CalendarView = 'agenda' | 'week' | 'day' | 'month'
+
+const VIEW_LABELS: Record<CalendarView, string> = {
+  agenda: 'Agenda',
+  week: 'Week',
+  day: 'Day',
+  month: 'Month',
+}
+
+type NavItem =
+  | { readonly id: CalendarView; readonly kind: 'toggle'; readonly active: boolean }
+  | { readonly id: CalendarView; readonly kind: 'link'; readonly active: boolean; readonly href: WeekLink }
 
 const DAY_LABEL = new Intl.DateTimeFormat('en-US', {
   weekday: 'long',
@@ -72,6 +80,8 @@ function groupByDay(occurrences: readonly RedactedOccurrence[]) {
 export function CalendarScreen({
   page,
   audiences,
+  view: serverView = 'agenda',
+  anchorDate,
   heading,
   previousHref,
   nextHref,
@@ -85,6 +95,10 @@ export function CalendarScreen({
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
+  /** The view the SERVER fetched for. agenda/week share the week fetch. */
+  view?: CalendarView
+  /** YYYY-MM-DD the view is anchored on; view links carry it so navigation stays put. */
+  anchorDate?: string | undefined
   heading: string
   /* URL objects rather than strings: `typedRoutes` will not accept a computed href string,
      and a UrlObject is the escape hatch Next provides for exactly this — a fixed pathname
@@ -102,7 +116,14 @@ export function CalendarScreen({
   /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
   composeDate?: string | undefined
 }) {
-  const [view, setView] = useState<string>('agenda')
+  // The client half of the view state: only meaningful while the page holds the week
+  // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
+  // page the server view wins and this is inert.
+  const onWeekFetch = serverView !== 'day' && serverView !== 'month'
+  const [clientView, setClientView] = useState<'agenda' | 'week'>(
+    serverView === 'week' ? 'week' : 'agenda',
+  )
+  const view: CalendarView = onWeekFetch ? clientView : serverView
   const [composeOpen, setComposeOpen] = useState(false)
   const [cloakOpen, setCloakOpen] = useState(false)
   /** Event id whose visibility sheet is open, or null. */
@@ -146,6 +167,52 @@ export function CalendarScreen({
     [audiences],
   )
 
+  /**
+   * One href builder for every view link: anchored where the user already is, carrying
+   * the audience, minimal for the agenda default.
+   */
+  const hrefFor = (target: CalendarView): WeekLink => {
+    const query: Record<string, string> = {}
+    if (anchorDate !== undefined) query['date'] = anchorDate
+    if (target !== 'agenda') query['view'] = target
+    if (page.audience !== 'owner') query['as'] = page.audience
+    return { pathname: '/', query }
+  }
+
+  /** Agenda/week toggle while the week fetch is on the page; a real navigation otherwise. */
+  const navItemFor = (target: CalendarView): NavItem =>
+    onWeekFetch && (target === 'agenda' || target === 'week')
+      ? { id: target, kind: 'toggle', active: view === target }
+      : { id: target, kind: 'link', active: view === target, href: hrefFor(target) }
+
+  const stepUnit = view === 'day' ? 'day' : view === 'month' ? 'month' : 'week'
+
+  const navControl = (item: NavItem, className: string | undefined) =>
+    item.kind === 'toggle' ? (
+      <button
+        key={item.id}
+        type="button"
+        className={className}
+        aria-current={item.active ? 'page' : undefined}
+        // Wrapped in a View Transition so the two layouts cross-fade where the browser
+        // supports it; everywhere else this is exactly setClientView.
+        onClick={() =>
+          withViewTransition(() => setClientView(item.id === 'week' ? 'week' : 'agenda'))
+        }
+      >
+        {VIEW_LABELS[item.id]}
+      </button>
+    ) : (
+      <Link
+        key={item.id}
+        className={className}
+        href={item.href}
+        aria-current={item.active ? 'page' : undefined}
+      >
+        {VIEW_LABELS[item.id]}
+      </Link>
+    )
+
   return (
     <CloakProvider page={page} email={email} extraFields={audienceNames}>
       <div className={styles.shell}>
@@ -156,34 +223,61 @@ export function CalendarScreen({
               bookmarkable and reachable with the back button. Server navigation also keeps
               redaction on the server — client-side week switching would mean shipping
               occurrences the audience is not entitled to. */}
-          <nav className={styles.weekNav} aria-label="Change week">
-            <Link className={styles.weekStep} href={previousHref} aria-label="Previous week">
+          <nav className={styles.weekNav} aria-label={`Change ${stepUnit}`}>
+            <Link
+              className={styles.weekStep}
+              href={previousHref}
+              aria-label={`Previous ${stepUnit}`}
+            >
               ‹
             </Link>
             <p className={styles.range} aria-live="polite">
               {heading}
             </p>
-            <Link className={styles.weekStep} href={nextHref} aria-label="Next week">
+            <Link className={styles.weekStep} href={nextHref} aria-label={`Next ${stepUnit}`}>
               ›
             </Link>
           </nav>
 
-          {/* Today is a navigation, so it is a link: the server defaults to the current
-              week, and View As survives via the query exactly as it does on the steppers.
-              The wrapper span owns visibility — hiding the ButtonLink itself would fight
-              the Button class's own display in the cascade and lose on import order. */}
+          {/* Today is a navigation, so it is a link: the server defaults to today, and the
+              view and audience survive via the query exactly as on the steppers. The
+              wrapper span owns visibility — hiding the ButtonLink itself would fight the
+              Button class's own display in the cascade and lose on import order. */}
           <span className={styles.today}>
             <ButtonLink
               variant="outline"
               size="sm"
               href={{
                 pathname: '/',
-                query: page.audience === 'owner' ? {} : { as: page.audience },
+                query: {
+                  ...(view !== 'agenda' && !onWeekFetch ? { view } : {}),
+                  ...(page.audience === 'owner' ? {} : { as: page.audience }),
+                },
               }}
             >
               Today
             </ButtonLink>
           </span>
+
+          {/* Desktop-only chrome (CSS): the segmented view control and a compact door to
+              the Cloak sheet. On phones both live in the bottom bar instead — the board
+              draws different chrome per device, not one bar stretched across both. */}
+          <div className={styles.headerViews}>
+            <nav className={styles.viewSwitch} aria-label="Calendar views">
+              {(['agenda', 'week', 'day', 'month'] as const).map((target) =>
+                navControl(navItemFor(target), styles.viewSegment),
+              )}
+            </nav>
+            <button
+              type="button"
+              className={styles.cloakHeaderButton}
+              aria-expanded={cloakOpen}
+              onClick={() => setCloakOpen(true)}
+            >
+              <CloakMark size={16} />
+              Cloak
+            </button>
+          </div>
 
           <ThemeToggle />
         </header>
@@ -198,9 +292,11 @@ export function CalendarScreen({
           <span className={styles.sidebarMonth}>
             <MiniMonth
               from={page.from}
+              anchorDate={anchorDate}
               timezone={timezone}
               weekStart={weekStart}
               audience={page.audience}
+              view={view}
             />
           </span>
 
@@ -246,17 +342,31 @@ export function CalendarScreen({
         </aside>
 
         <main id="main" className={styles.main}>
-          {/* Mobile only (CSS): the board's week strip, seven in-page anchors into the
-              agenda below. The sidebar's mini month does this job from 900px. */}
+          {/* Mobile only (CSS): the board's week strip. On the agenda it is seven in-page
+              anchors into the list below (one fetch, no roundtrip); on the day view the
+              other six days' data is NOT on the page, so it becomes seven day links. The
+              sidebar's mini month does this job from 900px. */}
           {view === 'agenda' && days.length > 0 && (
             <WeekStrip from={page.from} timezone={timezone} />
+          )}
+          {view === 'day' && anchorDate !== undefined && (
+            <WeekStrip
+              from={page.from}
+              timezone={timezone}
+              mode="links"
+              anchorDate={anchorDate}
+              weekStart={weekStart}
+              audience={page.audience}
+            />
           )}
 
           {/* Two different facts, and conflating them was wrong. "Everything is hidden from
               this audience" is a privacy statement; an owner looking at a quiet week is not
               being told anything about privacy, and a fresh account read the old copy as a
-              failure to load. withheldCount distinguishes them exactly. */}
-          {days.length === 0 && (
+              failure to load. withheldCount distinguishes them exactly. The day and month
+              grids render even when empty — an empty time grid is a legible empty day, and
+              a month of quiet cells is a legible quiet month. */}
+          {days.length === 0 && (view === 'agenda' || view === 'week') && (
             <p className={styles.empty}>
               {page.withheldCount > 0
                 ? `Nothing here for this audience. ${page.withheldCount} ${
@@ -273,6 +383,27 @@ export function CalendarScreen({
               occurrences={page.occurrences}
               from={page.from}
               timezone={timezone}
+              colorFor={colorFor}
+            />
+          )}
+
+          {view === 'day' && (
+            <WeekGrid
+              occurrences={page.occurrences}
+              from={page.from}
+              timezone={timezone}
+              colorFor={colorFor}
+              dayCount={1}
+            />
+          )}
+
+          {view === 'month' && anchorDate !== undefined && (
+            <MonthGrid
+              occurrences={page.occurrences}
+              from={page.from}
+              timezone={timezone}
+              anchorDate={anchorDate}
+              audience={page.audience}
               colorFor={colorFor}
             />
           )}
@@ -416,12 +547,14 @@ export function CalendarScreen({
           )}
         </main>
 
-        {/* Five slots, Cloak in the privileged centre — the board's statement that privacy
-            is a place you go, not a setting buried in an event. The four view switches
-            keep their exact semantics (Day and Month honestly disabled); only the middle
-            slot is new, and it is a destination rather than a view. */}
+        {/* MOBILE chrome only (CSS hides it from 900px, where the header's segmented
+            control takes over): five slots, Cloak in the privileged centre — the board's
+            statement that privacy is a place you go. Day and Month are real navigations
+            now; agenda/week stay instant toggles while the week fetch is on the page. */}
         <nav className={styles.nav} aria-label="Calendar views">
-          {NAV.slice(0, 2).map((item) => navButton(item))}
+          {(['day', 'week'] as const).map((target) =>
+            navControl(navItemFor(target), styles.navItem),
+          )}
           <button
             type="button"
             className={styles.cloakTile}
@@ -431,7 +564,9 @@ export function CalendarScreen({
             <CloakMark size={18} />
             Cloak
           </button>
-          {NAV.slice(2).map((item) => navButton(item))}
+          {(['agenda', 'month'] as const).map((target) =>
+            navControl(navItemFor(target), styles.navItem),
+          )}
         </nav>
 
         {/* Composing is owner-only. Creating an event while viewing as someone else would
@@ -475,22 +610,4 @@ export function CalendarScreen({
       </div>
     </CloakProvider>
   )
-
-  function navButton(item: (typeof NAV)[number]) {
-    return (
-      <button
-        key={item.id}
-        type="button"
-        className={styles.navItem}
-        aria-current={view === item.id ? 'page' : undefined}
-        disabled={!item.ready}
-        title={item.ready ? undefined : 'Coming in a later milestone'}
-        // Wrapped in a View Transition so the two layouts cross-fade where the
-        // browser supports it; everywhere else this is exactly setView.
-        onClick={() => withViewTransition(() => setView(item.id))}
-      >
-        {item.label}
-      </button>
-    )
-  }
 }

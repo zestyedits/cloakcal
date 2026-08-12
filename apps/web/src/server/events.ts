@@ -139,7 +139,7 @@ const toField = (row: FieldRow): CiphertextField => ({
 export async function getCalendarPage(range: CalendarRange, timezone: string): Promise<CalendarPage> {
   // The only branch away from Postgres, and it cannot exist in a production build — the
   // gate checks NODE_ENV, which Next inlines at build time. See dev-fixture.ts.
-  if (isDevFixtureEnabled()) return getFixturePage()
+  if (isDevFixtureEnabled()) return getFixturePage(range)
 
   const supabase = await supabaseServer()
 

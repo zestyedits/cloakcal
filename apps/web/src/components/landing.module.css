@@ -1,0 +1,282 @@
+/*
+ * The landing page — the one surface that is allowed to be a little theatrical, because
+ * it is the only one with nothing private on it. Still: tokens only, one gradient use
+ * (the CTA), the glow reserved for the mark, rectangles not pills.
+ */
+
+.page {
+  min-height: 100dvh;
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.headerActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4) var(--space-16);
+  display: grid;
+  gap: var(--space-16);
+}
+
+/* ---------------------------------------------------------------------------
+ * Hero
+ * ------------------------------------------------------------------------- */
+
+.hero {
+  display: grid;
+  gap: var(--space-8);
+  align-items: center;
+  animation: rise var(--duration-slow) var(--ease-decelerate) backwards;
+}
+
+@media (min-width: 820px) {
+  .hero {
+    grid-template-columns: 1.1fr 1fr;
+  }
+}
+
+.heroCopy {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.headline {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, var(--text-3xl));
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+}
+
+.headline em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+
+.sub {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  max-width: 34rem;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ---------------------------------------------------------------------------
+ * The demo: one event, three audiences. Static markup — the pitch, drawn.
+ * ------------------------------------------------------------------------- */
+
+.demo {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.demoCard {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  animation: rise var(--duration-slow) var(--ease-decelerate) backwards;
+}
+
+.demoCard:nth-child(2) { animation-delay: 90ms; }
+.demoCard:nth-child(3) { animation-delay: 180ms; }
+
+.demoWho {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.demoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.25rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  border-left: 3px solid var(--brand-teal);
+  font-size: var(--text-sm);
+}
+
+.demoRow[data-muted='true'] {
+  border-left-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.demoTime {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.demoTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demoDetail {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Features
+ * ------------------------------------------------------------------------- */
+
+.features {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 820px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.feature {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+}
+
+.featureIcon {
+  color: var(--accent-text);
+}
+
+.featureTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.featureBody {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ---------------------------------------------------------------------------
+ * The honesty block. A privacy product that overclaims is a privacy product
+ * that lies; this section exists so the claim is bounded in our own words.
+ * ------------------------------------------------------------------------- */
+
+.honesty {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--surface-sunken);
+}
+
+.honestyTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.honestyGrid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .honestyGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.honestyCol {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.honestyLabel {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.honestyList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.honestyNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ---------------------------------------------------------------------------
+ * Closing CTA + footer
+ * ------------------------------------------------------------------------- */
+
+.closing {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.closingTitle {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
