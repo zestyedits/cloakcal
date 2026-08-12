@@ -32,5 +32,10 @@ test('agenda view — locked, before hydration', async ({ page }) => {
   await page.route('**/*.js', (route) => route.abort())
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/', { waitUntil: 'domcontentloaded' })
+  // domcontentloaded races the streamed Suspense content: without this wait the shot
+  // sometimes catches the skeleton fallback instead of the sealed agenda, and a baseline
+  // of the skeleton pins nothing privacy-relevant. The placeholder text is server
+  // rendered and streams in with no .js fetch, so waiting on it stays valid here.
+  await expect(page.getByText('Private event').first()).toBeVisible({ timeout: 15_000 })
   await expect(page).toHaveScreenshot('agenda-locked-mobile.png', { fullPage: true })
 })

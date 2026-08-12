@@ -505,18 +505,30 @@
     grid-template-rows: auto 1fr;
   }
 
-  .account {
+  /* Bottom-pinning only bites inside this flex column; on mobile the cluster follows
+     the flow. Doubled on purpose: the base rule sets its own margin-top LATER in this
+     file, and at equal specificity source order would silently win — which is exactly
+     how the old `.account` pin never actually applied. */
+  .accountCluster.accountCluster {
     margin-top: auto;
   }
 }
 
-/* View As — a trust surface, so it reads as part of the product, not a debug toggle. */
+/* View As — a trust surface, so it reads as part of the product, not a debug toggle.
+   The catch-light is always layered with a real shadow (tokens.css rule). */
 .viewAs {
   margin-bottom: var(--space-6);
   padding: var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--surface-overlay);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+}
+
+/* Accent as a UI shape on the surface — the pair CONTRAST_PAIRS already pins at 3:1
+   in both themes. Never accent as ink here. */
+.viewAs[data-previewing] {
+  border-color: var(--accent);
 }
 
 .viewAsLabel {
@@ -565,47 +577,71 @@
 }
 
 /*
- * The account link. Pushed to the bottom of the sidebar because it is the least-used thing
- * in it, and sized to the 44px floor because on a phone the sidebar collapses into a strip
- * where a text link is easy to miss and hard to hit.
+ * The account cluster. Pushed to the bottom of the sidebar because it is the least-used
+ * thing in it, and cut off from the calendar sections above by a hairline — Settings and
+ * Sign out are about the ACCOUNT, not about what is on screen.
  */
-.account {
-  /* On mobile the sidebar is a short row in normal flow, so the link simply follows View As.
-     `margin-top: auto` only bites inside the desktop flex column, where it pins the link to
-     the bottom. */
-  margin-top: var(--space-2);
+.accountCluster {
+  margin-top: var(--space-6);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
-  /* Two lines now — "Settings" over the account email — so the link stacks. */
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
+  gap: var(--space-1);
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   min-height: var(--touch-min);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
   text-decoration: none;
+  color: var(--text-primary);
+}
+
+.accountRow:hover {
+  background: var(--surface-overlay);
+}
+
+.accountText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+/* The email under the word Settings: which account, without being the label. Secondary
+   ink, not tertiary — light-theme tertiary at 12px is under AA, and it only ever passed
+   because the fixture has no email so axe never renders this row. Quiet comes from the
+   size and weight, not from fading the ink past legibility. */
+.accountEmail {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.account:hover {
-  background: var(--surface-overlay);
+.accountChevron {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.accountRow:hover .accountChevron {
   color: var(--text-secondary);
 }
 
-/* Quiet, left-aligned, under the Settings link — the door out sits by the door to the
-   rest of the house. */
-.signOut {
-  align-self: flex-start;
-}
-
-/* The email under the word Settings: which account, without being the label. */
-.accountEmail {
-  display: block;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Quiet, left-aligned, under the Settings row — the door out sits by the door to the
+   rest of the house. Doubled on purpose: `.button`'s own rules win a same-specificity
+   fight on CSS-module import order (the Today-wrapper lesson), so this outranks them
+   at 0,2,0 regardless of order. */
+.signOutRow.signOutRow {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0 var(--space-2);
 }

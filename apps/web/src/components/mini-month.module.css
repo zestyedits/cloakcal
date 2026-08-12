@@ -1,5 +1,7 @@
+/* --space-6, matching every other section gap in the sidebar (compose → month →
+   View As → calendars → account divider) so the column reads as one rhythm. */
 .root {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .title {

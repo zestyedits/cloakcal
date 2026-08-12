@@ -49,7 +49,7 @@ test('the month view places the demo week in its cells', async ({ page }) => {
   // The standup recurs across the demo week, so several cells carry it.
   await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
   // Cells are doors into the day view. The event count disambiguates the cell from the
-  // sidebar mini month's same-day link, which navigates by month.
+  // sidebar mini month's same-day link, which carries no count.
   await page.getByRole('link', { name: /Open 2026-05-19, \d+ events?/ }).click()
   await expect(page).toHaveURL(/view=day/)
   await expect(page).toHaveURL(/date=2026-05-19/)
