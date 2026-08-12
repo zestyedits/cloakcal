@@ -123,6 +123,21 @@ test('the week strip jumps to a day', async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/#day-\d{4}-\d{2}-\d{2}$/)
 })
 
+test('the sidebar shows the calendars but not the add row in demo mode', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'the calendar list is desktop chrome')
+  await page.goto('/')
+  await settle(page)
+
+  // The list itself renders now (its base hide finally has a desktop counterpart)...
+  await expect(page.getByRole('heading', { name: 'My calendars' })).toBeVisible()
+  // ...but the add row shares the compose gate: no real session in fixture mode, so no
+  // door to a write that could never succeed.
+  await expect(page.getByRole('button', { name: /Add calendar/ })).toHaveCount(0)
+})
+
 // The mini month shares its nav name with the mobile week strip, but never its
 // breakpoint: this test is desktop-only, so the role query can only match the grid.
 test('the sidebar mini month opens a day', async ({ page, isMobile }) => {

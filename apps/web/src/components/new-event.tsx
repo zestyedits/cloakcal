@@ -7,7 +7,9 @@ import { useCloakStore } from './cloak-provider'
 import { EventSheet } from './event-sheet'
 import { EventFields, Field, eventFieldStyles, type EventFieldValues } from './event-fields'
 import { sealFields } from '@/lib/cloaked-fields'
+import { resolveOwnWorkspace } from '@/lib/own-workspace'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { useCloakedLabels } from './use-cloaked-labels'
 import { Button } from './ui/button'
 import styles from './new-event.module.css'
 
@@ -43,7 +45,8 @@ const REPEATS = [
 
 interface Target {
   readonly workspaceId: string
-  readonly calendarId: string
+  /** Every active calendar, default first — the picker's option list. */
+  readonly calendars: readonly string[]
 }
 
 const EMPTY = (defaultDate: string): EventFieldValues => ({
@@ -109,13 +112,17 @@ export function NewEvent({
   const store = useCloakStore()
   const router = useRouter()
   const repeatId = useId()
+  const calendarSelectId = useId()
 
   const [target, setTarget] = useState<Target | null>(null)
+  const [calendarId, setCalendarId] = useState<string | null>(null)
   const [values, setValues] = useState<EventFieldValues>(() => EMPTY(defaultDate))
   const [repeat, setRepeat] = useState('')
   const [detailed, setDetailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const calendarNames = useCloakedLabels('calendar', target?.calendars ?? [], 'display_name')
 
   // Resolved here rather than passed down from the server page, so the redacted payload
   // never has to carry a workspace id it would then be shipping to every audience. RLS
@@ -124,27 +131,24 @@ export function NewEvent({
     if (target !== null) return
 
     void (async () => {
-      const supabase = supabaseBrowser()
-      const { data: workspace } = await supabase
-        .from('workspaces')
-        .select('id')
-        .eq('lifecycle', 'active')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle<{ id: string }>()
-      if (workspace === null) return
+      const workspaceId = await resolveOwnWorkspace()
+      if (workspaceId === null) return
 
-      const { data: calendar } = await supabase
+      // The LIST now, not just the default: since 0021 an account can hold several
+      // calendars, and creating onto a silently-chosen one would file events somewhere
+      // the user did not pick. Default first, so index 0 is the old behaviour.
+      const { data: calendars } = await supabaseBrowser()
         .from('calendars')
         .select('id')
-        .eq('workspace_id', workspace.id)
+        .eq('workspace_id', workspaceId)
         .eq('lifecycle', 'active')
         .order('is_default', { ascending: false })
-        .limit(1)
-        .maybeSingle<{ id: string }>()
-      if (calendar === null) return
+        .order('sort_order', { ascending: true })
+        .returns<{ id: string }[]>()
+      if (calendars === null || calendars.length === 0) return
 
-      setTarget({ workspaceId: workspace.id, calendarId: calendar.id })
+      setTarget({ workspaceId, calendars: calendars.map((c) => c.id) })
+      setCalendarId(calendars[0]!.id)
     })()
   }, [target])
 
@@ -156,7 +160,7 @@ export function NewEvent({
       setError('Your calendar is locked. Unlock it before adding an event.')
       return
     }
-    if (target === null) {
+    if (target === null || calendarId === null) {
       setError('No calendar found for this account yet.')
       return
     }
@@ -180,7 +184,7 @@ export function NewEvent({
       const { error: rpcError } = await supabaseBrowser().rpc('create_cloaked_event', {
         p_event_id: eventId,
         p_workspace_id: target.workspaceId,
-        p_calendar_id: target.calendarId,
+        p_calendar_id: calendarId,
         p_timezone: timezone,
         p_start_utc: zoned.toInstant().toString(),
         p_end_utc: end.toInstant().toString(),
@@ -220,6 +224,30 @@ export function NewEvent({
         onDisclose={() => setDetailed(true)}
         titleHint="Encrypted on this device before it is saved."
       >
+        {/* Only when there is a real choice: one calendar needs no picker and the sheet
+            stays minimal. Labels are decrypted client-side (ViewAsBar's pattern —
+            an <option> holds text, so CloakedText cannot render inside one); before
+            unlock the id prefix shows, which is what the server sees. */}
+        {target !== null && target.calendars.length > 1 && (
+          <Field label="Calendar" htmlFor={calendarSelectId}>
+            <select
+              id={calendarSelectId}
+              className={eventFieldStyles.input}
+              disabled={busy}
+              value={calendarId ?? ''}
+              onChange={(e) => setCalendarId(e.target.value)}
+            >
+              {target.calendars.map((id) => (
+                <option key={id} value={id}>
+                  {calendarNames[id] !== undefined && calendarNames[id] !== ''
+                    ? calendarNames[id]
+                    : `Calendar ${id.slice(0, 8)}`}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
         <Field label="Repeats" htmlFor={repeatId}>
           <select
             id={repeatId}

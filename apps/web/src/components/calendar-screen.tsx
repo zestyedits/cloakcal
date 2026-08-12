@@ -9,6 +9,7 @@ import { withViewTransition } from '@/lib/view-transition'
 import { CloakProvider, type ExtraSealedField } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
+import { NewCalendarButton } from './new-calendar'
 import { WeekGrid } from './week-grid'
 import { NewEvent, NewEventButton } from './new-event'
 import { DeleteEvent } from './delete-event'
@@ -313,7 +314,11 @@ export function CalendarScreen({
             />
           </Suspense>
 
-          {page.calendars.length > 0 && (
+          {/* The add row shares the compose gate (real session + owner), so the fixture
+              never renders it and the demo baselines hold. A restricted audience keeps
+              seeing no section at all when it has no calendars to list. */}
+          {(page.calendars.length > 0 ||
+            (composeDate !== undefined && page.audience === 'owner')) && (
             <>
               <h2 className={styles.sidebarHeading}>My calendars</h2>
               <ul className={styles.calendarList}>
@@ -333,6 +338,11 @@ export function CalendarScreen({
                   </li>
                 ))}
               </ul>
+              {composeDate !== undefined && page.audience === 'owner' && (
+                <span className={styles.calendarAdd}>
+                  <NewCalendarButton />
+                </span>
+              )}
             </>
           )}
 

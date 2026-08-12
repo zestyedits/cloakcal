@@ -313,9 +313,10 @@ export function SettingsScreen({
                   Take your calendar out, decrypted by you, on your machine.
                 </p>
                 <p className={styles.deferredRow}>
-                  <span className={styles.deferredName}>New calendars</span>
+                  <span className={styles.deferredName}>Deleting calendars</span>
                   <span className={styles.soon}>Coming soon</span>
-                  Creating and deleting calendars needs an answer for the events they hold.
+                  Deleting a calendar needs an answer for the events it holds. Creating
+                  one works now, from the sidebar or the Calendars card above.
                 </p>
               </div>
             </SettingsSection>

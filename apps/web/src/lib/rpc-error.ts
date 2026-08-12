@@ -62,6 +62,10 @@ const BY_SLUG: Record<string, string> = {
   unknown_audience: 'That audience no longer exists. Reload the page.',
   unknown_time_visibility: 'Something went wrong saving this rule. Nothing was saved.',
   rule_not_found: 'This rule was already removed. Reload the page.',
+
+  // create_calendar (0021). The client always seals a name before calling, so a missing
+  // one is our bug: the copy promises the thing the user cares about, nothing saved.
+  missing_name: 'Something went wrong saving this calendar. Nothing was saved.',
 }
 
 export function rpcErrorMessage(error: unknown): string {

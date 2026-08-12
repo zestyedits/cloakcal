@@ -111,6 +111,7 @@ const MIGRATIONS = [
   '0018_workspace_prefs.sql',
   '0019_update_calendar.sql',
   '0020_contact_group_rpcs.sql',
+  '0021_create_calendar.sql',
 ] as const
 
 export interface QueryResult {
