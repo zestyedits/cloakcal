@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { ChangePassword } from '@/components/change-password'
+import { ReissueRecoveryPhrase } from '@/components/reissue-recovery-phrase'
 import { supabaseServer } from '@/lib/supabase/server'
 import styles from '@/components/auth.module.css'
 
@@ -34,6 +35,11 @@ export default async function AccountPage() {
   return (
     <main id="main" className={styles.page}>
       <ChangePassword email={data.user.email ?? ''} />
+      {/* Below the password form rather than above it. Both need the same proof of identity,
+          but changing a password is the errand people come here for; re-issuing a phrase is
+          the one they need and do not know exists. Putting it second keeps the common task
+          first without hiding the other behind a menu. */}
+      <ReissueRecoveryPhrase email={data.user.email ?? ''} />
     </main>
   )
 }

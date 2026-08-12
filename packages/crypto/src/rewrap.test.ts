@@ -90,3 +90,71 @@ describe('re-wrapping the root key under a new password', () => {
     expect([...opened.bytes]).toEqual([...rootKey.bytes])
   })
 })
+
+/**
+ * Rotating the RECOVERY phrase — the mirror image, and the one that closes a real trap.
+ *
+ * Until `reissueRecoveryPhrase` existed there was no way to get a new set of 24 words. Losing
+ * the paper while still signed in left the account already unrecoverable and looking
+ * completely fine, with the failure surfacing on the one day it could no longer be fixed.
+ *
+ * The same claim underwrites this as underwrites a password change — the root key does not
+ * move — plus one that does not apply there: THE OLD PHRASE MUST STOP WORKING. A password
+ * change is about convenience; a phrase rotation is often about someone else having seen the
+ * words, and a rotation that left the old set valid would answer the wrong problem while
+ * looking like it had answered the right one.
+ */
+describe('re-issuing the recovery phrase', () => {
+  it('opens under the new phrase and refuses the old one', async () => {
+    const rootKey = createRootKey()
+    const first = generateRecoveryPhrase()
+    const second = generateRecoveryPhrase()
+    expect(second).not.toBe(first)
+
+    // What the account starts with.
+    const before = await wrapRootKey(rootKey, await deriveRecoveryWrapKey(first), 'recovery')
+    // What rotation replaces it with. One row, overwritten — there is no second recovery wrap.
+    const after = await wrapRootKey(rootKey, await deriveRecoveryWrapKey(second), 'recovery')
+
+    const opened = await unwrapRootKey(after, await deriveRecoveryWrapKey(second))
+    expect([...opened.bytes]).toEqual([...rootKey.bytes])
+
+    // The old words against the new wrap: whoever found the lost paper is now locked out.
+    await expect(unwrapRootKey(after, await deriveRecoveryWrapKey(first))).rejects.toThrow()
+
+    // And the reverse, so the test cannot pass by both wraps simply being broken.
+    const stillOpens = await unwrapRootKey(before, await deriveRecoveryWrapKey(first))
+    expect([...stillOpens.bytes]).toEqual([...rootKey.bytes])
+  })
+
+  it('leaves the password wrap alone, so nothing is re-encrypted', async () => {
+    // The point of rotating only the recovery wrap: the root key is untouched, so the
+    // password still opens the account and not one event has to be re-sealed.
+    const rootKey = createRootKey()
+    const passwordWrap = await wrapRootKey(rootKey, await wrapKeyFor(OLD), 'password')
+
+    await wrapRootKey(rootKey, await deriveRecoveryWrapKey(generateRecoveryPhrase()), 'recovery')
+
+    const opened = await unwrapRootKey(passwordWrap, await wrapKeyFor(OLD))
+    expect([...opened.bytes]).toEqual([...rootKey.bytes])
+  })
+
+  it('cannot be relabelled into the password slot', async () => {
+    // The wrap's KIND is authenticated data, not a label beside the ciphertext. So an
+    // attacker who can write to root_key_wraps cannot move the recovery row into the
+    // password slot by flipping one column — the AAD stops matching and it fails to open.
+    //
+    // Worth pinning here because rotation is the moment that row is rewritten, and a
+    // rotation that dropped the binding would look identical in every other test.
+    const rootKey = createRootKey()
+    const phrase = generateRecoveryPhrase()
+    const recovery = await wrapRootKey(rootKey, await deriveRecoveryWrapKey(phrase), 'recovery')
+
+    const relabelled = { ...recovery, kind: 'password' as const }
+    await expect(unwrapRootKey(relabelled, await deriveRecoveryWrapKey(phrase))).rejects.toThrow()
+
+    // Not vacuous: with the label left alone, the same key opens it.
+    const opened = await unwrapRootKey(recovery, await deriveRecoveryWrapKey(phrase))
+    expect([...opened.bytes]).toEqual([...rootKey.bytes])
+  })
+})

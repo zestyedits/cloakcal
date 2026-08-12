@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 708 unit tests
+pnpm test                # 711 unit tests
 pnpm test:e2e            # 91 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -360,6 +360,32 @@ and re-add.
   one (`touch_updated_at`, fixed in 0010). Use `db.asUnauthenticated(...)`, not
   `db.asAnon(...)`, for privilege assertions: `asAnon` is the `authenticated` role without a
   subject, which is a different thing entirely.
+
+## Recovery
+
+**The phrase can now be re-issued** — `/account` → "Get a new recovery phrase", proved with
+either the password or the current phrase. Until 2026-08-12 there was no way to get a new set,
+so losing the paper while still signed in left the account ALREADY unrecoverable and looking
+completely fine. That is worse than never writing it down, because there is no signal: you
+find out on the day it cannot be fixed.
+
+Rotation costs nothing in security. It needs the root key, so the caller has already proved
+they can open the account — anyone who can rotate could read every event anyway. It takes a
+`RootKey` rather than working from the session because a resumed session holds a
+NON-EXTRACTABLE key and wrapping needs raw bytes; re-authenticating before minting a
+permanent way back in is the right shape regardless.
+
+**The old phrase stops working immediately**, which is the point when the reason for rotating
+is that somebody saw the words. `packages/crypto/src/rewrap.test.ts` pins that, and pins that
+the wrap's `kind` is authenticated — so a rotated recovery wrap cannot be relabelled into the
+password slot by anyone who can write to the table.
+
+**Still only one recovery route.** Spec §Recovery names three — recovery key, trusted-device,
+optional secure setup — and only the first exists. Device pairing is the next milestone and
+the real fix: the crypto (`packages/crypto/src/device.ts`, ECDH P-256) and the schema
+(`root_key_wraps.kind = 'device'`) are done and tested, and there is no UI. With it, a
+forgotten password becomes "approve on your phone" and the phrase goes back to being the
+last resort rather than the only one.
 
 ## Email, and the two things that surprised us
 

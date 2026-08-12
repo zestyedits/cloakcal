@@ -376,6 +376,77 @@ export async function rewrapPasswordWrap(
   if (authError !== null) throw new RewrapHalfAppliedError()
 }
 
+/**
+ * Issue a NEW recovery phrase, replacing the old one.
+ *
+ * ---------------------------------------------------------------------------
+ * THE TRAP THIS CLOSES
+ * ---------------------------------------------------------------------------
+ *
+ * The phrase is shown exactly once and there is no second copy anywhere, which is correct —
+ * a phrase we could re-show would be a phrase we had stored. But until now there was also no
+ * way to get a DIFFERENT one. Lose the paper while still signed in and the account is already
+ * unrecoverable; you just do not find out until the next time you need it. One logout, or one
+ * cleared browser, and the events are gone.
+ *
+ * That is a strictly worse position than a user who never wrote it down, because it looks
+ * fine. Rotation costs nothing in security: it needs the root key, so the caller has already
+ * proved they can open the account. Someone who can rotate the phrase could read every event
+ * anyway.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY IT TAKES A RootKey RATHER THAN JUST WORKING
+ * ---------------------------------------------------------------------------
+ *
+ * A resumed session holds a NON-EXTRACTABLE key (see key-vault.ts) — usable for decryption,
+ * impossible to wrap, because wrapping needs the raw bytes. So the caller has to re-derive
+ * from the password or the current phrase. That is not a workaround: re-authenticating before
+ * issuing new recovery material is the right shape. Otherwise an unlocked laptop left open is
+ * enough for someone to mint themselves a permanent way back in.
+ *
+ * The root key itself does not change, so nothing is re-encrypted, the password and device
+ * wraps are untouched, and an unlocked session stays unlocked. Only the recovery wrap moves.
+ */
+export async function reissueRecoveryPhrase(rootKey: RootKey): Promise<string> {
+  const supabase = supabaseBrowser()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError !== null) throw userError
+
+  const phrase = generateRecoveryPhrase()
+  const wrapped = await wrapRootKey(rootKey, await deriveRecoveryWrapKey(phrase), 'recovery')
+
+  // Opened again before anything is written, exactly as in rewrapPasswordWrap and for a
+  // sharper reason: this row IS the last resort. A recovery wrap that cannot be opened
+  // replaces a working way back with a broken one, and nothing would notice until someone
+  // needed it — the single worst moment to discover a bug.
+  let verified = false
+  try {
+    const check = await unwrapRootKey(wrapped, await deriveRecoveryWrapKey(phrase))
+    verified = sameBytes(check.bytes, rootKey.bytes)
+  } catch {
+    verified = false
+  }
+  if (!verified) throw new RewrapVerificationError()
+
+  const { data: updated, error: updateError } = await supabase
+    .from('root_key_wraps')
+    .update({
+      wrapped: toPgBytea(wrapped.wrapped),
+      nonce: toPgBytea(wrapped.nonce),
+      alg: wrapped.alg,
+    })
+    .eq('user_id', userData.user.id)
+    .eq('kind', 'recovery')
+    .select('id')
+  if (updateError !== null) throw updateError
+
+  // RLS returns zero rows rather than an error when the row is not yours, so "no error" is
+  // not "it worked". A silent no-op here would hand the user 24 words that open nothing.
+  if (updated === null || updated.length !== 1) throw new RewrapVerificationError()
+
+  return phrase
+}
+
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && a.every((byte, i) => byte === b[i])
 
