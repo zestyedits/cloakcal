@@ -7,6 +7,7 @@ import {
   type VisibilityRule,
 } from '@cloakcal/policy'
 import type { CalendarPage, OccurrenceView } from './events.js'
+import { toPolicyFieldName } from './policy-codec.js'
 
 /**
  * Applies the policy engine to a calendar page.
@@ -94,6 +95,23 @@ const WORKSPACE_RULES: readonly VisibilityRule[] = [
   },
 ]
 
+/**
+ * Tier A facts in, `EventPayload` out.
+ *
+ * The field names are TRANSLATED, not cast. This used to read
+ * `f.fieldName as EventPayload['fields'][number]['fieldName']`, which silenced the compiler
+ * over a real disagreement: the database allowlist spells it `video_link` and the policy
+ * engine's union spells it `videoLink`. Redaction decides disclosure with
+ * `decision.fields[field.fieldName]`, so a video link would have looked up a key that does
+ * not exist, found `undefined`, and been withheld from every audience including the owner —
+ * with no error, and no setting that could grant it.
+ *
+ * The bug was unreachable only because the editor writes three fields today. It failed
+ * CLOSED, which is the safe direction and also the quiet one, so it would have shipped.
+ *
+ * A field this cannot name is dropped rather than passed through. Same reasoning: an unknown
+ * name has no defined visibility, and withholding is the only safe answer.
+ */
 const toPayload = (occurrence: OccurrenceView, timezone: string): EventPayload => ({
   eventId: occurrence.eventId,
   calendarId: occurrence.calendarId,
@@ -102,13 +120,19 @@ const toPayload = (occurrence: OccurrenceView, timezone: string): EventPayload =
   timezone,
   allDay: occurrence.allDay,
   busy: occurrence.busy,
-  fields: occurrence.fields.map((f) => ({
-    fieldName: f.fieldName as EventPayload['fields'][number]['fieldName'],
-    ciphertext: f.ciphertext,
-    nonce: f.nonce,
-    alg: f.alg,
-    keyVersion: f.keyVersion,
-  })),
+  fields: occurrence.fields.flatMap((f) => {
+    const fieldName = toPolicyFieldName(f.fieldName)
+    if (fieldName === null) return []
+    return [
+      {
+        fieldName,
+        ciphertext: f.ciphertext,
+        nonce: f.nonce,
+        alg: f.alg,
+        keyVersion: f.keyVersion,
+      },
+    ]
+  }),
 })
 
 export function redactPage(page: CalendarPage, audience: AudienceId, now: string): RedactedPage {
