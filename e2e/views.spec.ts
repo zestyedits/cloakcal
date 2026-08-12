@@ -43,11 +43,14 @@ test('the day page week strip is seven day links with the shown day current', as
 
 test('the month view places the demo week in its cells', async ({ page }) => {
   await page.goto('/?view=month')
-  await expect(page.getByText('May 2026')).toBeVisible()
+  // Scoped to the stepper nav: the sidebar's mini month ALSO says "May 2026" now that it
+  // draws the anchor's month rather than the grid range's first month.
+  await expect(page.getByLabel('Change month').getByText('May 2026')).toBeVisible()
   // The standup recurs across the demo week, so several cells carry it.
   await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
-  // Cells are doors into the day view.
-  await page.getByRole('link', { name: /Open 2026-05-19/ }).click()
+  // Cells are doors into the day view. The event count disambiguates the cell from the
+  // sidebar mini month's same-day link, which navigates by month.
+  await page.getByRole('link', { name: /Open 2026-05-19, \d+ events?/ }).click()
   await expect(page).toHaveURL(/view=day/)
   await expect(page).toHaveURL(/date=2026-05-19/)
 })

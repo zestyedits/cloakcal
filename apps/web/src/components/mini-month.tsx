@@ -35,6 +35,7 @@ const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
 
 export function MiniMonth({
   from,
+  anchorDate,
   timezone,
   weekStart,
   audience,
@@ -42,6 +43,12 @@ export function MiniMonth({
 }: {
   /** ISO instant of the visible range's first day. */
   from: string
+  /**
+   * YYYY-MM-DD the page is anchored on. Preferred over `from` for deciding which month
+   * to draw: a month view's RANGE starts in the previous month's grid margin, and a mini
+   * month that says April over a page that says May is wrong in the way users notice.
+   */
+  anchorDate?: string | undefined
   timezone: string
   weekStart: number
   /** Carried into every link so View As survives navigation, like the steppers. */
@@ -66,7 +73,7 @@ export function MiniMonth({
       Array.from({ length: 7 }, (_, i) => toDay(toUtc(weekFirst) + i * DAY_MS)),
     )
 
-    const [year, month] = weekFirst.split('-').map(Number)
+    const [year, month] = (anchorDate ?? weekFirst).split('-').map(Number)
     const monthStart = Date.UTC(year!, month! - 1, 1)
     // Back up from the 1st to the configured week start, then six rows always — a fixed
     // height keeps the sidebar from jumping as the user steps across month boundaries.
@@ -90,7 +97,7 @@ export function MiniMonth({
     )
 
     return { title: `${MONTHS[month! - 1]} ${year}`, cells, names }
-  }, [from, timezone, weekStart])
+  }, [from, anchorDate, timezone, weekStart])
 
   const queryFor = (day: string): Record<string, string> => ({
     date: day,

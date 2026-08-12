@@ -292,6 +292,7 @@ export function CalendarScreen({
           <span className={styles.sidebarMonth}>
             <MiniMonth
               from={page.from}
+              anchorDate={anchorDate}
               timezone={timezone}
               weekStart={weekStart}
               audience={page.audience}
