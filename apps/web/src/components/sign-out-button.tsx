@@ -28,8 +28,10 @@ export function SignOutButton({ className }: { className?: string | undefined })
         void signOut()
           .catch(() => undefined)
           .then(() => {
+            // To the LANDING page, not the sign-in form: signing out is leaving, and you
+            // leave to the front of the house — the landing's nav is where sign-in lives.
             // Replace, not push: Back should not resurrect a signed-out session's page.
-            router.replace('/sign-in')
+            router.replace('/')
             router.refresh()
           })
       }}
