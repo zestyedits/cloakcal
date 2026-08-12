@@ -228,13 +228,25 @@ with a shadow of the previous one behind it.
 is still unused, and `deriveFieldKey` returns a NON-EXTRACTABLE key, so envelope material
 cannot be read out of it. That is the next crypto change and it needs an ADR.
 
+**Day and Month are real views now** (second pass, same day). `?view=agenda|week|day|month`
++ `?date=YYYY-MM-DD` (`?week=` accepted as a legacy alias); agenda/week stay ONE fetch with
+an instant client toggle, day/month are server navigations; steppers move the anchor by the
+view's unit with month pinned to day 1. `monthGridRange` fetches the VISIBLE 42-day grid so
+leading cells cannot render empty while events exist on them. Day is `WeekGrid dayCount={1}`;
+month is `month-grid.tsx`, whose cells are links into the day view and which deliberately
+carries NO privacy chip at 84-cell density (commented in the file). `range.ts` finally has
+unit tests (DST-boundary grids). The chrome split per device: the five-slot bar is
+phone-only, desktop gets a segmented view control + compact Cloak button in a clustered
+header. `/` is PUBLIC and branches on the session: landing page signed out (its copy is
+bound by rule 1 — the honesty block states what the server can and cannot read), calendar
+signed in. Settings sections are `<details>` cards, closed by default, each summary row
+stating its current value; a `#section` deep link opens the card it points at.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow.
-3. Day and month views — currently disabled controls, honestly labelled. The Week/Month
-   segmented toggle arrives with month view, per `docs/calendar-design.md` step 4 (the only
-   step of 2–6 not shipped on 2026-08-12).
+3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
 
 **Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
 native iOS. **Independent security review is a hard gate before public launch.**

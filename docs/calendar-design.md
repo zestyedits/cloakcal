@@ -158,8 +158,9 @@ Each step is shippable on its own and none blocks the next.
    owner the chip is also the door to the Event Visibility sheet.
 3. **Desktop sidebar** ✅ — New Event, mini month of week-links, View As, calendars list.
    The logo stayed in the header (moving it churned a11y landmarks for no user value).
-4. **Today button** ✅ (tablet-and-up; the strip owns "now" on phones). The **Week/Month
-   toggle** still arrives with month view.
+4. **Today button and the view toggle** ✅ — desktop has a segmented Agenda/Week/Day/Month
+   control in the header (Day and Month are real server-navigated views now); the phone
+   keeps the five-slot bar. One descriptor list drives both.
 5. **Mobile week strip and the five-item bottom nav** ✅ — Cloak is a gradient tile in the
    centre opening the privacy-centre sheet: View As plus per-audience engine summaries.
 6. **Event Visibility sheet** ✅ — wired to `set_visibility_rule(p_event_id)`, every
