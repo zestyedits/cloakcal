@@ -19,13 +19,15 @@ pastel event blocks that only work on a light ground.
 
 The app currently hardcodes `data-theme="dark"` on `<html>` with no way to change it.
 
-**Decision: light becomes the default for the calendar, dark stays fully supported.** The
-references are the product spec and they are light. The light palette already exists and is
-already contrast-tested — it was built at M0 precisely so this would not be a retrofit. What
-is missing is a theme toggle and a stored preference, which the settings work has to add
-anyway.
+**Decision — overridden.** This document originally concluded light should become the
+default because the references draw the product on white. Keith overruled that on
+2026-08-12: **dark stays the default**, light is a first-class option, and the toggle is
+easy to find and subtle. Both are shipped (header toggle + the Appearance section in
+`/settings`); the default is a product decision, and the board does not get a veto over it.
 
-Correct the false claim in `tokens.css` while doing it.
+The false claim in `tokens.css` ("the brand board is dark throughout") is corrected either
+way — the board's product screens are light, which is WHY light had to be fully supported
+rather than a theoretical second palette.
 
 ---
 
@@ -150,16 +152,18 @@ drift from the behaviour and nothing will notice.
 
 Each step is shippable on its own and none blocks the next.
 
-1. **Theme.** Light default, stored preference, toggle. Fix the false claim in `tokens.css`.
-2. **Event blocks and agenda rows carry the privacy level** — chip and second line, from
-   `PRIVACY_LEVELS`, icon plus label. Cheapest change with the most product signal, and it
-   needs no new screens.
-3. **Desktop sidebar** — logo, New Event, mini month, calendars list with colours. This is the
-   single biggest visual gap and it makes the desktop layout match the board.
-4. **Today button and the Week/Month toggle**, which arrive with month view.
-5. **Mobile week strip and the five-item bottom nav**, including deciding what the **Cloak**
-   destination is.
-6. **Event Visibility sheet**, wired to `set_visibility_rule`.
+1. **Theme.** ✅ Stored preference + toggle shipped; DARK default per the override above.
+2. **Event blocks and agenda rows carry the privacy level** ✅ — chip and second line from
+   `PRIVACY_LEVELS`, showing the widest disclosure any non-owner audience gets. For the
+   owner the chip is also the door to the Event Visibility sheet.
+3. **Desktop sidebar** ✅ — New Event, mini month of week-links, View As, calendars list.
+   The logo stayed in the header (moving it churned a11y landmarks for no user value).
+4. **Today button** ✅ (tablet-and-up; the strip owns "now" on phones). The **Week/Month
+   toggle** still arrives with month view.
+5. **Mobile week strip and the five-item bottom nav** ✅ — Cloak is a gradient tile in the
+   centre opening the privacy-centre sheet: View As plus per-audience engine summaries.
+6. **Event Visibility sheet** ✅ — wired to `set_visibility_rule(p_event_id)`, every
+   sentence from `explainDecision`, opened from the chip on any agenda row.
 
 ## What the references do not cover
 

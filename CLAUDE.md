@@ -118,9 +118,33 @@ A known credential on the production project is worth less than this recipe.
 
 **Works:** sign up, sign in, first-run key ceremony with a 24-word recovery phrase, unlock,
 agenda and week views, week navigation, View As, and the full create / edit / delete loop on
-an event. Plus account recovery: `/recover` takes the phrase and a new password, `/account`
-changes a password deliberately, and both re-wrap the root key rather than re-encrypting
-anything. Verified in a browser, not just in tests.
+an event. Plus account recovery: `/recover` takes the phrase and a new password, `/settings`
+changes a password deliberately (`/account` now redirects there), and both re-wrap the root
+key rather than re-encrypting anything. Verified in a browser, not just in tests.
+
+**The 2026-08-12 UI pass shipped the board's shell and a full settings page.** In one day,
+eight phases, each merged green: sharpened radii and one shared `ui/Button` (four variants,
+the two contrast lessons stated once); a motion system that finally spends `--duration-cloak`
+on the uncloak wipe when a sealed value becomes readable, plus a staggered agenda entrance
+and a `startViewTransition` view switch whose fallback branch IS the old behaviour; the
+privacy level on every agenda row and week block (`decisionToLevel` in packages/policy —
+the engine is the only interpreter), where the chip shows the WIDEST disclosure any
+non-owner audience gets and, for the owner, is also the door to the per-event Event
+Visibility sheet; the desktop sidebar (New Event, mini month of week-links, View As,
+calendars, Settings), the mobile week strip, and the five-item nav with the Cloak tile in
+the centre opening a privacy-centre sheet; a fail-closed fallback layer (`error.tsx` that
+refuses rather than soften, `global-error` with zero imports, a text-free skeleton, 404
+that cannot distinguish "missing" from "not yours", an offline banner); and `/settings` —
+appearance, time & region, calendars (recolour live while locked, rename not — the privacy
+model made visible), people, visibility defaults, security, honest coming-soon rows.
+
+**Migrations 0018–0020 are applied to production** (prefs incl. timezone + week_start,
+`update_calendar`, the four group RPCs 0017 never had), anon sweep clean. Two real defects
+found and fixed on the way: contact-name ciphertext was never INGESTED into the CloakStore
+(View As showed `Contact 4f2a…` forever on real accounts — invisible to e2e because fixture
+audiences carry no nameField; `CloakProvider` now takes `extraFields`), and real accounts
+passed an EMPTY `groupsByContact` to the engine, so group rules never applied outside the
+fixture.
 
 **The brand is real now.** There is an actual mark — a calendar tile with a cloak over its
 lower-right corner, where the dates under the cloak are ABSENT rather than dimmed — replacing
@@ -206,11 +230,11 @@ cannot be read out of it. That is the next crypto change and it needs an ADR.
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
-1. Read `visibility_rules` from the database. `apps/web/src/server/audience.ts` uses
-   hardcoded demo rules, so View As currently demonstrates the engine rather than
-   controlling anything.
+1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow.
-3. Day and month views — currently disabled controls, honestly labelled.
+3. Day and month views — currently disabled controls, honestly labelled. The Week/Month
+   segmented toggle arrives with month view, per `docs/calendar-design.md` step 4 (the only
+   step of 2–6 not shipped on 2026-08-12).
 
 **Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
 native iOS. **Independent security review is a hard gate before public launch.**
@@ -242,6 +266,25 @@ and re-add.
 ---
 
 ## Things that will waste your time if you do not know them
+
+- **A `max-width` hide rule can un-match itself.** The Today button overflowed the header at
+  412px, the layout viewport expanded past the 480px threshold, and the rule that would have
+  hidden it stopped matching — a feedback loop where the control causes the overflow that
+  reveals the control. Chrome that phones should not see is hidden BY DEFAULT and shown at a
+  `min-width`, which cannot feed the loop. And hide the WRAPPER, not the Button: `.button`'s
+  own `display` beats a same-specificity override on CSS-module import order.
+- **A sticky bar over a page scroller covers the last row's controls.** A delete
+  confirmation's radios sat under the bottom nav — visible, unreachable by pointer, and
+  Playwright will not scroll an element it considers already visible. The shell is now
+  `height: 100dvh` with `main` as the scroller, so the nav owns its grid row and CANNOT
+  overlap content. Do not revert it to `min-height` + page scroll.
+- **Opacity stacked on tertiary ink fails AA.** The mini month dimmed neighbouring-month
+  dates with `opacity: 0.6` over `--text-tertiary` and axe failed the whole page. Dim with a
+  token that passes, never with opacity over ink that barely does.
+- **The privacy chip inks are computed against COMPOSITED washes** — the alpha background
+  over `--surface-raised`, hex-by-hex in `tokens.ts`, both themes. The raw `--privacy-*`
+  colours are shape colours only; `--privacy-hidden` is 1.32:1 on dark raised BY DESIGN, so
+  nothing may render a raw privacy colour as ink or rely on it being seen.
 
 - **`next` is a root devDependency purely for Vercel's framework detection.** It is never
   executed from there. See `docs/deploy.md`.
