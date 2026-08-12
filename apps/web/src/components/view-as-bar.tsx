@@ -66,7 +66,9 @@ export function ViewAsBar({
   }
 
   return (
-    <div className={styles.viewAs}>
+    // Previewing as someone else is a MODE, and the card's accent border says so — the
+    // note alone scrolls away with the card on mobile, a border does not go unnoticed.
+    <div className={styles.viewAs} data-previewing={current !== 'owner' || undefined}>
       <label className={styles.viewAsLabel} htmlFor={selectId}>
         Viewing as
       </label>

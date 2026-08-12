@@ -298,7 +298,6 @@ export function CalendarScreen({
               timezone={timezone}
               weekStart={weekStart}
               audience={page.audience}
-              view={view}
             />
           </span>
 
@@ -336,13 +335,19 @@ export function CalendarScreen({
           {/* Only when there is a real account behind it. The dev fixture has no session, so
               linking to a page that immediately redirects to sign-in would be a dead end. */}
           {email !== undefined && email !== '' && (
-            <>
-              <Link className={styles.account} href="/settings">
-                Settings
-                <span className={styles.accountEmail}>{email}</span>
+            <div className={styles.accountCluster}>
+              <Link className={styles.accountRow} href="/settings">
+                <span className={styles.accountText}>
+                  Settings
+                  <span className={styles.accountEmail}>{email}</span>
+                </span>
+                {/* Decorative, so the link's accessible name stays "Settings <email>". */}
+                <span className={styles.accountChevron} aria-hidden="true">
+                  ›
+                </span>
               </Link>
-              <SignOutButton className={styles.signOut} />
-            </>
+              <SignOutButton className={styles.signOutRow} />
+            </div>
           )}
         </aside>
 

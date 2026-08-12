@@ -100,13 +100,28 @@ test('the week strip jumps to a day', async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/#day-\d{4}-\d{2}-\d{2}$/)
 })
 
-test('the sidebar mini month navigates by week', async ({ page, isMobile }) => {
+// The mini month shares its nav name with the mobile week strip, but never its
+// breakpoint: this test is desktop-only, so the role query can only match the grid.
+test('the sidebar mini month opens a day', async ({ page, isMobile }) => {
   test.skip(isMobile, 'the mini month is desktop chrome; the strip covers mobile')
   await page.goto('/')
   await settle(page)
 
-  const month = page.getByRole('navigation', { name: 'Jump to a week' })
+  const month = page.getByRole('navigation', { name: 'Jump to a day' })
   await expect(month.locator('a')).toHaveCount(42)
   await month.locator('a').first().click()
+  await expect(page).toHaveURL(/view=day/)
   await expect(page).toHaveURL(/date=\d{4}-\d{2}-\d{2}/)
+})
+
+test('the mini month carries the audience into its day links', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'the mini month is desktop chrome; the strip covers mobile')
+  await page.goto('/?as=contact:alex')
+  // Alex's redacted view has no "Legal Call" to settle on; any visible day link will do.
+  const month = page.getByRole('navigation', { name: 'Jump to a day' })
+  await expect(month.locator('a').first()).toHaveAttribute('href', /view=day/)
+  await expect(month.locator('a').first()).toHaveAttribute(
+    'href',
+    /as=contact%3Aalex|as=contact:alex/,
+  )
 })

@@ -5,10 +5,11 @@
  * event-fields.module.css when the edit sheet started sharing them.
  */
 
-/* The sidebar's full-width compose button; the FAB's desktop replacement. */
+/* The sidebar's full-width compose button; the FAB's desktop replacement. --space-6 is
+   the sidebar's uniform section gap. */
 .sidebarButton {
   width: 100%;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .fab {
