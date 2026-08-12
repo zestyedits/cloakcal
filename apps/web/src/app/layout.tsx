@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { inter } from './fonts'
+import { THEME_BOOTSTRAP } from '@/lib/theme'
 import './globals.css'
 
 function siteOrigin(): string {
@@ -64,6 +65,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
        which names nothing, because next/font hashes it. The result is every screen rendering
        in the system font while looking exactly like a font that failed to download. */
     <html lang="en" data-theme="dark" className={inter.variable}>
+      <head>
+        {/* Applies the stored theme BEFORE first paint.
+            The server cannot know which theme this visitor chose — the preference is in
+            localStorage — so without this the page paints dark, hydrates, and snaps to light.
+            On a calendar of pastel blocks that is a full-screen white flash on every
+            navigation, which is worse than not offering the choice at all.
+            Inline and synchronous by necessity: anything deferred loses the race to paint. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>
         <a className="skip-link" href="#main">
           Skip to calendar

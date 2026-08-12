@@ -1,0 +1,31 @@
+/* Subtle until wanted. Quiet in the header, obvious the moment you point at it. */
+
+.toggle,
+.placeholder {
+  /* Meets the 44px touch floor the a11y suite enforces, without a 44px button dominating the
+     header: the hit area is full size, the icon inside it is 18px. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--touch-min);
+  height: var(--touch-min);
+}
+
+.toggle {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  color: var(--text-primary);
+  background: var(--surface-overlay);
+}

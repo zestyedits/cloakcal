@@ -8,6 +8,10 @@
  */
 
 .page {
+  /* `relative` so the theme toggle can sit in the corner. Without it the toggle escapes to
+     the viewport, which is the same place on these pages and NOT the same place once one of
+     them ends up inside another layout. */
+  position: relative;
   min-height: 100dvh;
   display: grid;
   place-items: center;
@@ -291,4 +295,13 @@
   width: 1.15rem;
   height: 1.15rem;
   accent-color: var(--accent);
+}
+
+/* The theme toggle on the auth screens, which have no header to put it in. Top-right of the
+   page rather than inside the card: it is chrome, not part of the form, and a control inside
+   the card would sit in the tab order between the logo and the first field. */
+.themeCorner {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
 }

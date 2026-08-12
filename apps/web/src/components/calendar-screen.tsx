@@ -12,6 +12,7 @@ import { NewEvent } from './new-event'
 import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
 import { CloakLockup } from './cloak-logo'
+import { ThemeToggle } from './theme-toggle'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -113,6 +114,8 @@ export function CalendarScreen({
               ›
             </Link>
           </nav>
+
+          <ThemeToggle />
         </header>
 
         <aside className={styles.sidebar} aria-label="Calendars">

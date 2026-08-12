@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { ChangePassword } from '@/components/change-password'
 import { ReissueRecoveryPhrase } from '@/components/reissue-recovery-phrase'
 import { supabaseServer } from '@/lib/supabase/server'
+import { ThemeToggle } from '@/components/theme-toggle'
 import styles from '@/components/auth.module.css'
 
 export const metadata = { title: 'Account — CloakCal' }
@@ -34,6 +35,11 @@ export default async function AccountPage() {
 
   return (
     <main id="main" className={styles.page}>
+      {/* Reachable before you have an account. Someone who prefers light should not have to
+          sign up in the dark first, and this is the only chrome these pages have. */}
+      <div className={styles.themeCorner}>
+        <ThemeToggle />
+      </div>
       <ChangePassword email={data.user.email ?? ''} />
       {/* Below the password form rather than above it. Both need the same proof of identity,
           but changing a password is the errand people come here for; re-issuing a phrase is
