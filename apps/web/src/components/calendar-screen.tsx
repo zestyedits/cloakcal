@@ -19,6 +19,8 @@ import { MiniMonth } from './mini-month'
 import { MonthGrid } from './month-grid'
 import { WeekStrip } from './week-strip'
 import { CloakSheet } from './cloak-sheet'
+import { SeedSampleEvents } from './seed-sample-events'
+import { SignOutButton } from './sign-out-button'
 import { VisibilitySheet } from './visibility-sheet'
 import { ButtonLink } from './ui/button'
 import { PrivacyChip } from './ui/privacy-chip'
@@ -334,10 +336,13 @@ export function CalendarScreen({
           {/* Only when there is a real account behind it. The dev fixture has no session, so
               linking to a page that immediately redirects to sign-in would be a dead end. */}
           {email !== undefined && email !== '' && (
-            <Link className={styles.account} href="/settings">
-              Settings
-              <span className={styles.accountEmail}>{email}</span>
-            </Link>
+            <>
+              <Link className={styles.account} href="/settings">
+                Settings
+                <span className={styles.accountEmail}>{email}</span>
+              </Link>
+              <SignOutButton className={styles.signOut} />
+            </>
           )}
         </aside>
 
@@ -367,15 +372,24 @@ export function CalendarScreen({
               grids render even when empty — an empty time grid is a legible empty day, and
               a month of quiet cells is a legible quiet month. */}
           {days.length === 0 && (view === 'agenda' || view === 'week') && (
-            <p className={styles.empty}>
-              {page.withheldCount > 0
-                ? `Nothing here for this audience. ${page.withheldCount} ${
-                    page.withheldCount === 1 ? 'event is' : 'events are'
-                  } hidden from them entirely.`
-                : page.audience === 'owner'
-                  ? 'Nothing scheduled this week.'
-                  : 'Nothing in this week for this audience.'}
-            </p>
+            <>
+              <p className={styles.empty}>
+                {page.withheldCount > 0
+                  ? `Nothing here for this audience. ${page.withheldCount} ${
+                      page.withheldCount === 1 ? 'event is' : 'events are'
+                    } hidden from them entirely.`
+                  : page.audience === 'owner'
+                    ? 'Nothing scheduled this week.'
+                    : 'Nothing in this week for this audience.'}
+              </p>
+              {/* An empty week is the one place sample data helps — and the only place it
+                  can come from is here, sealed in this browser with real keys. */}
+              {page.audience === 'owner' &&
+                page.withheldCount === 0 &&
+                composeDate !== undefined && (
+                  <SeedSampleEvents from={page.from} timezone={timezone} />
+                )}
+            </>
           )}
 
           {view === 'week' && days.length > 0 && (

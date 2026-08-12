@@ -1,0 +1,15 @@
+.root {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) auto 0;
+  max-width: 24rem;
+  text-align: center;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
+}
