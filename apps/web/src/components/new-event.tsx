@@ -8,6 +8,7 @@ import { EventSheet } from './event-sheet'
 import { EventFields, Field, eventFieldStyles, type EventFieldValues } from './event-fields'
 import { sealFields } from '@/lib/cloaked-fields'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { Button } from './ui/button'
 import styles from './new-event.module.css'
 
 /**
@@ -54,12 +55,61 @@ const EMPTY = (defaultDate: string): EventFieldValues => ({
   notes: '',
 })
 
-export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultDate: string }) {
+/**
+ * The triggers, split from the sheet so the mobile FAB and the desktop sidebar button can
+ * open ONE shared compose sheet (whose open state lives in CalendarScreen). Which trigger
+ * shows is CSS: the FAB below 900px, the sidebar block from it.
+ */
+export function NewEventButton({
+  variant,
+  onOpen,
+}: {
+  variant: 'fab' | 'block'
+  onOpen: () => void
+}) {
+  const store = useCloakStore()
+  const locked = store === null || !store.isUnlocked
+
+  if (variant === 'block') {
+    return (
+      <Button
+        className={styles.sidebarButton}
+        disabled={locked}
+        title={locked ? 'Unlock your calendar first' : undefined}
+        onClick={onOpen}
+      >
+        <span aria-hidden="true">+</span> New event
+      </Button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.fab}
+      disabled={locked}
+      title={locked ? 'Unlock your calendar first' : 'New event'}
+      onClick={onOpen}
+    >
+      <span aria-hidden="true">+</span>
+      <span className={styles.fabLabel}>New event</span>
+    </button>
+  )
+}
+
+export function NewEvent({
+  timezone,
+  defaultDate,
+  onClose,
+}: {
+  timezone: string
+  defaultDate: string
+  onClose: () => void
+}) {
   const store = useCloakStore()
   const router = useRouter()
   const repeatId = useId()
 
-  const [open, setOpen] = useState(false)
   const [target, setTarget] = useState<Target | null>(null)
   const [values, setValues] = useState<EventFieldValues>(() => EMPTY(defaultDate))
   const [repeat, setRepeat] = useState('')
@@ -69,9 +119,9 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
 
   // Resolved here rather than passed down from the server page, so the redacted payload
   // never has to carry a workspace id it would then be shipping to every audience. RLS
-  // restricts this to the caller's own rows.
+  // restricts this to the caller's own rows. Mounting is opening, so no `open` gate.
   useEffect(() => {
-    if (!open || target !== null) return
+    if (target !== null) return
 
     void (async () => {
       const supabase = supabaseBrowser()
@@ -96,7 +146,7 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
 
       setTarget({ workspaceId: workspace.id, calendarId: calendar.id })
     })()
-  }, [open, target])
+  }, [target])
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -142,7 +192,7 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
       })
       if (rpcError !== null) throw rpcError
 
-      setOpen(false)
+      onClose()
       setValues(EMPTY(defaultDate))
       setDetailed(false)
       router.refresh()
@@ -153,23 +203,6 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
     }
   }
 
-  const locked = store === null || !store.isUnlocked
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className={styles.fab}
-        disabled={locked}
-        title={locked ? 'Unlock your calendar first' : 'New event'}
-        onClick={() => setOpen(true)}
-      >
-        <span aria-hidden="true">+</span>
-        <span className={styles.fabLabel}>New event</span>
-      </button>
-    )
-  }
-
   return (
     <EventSheet
       title="New event"
@@ -177,7 +210,7 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
       busy={busy}
       submitLabel={busy ? 'Encrypting and saving' : 'Save'}
       onSubmit={submit}
-      onClose={() => setOpen(false)}
+      onClose={onClose}
     >
       <EventFields
         values={values}

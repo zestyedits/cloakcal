@@ -5,6 +5,12 @@
  * event-fields.module.css when the edit sheet started sharing them.
  */
 
+/* The sidebar's full-width compose button; the FAB's desktop replacement. */
+.sidebarButton {
+  width: 100%;
+  margin-bottom: var(--space-5);
+}
+
 .fab {
   position: fixed;
   right: var(--space-4);
@@ -41,6 +47,14 @@
 .fab:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* From the sidebar breakpoint the block button takes over; two compose triggers on one
+   screen would be one too many. */
+@media (min-width: 900px) {
+  .fab {
+    display: none;
+  }
 }
 
 /* The label is dropped on the narrowest phones, where a bare + is unambiguous and the
