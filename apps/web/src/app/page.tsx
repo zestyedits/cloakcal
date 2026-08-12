@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { redactPage, type AudienceId } from '@/server/audience'
 import { EMPTY_VISIBILITY, audienceIdOf, loadWorkspaceVisibility } from '@/server/visibility'
 import { getCalendarPage } from '@/server/events'
-import { DISPLAY_TIMEZONE, formatRange, rangeFromParam, shiftWeeks, weekParam } from '@/server/range'
+import { formatRange, rangeFromParam, safeTimezone, shiftWeeks, weekParam } from '@/server/range'
+import { loadWorkspacePrefs } from '@/server/settings'
 import { supabaseServer } from '@/lib/supabase/server'
 import {
   DEMO_WEEK,
@@ -45,10 +46,17 @@ export default async function Page({
   }
 
 
+  // Workspace prefs frame everything below: the timezone decides which instant range a
+  // week spans, week_start decides where it begins. `safeTimezone` degrades a stored zone
+  // this runtime cannot use to the default rather than 500ing the calendar.
+  const prefs = fixtureMode ? null : await loadWorkspacePrefs()
+  const timezone = safeTimezone(prefs?.timezone)
+  const weekStart = prefs?.weekStart ?? 0
+
   // The fixture is pinned to one week, so honouring ?week= there would render an empty
   // grid and look like a bug in the range maths rather than a property of the fixture.
-  const range = fixtureMode ? DEMO_WEEK : rangeFromParam(week, DISPLAY_TIMEZONE)
-  const calendarPage = await getCalendarPage(range, DISPLAY_TIMEZONE)
+  const range = fixtureMode ? DEMO_WEEK : rangeFromParam(week, timezone, weekStart)
+  const calendarPage = await getCalendarPage(range, timezone)
 
   // Contacts, groups and stored rules. Fixture mode has no workspace behind it, so it gets
   // the fixed pair — owner and public — and no rules, which is the honest thing to show for
@@ -82,8 +90,8 @@ export default async function Page({
   })
 
   const linkFor = (weeks: number): WeekLink => {
-    const shifted = shiftWeeks(range, weeks, DISPLAY_TIMEZONE)
-    const query: Record<string, string> = { week: weekParam(shifted, DISPLAY_TIMEZONE) }
+    const shifted = shiftWeeks(range, weeks, timezone)
+    const query: Record<string, string> = { week: weekParam(shifted, timezone) }
     // The audience is carried across a week step so View As survives navigation; dropping
     // it would silently return a reviewer to the owner's view mid-check.
     if (audience !== 'owner') query['as'] = audience
@@ -98,10 +106,10 @@ export default async function Page({
     <CalendarScreen
       page={page}
       audiences={visibility.audiences}
-      heading={formatRange(range, DISPLAY_TIMEZONE)}
+      heading={formatRange(range, timezone)}
       previousHref={linkFor(-1)}
       nextHref={linkFor(1)}
-      timezone={DISPLAY_TIMEZONE}
+      timezone={timezone}
       email={email}
       composeDate={composeDate}
     />

@@ -125,7 +125,7 @@ export function NewEvent({ timezone, defaultDate }: { timezone: string; defaultD
       if (values.location.trim() !== '') content.push(['location', values.location.trim()])
       if (values.notes.trim() !== '') content.push(['notes', values.notes.trim()])
 
-      const fields = await sealFields(store, eventId, content)
+      const fields = await sealFields(store, 'event', eventId, content)
 
       const { error: rpcError } = await supabaseBrowser().rpc('create_cloaked_event', {
         p_event_id: eventId,

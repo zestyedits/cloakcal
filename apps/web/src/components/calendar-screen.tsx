@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
 import { withViewTransition } from '@/lib/view-transition'
-import { CloakProvider } from './cloak-provider'
+import { CloakProvider, type ExtraSealedField } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
 import { WeekGrid } from './week-grid'
@@ -108,8 +108,26 @@ export function CalendarScreen({
       calendarId === undefined ? 'slate' : (map.get(calendarId) ?? 'indigo')
   }, [page.calendars])
 
+  // The audience names, handed to the store so useCloakedLabels can open them — the
+  // ingest half of the defect described on CloakProvider.extraFields.
+  const audienceNames = useMemo<readonly ExtraSealedField[]>(
+    () =>
+      audiences.flatMap((option) =>
+        option.nameField === undefined
+          ? []
+          : [
+              {
+                subjectType: option.kind === 'group' ? ('contact_group' as const) : ('contact' as const),
+                subjectId: option.id,
+                field: option.nameField,
+              },
+            ],
+      ),
+    [audiences],
+  )
+
   return (
-    <CloakProvider page={page} email={email}>
+    <CloakProvider page={page} email={email} extraFields={audienceNames}>
       <div className={styles.shell}>
         <header className={styles.header}>
           <CloakLockup size="sm" />

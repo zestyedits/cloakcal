@@ -207,7 +207,7 @@ export function EditEvent({
           p_new_start_utc: plan.newStartUtc,
           p_new_end_utc: plan.newEndUtc,
           p_new_rrule: plan.newRrule,
-          p_fields: await sealFields(store, newEventId, carried),
+          p_fields: await sealFields(store, 'event', newEventId, carried),
         })
         if (splitError !== null) throw splitError
       } else {
@@ -217,7 +217,7 @@ export function EditEvent({
           p_dtstart_local: resolved?.dtstartLocal ?? null,
           p_start_utc: resolved?.startUtc ?? null,
           p_end_utc: resolved?.endUtc ?? null,
-          p_fields: await sealFields(store, eventId, changes.seal),
+          p_fields: await sealFields(store, 'event', eventId, changes.seal),
           p_clear_fields: changes.clear,
         })
         if (rpcError !== null) throw rpcError

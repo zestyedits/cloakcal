@@ -48,6 +48,20 @@ const BY_SLUG: Record<string, string> = {
   // Must never read like a partial success. Its entire job is to say the transaction rolled
   // back and the calendar is exactly as it was.
   stored_plan_mismatch: "We couldn't save this safely, so nothing changed. Please try again.",
+
+  // Settings (0018–0020). The not-found family all read the same way on purpose: RLS makes
+  // "someone else's" and "nonexistent" deliberately indistinguishable, so the copy is too.
+  workspace_not_found: 'This workspace no longer exists. Reload the page.',
+  unknown_timezone: 'That does not look like a timezone. Pick one from the list.',
+  invalid_week_start: 'That is not a day of the week. Nothing was saved.',
+  calendar_not_found: 'This calendar no longer exists. Reload the page.',
+  unknown_color: 'That colour is not one of the available options.',
+  contact_not_found: 'This contact no longer exists. Reload the page.',
+  group_not_found: 'This group no longer exists. Reload the page.',
+  cross_workspace: 'That contact belongs to a different workspace.',
+  unknown_audience: 'That audience no longer exists. Reload the page.',
+  unknown_time_visibility: 'Something went wrong saving this rule. Nothing was saved.',
+  rule_not_found: 'This rule was already removed. Reload the page.',
 }
 
 export function rpcErrorMessage(error: unknown): string {
