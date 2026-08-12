@@ -168,7 +168,9 @@
 .busy {
   font-size: var(--text-xs);
   padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
+  /* Rectangular chip, deliberately. Pill chips are the default everyone ships; the square
+     corner is the cheapest visible signal that this UI was drawn on purpose. */
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   background: var(--surface-overlay);
 }

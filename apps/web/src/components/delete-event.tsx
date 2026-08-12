@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
+import { Button } from './ui/button'
+import { InlineError } from './ui/inline-error'
 import styles from './delete-event.module.css'
 
 /**
@@ -155,16 +157,14 @@ export function DeleteEvent({
         <p className={styles.question}>Delete this event?</p>
       )}
 
-      {error !== null && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <InlineError className={styles.error}>{error}</InlineError>
 
       <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.cancel}
+        {/* "Keep" is the safe choice, so it is the plain one — and it is listed first, so
+            the destructive button is never where the cursor already is. */}
+        <Button
+          variant="outline"
+          size="sm"
           disabled={busy}
           onClick={() => {
             setConfirming(false)
@@ -173,10 +173,10 @@ export function DeleteEvent({
           }}
         >
           Keep
-        </button>
-        <button type="button" className={styles.destroy} disabled={busy} onClick={remove}>
+        </Button>
+        <Button variant="danger" size="sm" busy={busy} onClick={remove}>
           {busy ? 'Deleting' : 'Delete'}
-        </button>
+        </Button>
       </div>
     </div>
   )

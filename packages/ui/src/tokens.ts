@@ -88,6 +88,13 @@ const DARK = {
   danger: '#f4577b',
   dangerSolid: '#c8355b',
   dangerSolidHover: '#b02b4e',
+  /* --gradient-accent-deep stops. A gradient is checked stop by stop: the label sits on
+   * every colour along the ramp, so BOTH ends must clear 4.5 under white independently —
+   * a passing average with a failing end is still a failure somewhere on the button. */
+  gradientDeepStart: '#6d28d9',
+  gradientDeepEnd: '#6152e6',
+  gradientDeepHoverStart: '#5b21b6',
+  gradientDeepHoverEnd: '#5a4cd8',
 } as const
 
 const LIGHT = {
@@ -140,6 +147,14 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
    */
   { name: 'dark/label on solid danger', foreground: DARK.textPrimary, background: DARK.dangerSolid, minimum: 4.5 },
   { name: 'dark/label on solid danger hover', foreground: DARK.textPrimary, background: DARK.dangerSolidHover, minimum: 4.5 },
+  /*
+   * The deep gradient is theme-agnostic (declared once on :root), so its pairs appear once.
+   * White labels in both themes, same as the accent and the solid danger.
+   */
+  { name: 'gradient/label on deep start', foreground: DARK.textPrimary, background: DARK.gradientDeepStart, minimum: 4.5 },
+  { name: 'gradient/label on deep end', foreground: DARK.textPrimary, background: DARK.gradientDeepEnd, minimum: 4.5 },
+  { name: 'gradient/label on deep hover start', foreground: DARK.textPrimary, background: DARK.gradientDeepHoverStart, minimum: 4.5 },
+  { name: 'gradient/label on deep hover end', foreground: DARK.textPrimary, background: DARK.gradientDeepHoverEnd, minimum: 4.5 },
 
   { name: 'light/body on base', foreground: LIGHT.textPrimary, background: LIGHT.surfaceBase, minimum: 4.5 },
   { name: 'light/body on raised', foreground: LIGHT.textPrimary, background: LIGHT.surfaceRaised, minimum: 4.5 },

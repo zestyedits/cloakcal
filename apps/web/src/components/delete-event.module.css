@@ -107,64 +107,16 @@
   color: var(--text-secondary);
 }
 
+/* The visuals come from InlineError; this only opts the block out of the flex row.
+   Full width so a two-line message does not squeeze the buttons off the row. */
 .error {
-  /* Full width so a two-line message does not squeeze the buttons off the row. */
   flex-basis: 100%;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--status-danger);
-  border-radius: var(--radius-md);
-  background: rgba(244, 87, 123, 0.1);
-  font-size: var(--text-sm);
 }
 
+/* Button visuals moved to ui/button.module.css — including the two contrast lessons this
+   file used to carry (solid danger under the label, hover that darkens), which are now
+   stated once where every consumer inherits them. */
 .actions {
   display: flex;
   gap: var(--space-2);
-}
-
-.cancel,
-.destroy {
-  min-height: var(--touch-min);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-}
-
-/* "Keep" is the safe choice, so it is the plain one — and it is listed first, so the
-   destructive button is never where the cursor already is. */
-.cancel {
-  border: 1px solid var(--border-subtle);
-  background: none;
-  color: var(--text-primary);
-}
-
-.cancel:hover:not(:disabled) {
-  background: var(--surface-raised);
-}
-
-/* --status-danger-solid, not --status-danger. The expressive rose is 2.99:1 under a white
-   label and failed AA on this exact button for months; the solid variant is the one that is
-   dark enough to be written on. Both are pinned by CONTRAST_PAIRS. */
-.destroy {
-  border: 1px solid var(--status-danger-solid);
-  background: var(--status-danger-solid);
-  color: var(--brand-white);
-}
-
-/* Darkens rather than brightening. `filter: brightness(1.08)` was here, and it moved the
-   button toward white — dropping contrast to 4.16:1 in the one state the user is looking at
-   as they commit to an irreversible deletion. */
-.destroy:hover:not(:disabled) {
-  border-color: var(--status-danger-solid-hover);
-  background: var(--status-danger-solid-hover);
-}
-
-.cancel:disabled,
-.destroy:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }

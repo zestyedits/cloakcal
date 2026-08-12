@@ -246,6 +246,10 @@
   place-items: center;
   padding: var(--space-4);
   background: color-mix(in srgb, var(--surface-base) 82%, transparent);
+  /* Prefixed first: iOS Safari before 18 only understands the -webkit- form, and a scrim
+     that silently loses its blur there still works — the tinted background above is the
+     functional layer, the blur is the finish. */
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 
@@ -255,7 +259,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   background: var(--surface-raised);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), var(--edge-highlight);
 }
 
 /*

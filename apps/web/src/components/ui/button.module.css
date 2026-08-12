@@ -1,0 +1,118 @@
+/*
+ * The one button.
+ *
+ * Until this existed, four visual variants were re-declared across six CSS modules and
+ * held together with `composes:` chains — which is how the Delete button shipped a 2.99:1
+ * label twice: every re-declaration is another place the contrast rules have to be
+ * remembered. The variants live here once, on top of the tokens the contrast tests pin.
+ *
+ * Layout (flex-grow, widths, margins) deliberately does NOT live here. A button does not
+ * know where it sits; callers pass a layout class via className.
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-instant) var(--ease-standard);
+}
+
+/* The press. One pixel down, instantly — tactile without being bouncy. This is a
+   transform, so it never causes layout and never moves neighbours. */
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* `busy` is "this button's action is in flight" — the progress cursor is honest there.
+   A button disabled for any other reason (form invalid, no permission) keeps
+   not-allowed; borrowing the progress cursor would claim work that is not happening.
+   This preserves the "cancel is never in progress" rule from the event sheet. */
+.button[data-busy='true']:disabled {
+  cursor: progress;
+}
+
+/* ---------------------------------------------------------------------------
+ * Variants
+ * ------------------------------------------------------------------------- */
+
+/* Filled accent — the deep gradient, one of its two sanctioned uses (the other is the
+   Cloak nav tile). Every stop clears 4.5:1 under the white label and is pinned in
+   CONTRAST_PAIRS; the decorative --gradient-accent must never sit under text. */
+.primary {
+  border: 0;
+  background-color: var(--accent);
+  background-image: var(--gradient-accent-deep);
+  color: var(--brand-white);
+}
+
+.primary:hover:not(:disabled) {
+  /* Hover DARKENS — house rule. Brightening a purple toward its white label is what
+     destroys contrast in exactly the state the user is looking at. */
+  background-color: var(--accent-hover);
+  background-image: var(--gradient-accent-deep-hover);
+  box-shadow: var(--shadow-md), var(--glow-accent);
+}
+
+.outline {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.outline:hover:not(:disabled) {
+  background: var(--surface-overlay);
+}
+
+.ghost {
+  border-color: transparent;
+  background: none;
+  color: var(--text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+/* --status-danger-solid, never --status-danger: the expressive rose is 2.99:1 under a
+   white label and shipped that way on the Delete confirmation. The solid pair exists to
+   be written on, its hover darkens, and both states are pinned by CONTRAST_PAIRS. */
+.danger {
+  border-color: var(--status-danger-solid);
+  background: var(--status-danger-solid);
+  color: var(--brand-white);
+}
+
+.danger:hover:not(:disabled) {
+  border-color: var(--status-danger-solid-hover);
+  background: var(--status-danger-solid-hover);
+}
+
+/* ---------------------------------------------------------------------------
+ * Sizes. `sm` shrinks the type and padding, never the hit area — 44px stays the floor
+ * everywhere, which is what the a11y sweep enforces.
+ * ------------------------------------------------------------------------- */
+
+.sm {
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
