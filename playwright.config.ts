@@ -80,12 +80,12 @@ export default defineConfig({
     // project claim them would demand one baseline set per device for no added coverage.
     {
       name: 'mobile',
-      testMatch: /(grid-interactions|hotkeys|landing|leak|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
+      testMatch: /(grid-interactions|hotkeys|landing|leak|people|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
       use: { ...devices['Pixel 7'] },
     },
     {
       name: 'desktop',
-      testMatch: /(grid-interactions|hotkeys|landing|leak|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
+      testMatch: /(grid-interactions|hotkeys|landing|leak|people|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
     },
     {

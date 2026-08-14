@@ -456,6 +456,31 @@
   background: var(--brand-rose);
 }
 
+/* The People link: a quiet row above the calendars list, same grammar as the account
+   rows below it. */
+.peopleLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  margin-bottom: var(--space-4);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.peopleLink:hover {
+  background: var(--surface-overlay);
+}
+
+.peopleLink span {
+  color: var(--text-tertiary);
+}
+
 .sidebarHeading {
   margin: 0 0 var(--space-3);
   font-size: var(--text-xs);

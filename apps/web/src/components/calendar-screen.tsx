@@ -354,6 +354,18 @@ export function CalendarScreen({
             />
           </Suspense>
 
+          {/* People sits between the audience tools above it and the calendars below: it
+              IS the audience list, promoted from a settings card to a place. Owner only,
+              same reasoning as View As — no other audience has people to manage. */}
+          {page.audience === 'owner' && (
+            // UrlObject, not a string: typedRoutes' generated union lags a route added in
+            // the same build, and the object form is exactly why WeekLink exists.
+            <Link className={styles.peopleLink} href={{ pathname: '/people' }}>
+              People
+              <span aria-hidden="true">›</span>
+            </Link>
+          )}
+
           {/* The add row shares the compose gate (real session + owner), so the fixture
               never renders it and the demo baselines hold. A restricted audience keeps
               seeing no section at all when it has no calendars to list. */}
