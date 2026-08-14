@@ -58,7 +58,6 @@ export default async function SettingsPage() {
     devices: data.devices,
     audiences: data.visibility?.audiences ?? [],
     workspaceRules: data.visibility?.workspaceRules ?? [],
-    membersByGroup: Object.fromEntries(data.visibility?.membersByGroup ?? []),
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),
   }
 

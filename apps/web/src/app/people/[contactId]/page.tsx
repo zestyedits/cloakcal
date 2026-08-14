@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
 import { loadPeopleData } from '@/server/people'
-import { ContactPreview } from '@/components/people-screen'
+import { FIXTURE_GROUPS } from '@/server/dev-fixture'
+import { ContactFile } from '@/components/contact-file'
 
-export const metadata = { title: 'What they see · CloakCal' }
+export const metadata = { title: 'Contact file · CloakCal' }
 
 // Reads the session and per-user data; CI has no Supabase variables, so without this the
 // build prerenders (and dies) exactly as /account did twice. See CLAUDE.md.
@@ -25,7 +26,7 @@ export default async function ContactPage({
   }
 
   return (
-    <ContactPreview
+    <ContactFile
       page={data.page}
       email={data.email}
       audiences={data.visibility.audiences}
@@ -33,6 +34,15 @@ export default async function ContactPage({
       timezone={data.timezone}
       previewedAt={data.previewedAt}
       fixtureMode={data.fixtureMode}
+      // Null in fixture mode so every write door stays structurally shut — the fixture's
+      // 'fixture' placeholder id must never reach an RPC parameter.
+      workspaceId={data.fixtureMode ? null : data.visibility.workspaceId}
+      workspaceRules={data.visibility.workspaceRules}
+      // A Record, not a Map: this crosses the RSC boundary. Same fixture split `/` makes —
+      // the engine needs alex's colleagues membership for the level to read honestly.
+      groupsByContact={Object.fromEntries(
+        data.fixtureMode ? FIXTURE_GROUPS : data.visibility.groupsByContact,
+      )}
     />
   )
 }

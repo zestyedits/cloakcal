@@ -20,6 +20,9 @@ export default async function PeoplePage() {
       email={data.email}
       audiences={data.visibility.audiences}
       fixtureMode={data.fixtureMode}
+      // Null in fixture mode so every write door stays structurally shut — the fixture's
+      // 'fixture' placeholder id must never reach an RPC parameter.
+      workspaceId={data.fixtureMode ? null : data.visibility.workspaceId}
     />
   )
 }

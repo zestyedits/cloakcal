@@ -724,6 +724,7 @@ export function CalendarScreen({
             workspaceRules={workspaceRules}
             eventRules={rulesByEvent[visibilityFor] ?? []}
             groupsByContact={groupsByContact}
+            demo={composeDemo}
             onClose={() => setVisibilityFor(null)}
           />
         )}

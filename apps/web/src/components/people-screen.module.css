@@ -1,4 +1,6 @@
-/* The People area: same shell grammar as the calendar, one column, reading width. */
+/* The People register: same shell grammar as the calendar, one column, reading width.
+   The look is the restrained file room — raised panels, hairline rules, monospace accents
+   for the ids the server actually files people under. No leather, no page turns. */
 
 .shell {
   min-height: 100dvh;
@@ -55,9 +57,44 @@
   max-width: 40rem;
 }
 
+/* One register panel: Contacts or Groups. Raised, hairline-bordered, tab-headed by its
+   caps title and a two-digit monospace count — the whole file-room effect, quietly. */
+.panel {
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  padding: var(--space-4);
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: var(--weight-semibold);
+}
+
+.panelCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
 .list {
   list-style: none;
-  margin: 0 0 var(--space-6);
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -66,11 +103,10 @@
 .personRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   min-height: var(--touch-min);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
   color: var(--text-primary);
 }
@@ -84,11 +120,21 @@
 }
 
 .personName {
+  flex: 1;
+  min-width: 8rem;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The server's half of the row: the id it files this person under, in the mono accent. */
+.personId {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .personAction {
@@ -97,117 +143,62 @@
   color: var(--text-secondary);
 }
 
-.groupHeading {
-  margin: 0 0 var(--space-3);
+.groupRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.rowNote {
+  width: 100%;
+  margin: 0;
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
   color: var(--text-tertiary);
 }
 
-.groupRow {
+.addRow {
   display: flex;
-  align-items: center;
-  min-height: var(--touch-min);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.empty {
-  margin: 0 0 var(--space-6);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-.settingsNote {
-  margin: var(--space-8) 0 0;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-}
-
-/* The preview banner: unmistakable frame, not a badge. Accent border on the reading
-   column so the whole page reads as "someone else's eyes". */
-.previewBanner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
   flex-wrap: wrap;
-  margin: 0 0 var(--space-6);
-  padding: var(--space-3);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-lg);
-  background: var(--accent-quiet);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
 }
 
-.previewExit {
-  display: inline-flex;
-  align-items: center;
+.addInput {
+  flex: 1;
+  min-width: 10rem;
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
-  color: var(--accent-text);
-  font-weight: var(--weight-medium);
-  text-decoration: none;
-}
-
-.previewExit:hover {
+  border: 1px solid var(--border-default);
   background: var(--surface-overlay);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
 }
 
-.daySection {
-  margin-bottom: var(--space-6);
+.addInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.dayHeading {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+.empty {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
-.eventList {
-  list-style: none;
+.demoNote {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.eventRow {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-4);
-  min-height: var(--touch-min);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-}
-
-.eventTime {
-  flex: none;
-  width: 3.2rem;
-  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--text-secondary);
-}
-
-.eventTitle {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fullPreview {
-  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
 }
