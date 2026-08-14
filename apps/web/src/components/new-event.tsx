@@ -79,6 +79,7 @@ export function NewEventButton({
         className={styles.sidebarButton}
         disabled={locked}
         title={locked ? 'Unlock your calendar first' : undefined}
+        aria-keyshortcuts="n"
         onClick={onOpen}
       >
         <span aria-hidden="true">+</span> New event

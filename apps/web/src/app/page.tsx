@@ -14,6 +14,7 @@ import {
   weekRange,
 } from '@/server/range'
 import { loadWorkspacePrefs } from '@/server/settings'
+import { stepQuery } from '@/lib/calendar-links'
 import { supabaseServer } from '@/lib/supabase/server'
 import {
   DEMO_WEEK,
@@ -162,22 +163,14 @@ export default async function Page({
     defaultTimeVis: 'hidden',
   })
 
-  // Steppers move the anchor by one unit of the current view. Month steps pin to day 1
-  // first, so ±1 from Jan 31 lands on Feb 1, never drifts to March through a short month.
-  const linkFor = (step: number): WeekLink => {
-    const shifted =
-      view === 'day'
-        ? anchor.add({ days: step })
-        : view === 'month'
-          ? anchor.with({ day: 1 }).add({ months: step })
-          : anchor.add({ days: 7 * step })
-    const query: Record<string, string> = { date: dateParam(shifted) }
-    if (view !== 'agenda') query['view'] = view
-    // The audience is carried across a step so View As survives navigation; dropping it
-    // would silently return a reviewer to the owner's view mid-check.
-    if (audience !== 'owner') query['as'] = audience
-    return { pathname: '/', query }
-  }
+  // Steppers move the anchor by one unit of the current view, through the shared builder
+  // (lib/calendar-links.ts) so the hotkey layer, the client screen and this page cannot
+  // disagree about what a step or Today means — the Today-from-week bug was exactly two
+  // builders drifting apart.
+  const linkFor = (step: number): WeekLink => ({
+    pathname: '/',
+    query: stepQuery(dateParam(anchor), view, step, audience),
+  })
 
   // Composing needs a real session and a real workspace, so it is unavailable in fixture
   // mode rather than present-and-broken. The ANCHOR, not range.from: on a month page the
