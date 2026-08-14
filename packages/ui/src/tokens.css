@@ -143,8 +143,10 @@
    * caps at 8) so a long list settles in well under half a second. */
   --stagger-step: 24ms;
 
-  /* Minimum touch target — spec requires large touch targets; 44px is the
-   * WCAG 2.2 / iOS HIG floor and is treated as a hard minimum, not a goal. */
+  /* Minimum touch target, enforced as a hard floor by the a11y sweep. Stated
+   * accurately: WCAG 2.2's AA floor is 24x24 (SC 2.5.8); 44x44 is SC 2.5.5 at
+   * AAA and the Apple HIG size. This house floor EXCEEDS the requirement on
+   * purpose — do not lower it to 24 and call that compliant-enough. */
   --touch-min: 44px;
 
   --z-sheet: 100;

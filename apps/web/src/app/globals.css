@@ -18,6 +18,42 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * Scroll lock while any MODAL dialog is open. showModal() makes everything outside the
+ * dialog inert, which blocks clicks, focus and assistive tech — but inert content still
+ * scrolls, so without this the calendar drifts behind an open sheet.
+ *
+ * `:modal` scopes the lock to showModal() dialogs; a non-modal <dialog> must never freeze
+ * the page. Locking `html` alone is not enough in this app: the shell is height:100dvh
+ * with `main` as the scroller, so the second rule reaches the element that actually
+ * scrolls. `scrollbar-gutter: stable` (below) keeps the layout from jumping when the
+ * root scrollbar disappears; the inner scroller keeps its own gutter by the same rule.
+ *
+ * `overscroll-behavior` on the dialog and backdrop is the Chrome 144+ native version of
+ * the same idea (the backdrop needs overflow:hidden to count as a scroll container).
+ * Layered as an enhancement; Firefox and Safari have not shipped it.
+ */
+html:has(dialog[open]:modal) {
+  overflow: hidden;
+}
+
+html:has(dialog[open]:modal) main {
+  overflow: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
 /* Shared entrance: a short rise-and-fade, compositor-only. Global because both the event
    sheet and the agenda rows play it, and CSS-module keyframes are file-scoped — a module
    that references `rise` without defining it resolves to this one. */
