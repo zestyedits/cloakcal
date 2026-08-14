@@ -36,6 +36,9 @@
   overflow: hidden;
 }
 
+/* Navigation acknowledgment: the hover wash held while this cell's server navigation is
+   in flight — see ui/nav-pending.tsx. Same pair as :hover, so nothing new to check. */
+.cell:has([data-nav-pending]),
 .cell:hover {
   background: var(--surface-overlay);
 }

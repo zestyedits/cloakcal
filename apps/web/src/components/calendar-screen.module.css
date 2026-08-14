@@ -753,3 +753,38 @@
   justify-content: flex-start;
   padding: 0 var(--space-2);
 }
+
+/*
+ * Navigation acknowledgment — the visible half of ui/nav-pending.tsx.
+ *
+ * While a link's server navigation is in flight it holds the wash its :hover already
+ * wears, so a click reads as a press the app is holding rather than a click the app
+ * ignored. Same wash as hover BY RULE: every pair below is one a recorded hover or
+ * current state already uses, so this adds nothing to CONTRAST_PAIRS. Static on
+ * purpose — no animation, so reduced motion needs no branch and the cue cannot be
+ * collapsed away. Browsers without :has() lose only the cue, never the navigation.
+ */
+.weekStep:has([data-nav-pending]),
+.peopleLink:has([data-nav-pending]),
+.accountRow:has([data-nav-pending]) {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+/* The segment takes its current-page look early: it is about to be the current page. */
+.viewSegment:has([data-nav-pending]) {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.navItem:has([data-nav-pending]) {
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
+/* The Today ButtonLink: its outline variant's own hover wash. Element selector under
+   two class-level components, so it outranks `.button`'s base regardless of module
+   import order (the same fight .signOutRow doubles for). */
+.today:has([data-nav-pending]) a {
+  background: var(--surface-overlay);
+}

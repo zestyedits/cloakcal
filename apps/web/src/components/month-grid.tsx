@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
+import { NavPendingMark } from './ui/nav-pending'
 import styles from './month-grid.module.css'
 
 /**
@@ -151,6 +152,7 @@ export function MonthGrid({
           {cell.entries.length > MAX_ENTRIES && (
             <span className={styles.more}>+{cell.entries.length - MAX_ENTRIES} more</span>
           )}
+          <NavPendingMark />
         </Link>
       ))}
     </div>
