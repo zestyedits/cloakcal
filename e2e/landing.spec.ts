@@ -60,11 +60,18 @@ test('choosing a tab cancels the auto-advance', async ({ page }) => {
   ).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('the CTAs lead to sign-up and sign-in', async ({ page }) => {
+test('the page says it is not open, and offers no action that is not', async ({ page }) => {
   await page.goto('/?landing=1')
-  await expect(
-    page.getByRole('link', { name: 'Create your calendar' }).first(),
-  ).toHaveAttribute('href', '/sign-up')
+
+  await expect(page.getByText('Coming soon')).toBeVisible()
+  await expect(page.getByText('New accounts open soon.')).toBeVisible()
+
+  // The whole point: no control anywhere that promises an account. If sign-ups reopen,
+  // this assertion is the one that should fail and make someone revisit the copy.
+  await expect(page.getByRole('link', { name: 'Create your calendar' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Get started' })).toHaveCount(0)
+
+  // Sign in survives, because Keith still has to get in.
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toHaveAttribute(
     'href',
     '/sign-in',
