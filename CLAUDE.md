@@ -98,9 +98,19 @@ a broken tree.
 To run the app with no account, using the committed fixture:
 `NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1 pnpm dev`
 
+**Sign-ups are CLOSED, and the flag is fail-closed.** `/sign-up` renders a "Not open yet"
+notice unless `NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN=1`; unset means closed, because forgetting
+it in production would silently let strangers into a product whose independent security
+review has not happened yet, while forgetting it locally only blocks a sign-up you meant to
+do and says so on screen. It is `NEXT_PUBLIC_` and therefore inlined at build time, so
+opening sign-ups is a redeploy. **It is the door, not the wall**: the browser talks to
+Supabase directly, so Supabase Auth's own "Allow new users to sign up" is the actual
+enforcement and the two should always move together.
+
 **Testing auth or recovery against the live project needs a throwaway account, and email
-confirmation is ON, so signing up is not enough on its own.** Sign up through the UI with any
-`@cloakcal.test` address, then confirm it by hand:
+confirmation is ON, so signing up is not enough on its own.** Start the dev server with
+`NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN=1` (otherwise the form is not there), sign up through
+the UI with any `@cloakcal.test` address, then confirm it by hand:
 
 ```sql
 update auth.users set email_confirmed_at = now() where email = '<the address>';

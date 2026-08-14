@@ -11,6 +11,7 @@ import {
 } from '@/lib/cloak-session'
 import { assessPassword } from '@cloakcal/crypto'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { signupsOpen } from '@/lib/signups'
 import { RecoveryPhrase } from './recovery-phrase'
 import { CloakLockup } from './cloak-logo'
 import { InlineError } from './ui/inline-error'
@@ -281,7 +282,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </>
         ) : (
           <>
-            No account yet? <Link href="/sign-up">Create one</Link>
+            {/* While sign-ups are closed the invitation goes with them. Sending someone to
+                a page that can only turn them away is a worse answer than saying so here. */}
+            {signupsOpen() ? (
+              <>
+                No account yet? <Link href="/sign-up">Create one</Link>
+              </>
+            ) : (
+              'New accounts are not open yet.'
+            )}
             {/* Until this existed, the 24-word phrase we make people write down at signup
                 had nowhere to be typed unless they were already signed in — which is the
                 one situation where they do not need it. */}
