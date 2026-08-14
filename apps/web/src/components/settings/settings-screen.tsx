@@ -190,7 +190,7 @@ export function SettingsScreen({
               state={
                 prefs === null
                   ? 'Not set up yet'
-                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]}`
+                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]} · opens on ${prefs.defaultView}`
               }
             >
               <TimeRegionSection
@@ -198,6 +198,8 @@ export function SettingsScreen({
                 fixtureMode={fixtureMode}
                 timezone={prefs?.timezone ?? null}
                 weekStart={prefs?.weekStart ?? 0}
+                defaultView={prefs?.defaultView ?? 'agenda'}
+                keyboardShortcuts={prefs?.keyboardShortcuts ?? false}
               />
             </SettingsSection>
 

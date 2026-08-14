@@ -9,6 +9,13 @@ import styles from './settings.module.css'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+const VIEWS = [
+  ['agenda', 'Agenda'],
+  ['week', 'Week'],
+  ['day', 'Day'],
+  ['month', 'Month'],
+] as const
+
 /**
  * Timezone and week start — Tier A preferences, live even while the calendar is locked.
  *
@@ -26,11 +33,15 @@ export function TimeRegionSection({
   fixtureMode,
   timezone,
   weekStart,
+  defaultView,
+  keyboardShortcuts,
 }: {
   workspaceId: string | null
   fixtureMode: boolean
   timezone: string | null
   weekStart: number
+  defaultView: string
+  keyboardShortcuts: boolean
 }) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +58,12 @@ export function TimeRegionSection({
 
   const disabled = workspaceId === null || busy
 
-  const save = async (patch: { timezone?: string; weekStart?: number }) => {
+  const save = async (patch: {
+    timezone?: string
+    weekStart?: number
+    defaultView?: string
+    keyboardShortcuts?: boolean
+  }) => {
     if (workspaceId === null) return
     setBusy(true)
     setError(null)
@@ -56,6 +72,8 @@ export function TimeRegionSection({
         p_workspace_id: workspaceId,
         p_timezone: patch.timezone ?? null,
         p_week_start: patch.weekStart ?? null,
+        p_default_view: patch.defaultView ?? null,
+        p_keyboard_shortcuts: patch.keyboardShortcuts ?? null,
       })
       if (rpcError !== null) throw rpcError
       router.refresh()
@@ -119,6 +137,45 @@ export function TimeRegionSection({
                 {day}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={styles.fieldLabel} htmlFor="settings-default-view">
+            Opens on
+          </label>
+          <select
+            id="settings-default-view"
+            className={styles.select}
+            value={defaultView}
+            disabled={disabled}
+            onChange={(event) => void save({ defaultView: event.target.value })}
+          >
+            {VIEWS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={styles.fieldLabel} htmlFor="settings-keyboard">
+            Keyboard shortcuts
+          </label>
+          {/* A select, not a bare checkbox: same control family as the rest of the card,
+              and the two options state their consequence instead of a naked on/off. Off is
+              the default on purpose — single-key shortcuts are opt-in (WCAG 2.1.4), and
+              speech-input users trigger them with ordinary dictation. */}
+          <select
+            id="settings-keyboard"
+            className={styles.select}
+            value={keyboardShortcuts ? 'on' : 'off'}
+            disabled={disabled}
+            onChange={(event) => void save({ keyboardShortcuts: event.target.value === 'on' })}
+          >
+            <option value="off">Off</option>
+            <option value="on">On: t, arrows, j/k, 1-4, n, ?</option>
           </select>
         </div>
       </div>

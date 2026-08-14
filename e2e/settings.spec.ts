@@ -47,6 +47,12 @@ test('demo mode says so instead of offering dead controls', async ({ page }) => 
   await expect(page.getByText(/Demo data\. Sign in/).first()).toBeVisible()
   await expect(page.getByLabel('Timezone')).toBeDisabled()
   await expect(page.getByLabel('Week starts on')).toBeDisabled()
+  await expect(page.getByLabel('Opens on')).toBeDisabled()
+  // Present AND defaulting to off: the toggle is the WCAG 2.1.4 compliance mechanism for
+  // the single-key shortcuts, so its default is part of the guarantee, not a style choice.
+  const shortcuts = page.getByLabel('Keyboard shortcuts')
+  await expect(shortcuts).toBeDisabled()
+  await expect(shortcuts).toHaveValue('off')
 })
 
 test('the theme radios switch the page and persist across reload', async ({ page }) => {

@@ -15,21 +15,35 @@ import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
  * framed in another's timezone.
  */
 
+export type CalendarViewPref = 'agenda' | 'week' | 'day' | 'month'
+
 export interface WorkspacePrefs {
   readonly workspaceId: string
   readonly timezone: string
   readonly weekStart: WeekStart
+  /** The view `/` opens on when the URL names none. `?view=` always wins. */
+  readonly defaultView: CalendarViewPref
+  /** Single-key shortcuts are opt-in (WCAG 2.1.4 route one): off until turned on. */
+  readonly keyboardShortcuts: boolean
 }
+
+const VIEW_PREFS: readonly CalendarViewPref[] = ['agenda', 'week', 'day', 'month']
 
 export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
   const supabase = await supabaseServer()
   const { data } = await supabase
     .from('workspaces')
-    .select('id, timezone, week_start')
+    .select('id, timezone, week_start, default_view, keyboard_shortcuts')
     .eq('lifecycle', 'active')
     .order('created_at', { ascending: true })
     .limit(1)
-    .maybeSingle<{ id: string; timezone: string; week_start: number }>()
+    .maybeSingle<{
+      id: string
+      timezone: string
+      week_start: number
+      default_view: string
+      keyboard_shortcuts: boolean
+    }>()
 
   if (data === null) return null
 
@@ -37,7 +51,17 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
     data.week_start >= 0 && data.week_start <= 6 ? data.week_start : 0
   ) as WeekStart
 
-  return { workspaceId: data.id, timezone: data.timezone, weekStart }
+  return {
+    workspaceId: data.id,
+    timezone: data.timezone,
+    weekStart,
+    // The check constraint makes anything else unrepresentable; the fallback is for the
+    // same reason week_start has one — a clamp beats trusting a cast.
+    defaultView: VIEW_PREFS.includes(data.default_view as CalendarViewPref)
+      ? (data.default_view as CalendarViewPref)
+      : 'agenda',
+    keyboardShortcuts: data.keyboard_shortcuts,
+  }
 }
 
 /**
