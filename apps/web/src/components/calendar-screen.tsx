@@ -28,6 +28,7 @@ import { SeedSampleEvents } from './seed-sample-events'
 import { SignOutButton } from './sign-out-button'
 import { VisibilitySheet } from './visibility-sheet'
 import { ButtonLink } from './ui/button'
+import { NavPendingMark } from './ui/nav-pending'
 import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
 
@@ -205,6 +206,30 @@ export function CalendarScreen({
     query: viewQuery(target, anchorDate, page.audience),
   })
 
+  /**
+   * Hover/focus intent starts the FULL RSC fetch for a navigation the user is about to
+   * make. Every page here is force-dynamic, so Next's default viewport prefetch stops at
+   * the loading boundary and the data round trip still lands entirely after the click;
+   * `router.prefetch` without options is PrefetchKind.FULL, which moves it into the
+   * hover-to-click gap instead. Deliberately only on the header's repeat controls, not
+   * the mini month or the month grid — sweeping a pointer across 42 cells would fire 42
+   * speculative server renders for one click.
+   *
+   * Staleness is bounded: entries are keyed by the full URL (so ?as= keeps audiences
+   * apart — nothing redacted is ever served across audiences), every mutation path ends
+   * in router.refresh() which drops the cache, and nothing changes server-side between
+   * navs except through those mutations.
+   *
+   * PRODUCTION-ONLY, and no test here can see it: createPrefetchURL returns null under
+   * NODE_ENV=development ("improves compilation performance", in Next's words), which is
+   * every dev run, every Playwright project and the fixture. The pending wash below is
+   * what those environments verify; this line is verified by reading Next's source, and
+   * costs a no-op function call anywhere it is dormant.
+   */
+  const primeLink = (link: WeekLink) => () => {
+    router.prefetch(`/?${new URLSearchParams(link.query)}`)
+  }
+
   /** The hotkey layer's view switch: same semantics as clicking the control. */
   const selectView = (target: CalendarView) => {
     if (onWeekFetch && (target === 'agenda' || target === 'week')) {
@@ -254,8 +279,11 @@ export function CalendarScreen({
         href={item.href}
         aria-current={item.active ? 'page' : undefined}
         aria-keyshortcuts={VIEW_KEY_HINTS[item.id]}
+        onMouseEnter={primeLink(item.href)}
+        onFocus={primeLink(item.href)}
       >
         {VIEW_LABELS[item.id]}
+        <NavPendingMark />
       </Link>
     )
 
@@ -293,8 +321,11 @@ export function CalendarScreen({
                 href={previousHref}
                 aria-label={`Previous ${stepUnit}`}
                 aria-keyshortcuts="ArrowLeft k"
+                onMouseEnter={primeLink(previousHref)}
+                onFocus={primeLink(previousHref)}
               >
                 ‹
+                <NavPendingMark />
               </Link>
               <p className={styles.range} aria-live="polite">
                 {heading}
@@ -304,8 +335,11 @@ export function CalendarScreen({
                 href={nextHref}
                 aria-label={`Next ${stepUnit}`}
                 aria-keyshortcuts="ArrowRight j"
+                onMouseEnter={primeLink(nextHref)}
+                onFocus={primeLink(nextHref)}
               >
                 ›
+                <NavPendingMark />
               </Link>
             </nav>
 
@@ -327,8 +361,11 @@ export function CalendarScreen({
                   pathname: '/',
                   query: todayQuery(view, page.audience),
                 }}
+                onMouseEnter={primeLink({ pathname: '/', query: todayQuery(view, page.audience) })}
+                onFocus={primeLink({ pathname: '/', query: todayQuery(view, page.audience) })}
               >
                 Today
+                <NavPendingMark />
               </ButtonLink>
             </span>
           </div>
@@ -394,9 +431,15 @@ export function CalendarScreen({
           {page.audience === 'owner' && (
             // UrlObject, not a string: typedRoutes' generated union lags a route added in
             // the same build, and the object form is exactly why WeekLink exists.
-            <Link className={styles.peopleLink} href={{ pathname: '/people' }}>
+            <Link
+              className={styles.peopleLink}
+              href={{ pathname: '/people' }}
+              onMouseEnter={() => router.prefetch('/people')}
+              onFocus={() => router.prefetch('/people')}
+            >
               People
               <span aria-hidden="true">›</span>
+              <NavPendingMark />
             </Link>
           )}
 
@@ -436,7 +479,12 @@ export function CalendarScreen({
               linking to a page that immediately redirects to sign-in would be a dead end. */}
           {email !== undefined && email !== '' && (
             <div className={styles.accountCluster}>
-              <Link className={styles.accountRow} href="/settings">
+              <Link
+                className={styles.accountRow}
+                href="/settings"
+                onMouseEnter={() => router.prefetch('/settings')}
+                onFocus={() => router.prefetch('/settings')}
+              >
                 <span className={styles.accountText}>
                   Settings
                   <span className={styles.accountEmail}>{email}</span>
@@ -445,6 +493,7 @@ export function CalendarScreen({
                 <span className={styles.accountChevron} aria-hidden="true">
                   ›
                 </span>
+                <NavPendingMark />
               </Link>
               <SignOutButton className={styles.signOutRow} />
             </div>

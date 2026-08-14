@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { NavPendingMark } from './ui/nav-pending'
 import styles from './week-strip.module.css'
 
 /**
@@ -104,6 +105,7 @@ export function WeekStrip({
               {entry.name}
             </span>
             <span className={styles.number}>{entry.number}</span>
+            <NavPendingMark />
           </Link>
         ) : (
           <a

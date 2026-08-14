@@ -1,16 +1,73 @@
 /*
- * The agenda skeleton. Shapes that match the real layout — a heading bar, then event
- * rows with the time gutter and the coloured spine — so the page settles into content
+ * Shapes for the calendar's loading shell. The chrome around them is the real chrome —
+ * loading.tsx borrows calendar-screen.module.css for the shell, header, sidebar and nav
+ * — so everything in THIS file is a stand-in for data: the date range, the event rows,
+ * the sidebar's controls. Shapes match the real layout so the page settles into content
  * rather than jumping from a spinner to a different geometry.
- *
- * NO TEXT, deliberately: there is nothing a skeleton needs to say, and an all-shape
- * loading state is one the leak scans never have to reason about.
  */
 
-.main {
+/* The inert chrome carries no interactions yet: no pointer cursor promising one, no
+   hover states firing under a resting pointer while the real controls stream in. */
+.inert,
+.inert * {
+  pointer-events: none;
+}
+
+/* Where the date range sits. 11ch AT THE REAL .range's FONT SIZE, and the font-size is
+   load-bearing, not cosmetic: ch scales with it, and at the inherited 16px this shape
+   was 111px against the real range's 97px — enough to widen the whole shell grid past
+   the real page's width and drew every mobile row off the right edge. The shape must
+   occupy exactly the box the text it stands in for occupies, no more. */
+.rangeBar {
+  height: 1rem;
+  font-size: var(--text-sm);
+  width: 11ch;
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+}
+
+/* The Today button's footprint (ButtonLink sm outline). */
+.todayShape {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 4.25rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+/* The sidebar's New Event block. */
+.blockShape {
+  display: block;
+  height: var(--touch-min);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+/* The mini month: one quiet panel where the grid will be, not 42 fake cells. */
+.monthShape {
+  display: block;
+  margin-top: var(--space-4);
+  aspect-ratio: 7 / 6;
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+/* View As is a trust surface, so its footprint is held too — same geometry as .viewAs. */
+.viewAsShape {
+  display: block;
+  height: 6rem;
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+}
+
+/* The agenda column, same measure as the real list's comfortable reading width. */
+.inner {
   max-width: 44rem;
   margin: 0 auto;
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -56,8 +113,9 @@
   background: var(--surface-overlay);
 }
 
-/* One shimmer for the whole skeleton, riding a background sweep on a pseudo-element per
-   shape would be per-element paint for no visible gain — the pulse reads as alive. */
+/* One shimmer for the whole skeleton: riding a background sweep on a pseudo-element per
+   shape would be per-element paint for no visible gain — the pulse reads as alive. The
+   reduced-motion block in tokens.css caps it at one 1ms iteration, leaving calm shapes. */
 .pulse {
   animation: skeleton-pulse 1.2s var(--ease-standard) infinite alternate;
 }

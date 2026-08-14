@@ -36,6 +36,9 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Navigation acknowledgment: the hover wash held while this day's server navigation is
+   in flight — see ui/nav-pending.tsx. Same pair as :hover, so nothing new to check. */
+.day:has([data-nav-pending]),
 .day:hover {
   background: var(--surface-overlay);
   color: var(--text-primary);

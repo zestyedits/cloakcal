@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { NavPendingMark } from './ui/nav-pending'
 import styles from './mini-month.module.css'
 
 /**
@@ -133,6 +134,7 @@ export function MiniMonth({
             aria-current={cell.today ? 'date' : undefined}
           >
             <span className={styles.disc}>{cell.number}</span>
+            <NavPendingMark />
           </Link>
         ))}
       </div>
