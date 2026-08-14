@@ -154,7 +154,16 @@ found and fixed on the way: contact-name ciphertext was never INGESTED into the 
 (View As showed `Contact 4f2a…` forever on real accounts — invisible to e2e because fixture
 audiences carry no nameField; `CloakProvider` now takes `extraFields`), and real accounts
 passed an EMPTY `groupsByContact` to the engine, so group rules never applied outside the
-fixture.
+fixture. **The ingest fix had a second half, found 2026-08-14 by a live-account pass:** the
+provider's homegrown hex parser assumed BARE hex, but `visibility.ts` ships PostgREST's
+`\x…` spelling raw (events.ts strips it; visibility.ts never did), so `parseInt('\x')` was
+NaN, every byte misaligned, and contact names STILL never decrypted on real accounts — with
+no error anywhere, because a failed GCM tag is just a label that never opens. The provider
+now parses with the shared `fromPgBytea`, which handles both spellings and throws loudly on
+garbage. The lesson is the same one pg-bytes.ts already documented: bytea format mismatches
+are QUIET, and only a live pass with a real sealed value can see them — which is exactly why
+the throwaway-account recipe exists and why fixture-only green is not evidence for anything
+touching ciphertext transport.
 
 **The brand is real now.** There is an actual mark — a calendar tile with a cloak over its
 lower-right corner, where the dates under the cloak are ABSENT rather than dimmed — replacing

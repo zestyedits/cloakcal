@@ -8,6 +8,7 @@ import {
   type EncryptedFieldRecord,
 } from '@cloakcal/cloak-store'
 import { getDevRootKey, isDevUnlockEnabled } from '@/lib/dev-key'
+import { fromPgBytea } from '@/lib/pg-bytes'
 import { resumeSession } from '@/lib/cloak-session'
 import type { CiphertextField } from '@/server/events'
 import type { RedactedPage } from '@/server/audience'
@@ -35,8 +36,14 @@ import { UnlockPanel } from './unlock-panel'
 
 const StoreContext = createContext<CloakStore | null>(null)
 
-const toBytes = (hex: string): Uint8Array =>
-  Uint8Array.from(hex.match(/.{2}/g) ?? [], (byte) => Number.parseInt(byte, 16))
+// The shared bytea parser, NOT a local hex one. The local version this replaces assumed
+// bare hex and silently produced garbage for PostgREST's `\x…` spelling: parseInt('\\x')
+// is NaN, every byte misaligns, AES-GCM refuses the tag, and the only symptom is a label
+// that never opens. events.ts strips the prefix server-side but visibility.ts ships it
+// raw, so contact names arrived prefixed and NEVER decrypted on a real account — the
+// 2026-08-12 ingest fix plumbed the fields through and this parser then threw them away.
+// fromPgBytea handles both spellings and throws loudly on anything else.
+const toBytes = (value: string): Uint8Array => fromPgBytea(value)
 
 /**
  * Sealed fields that do not ride on the page's occurrences or calendars — contact and
