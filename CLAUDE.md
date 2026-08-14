@@ -242,11 +242,39 @@ bound by rule 1 — the honesty block states what the server can and cannot read
 signed in. Settings sections are `<details>` cards, closed by default, each summary row
 stating its current value; a `#section` deep link opens the card it points at.
 
+**The 2026-08-13 pass: navigation, calendars and the keyboard.** Five parts, each merged
+green. The sidebar overhaul (mini-month days now OPEN that day rather than preserving the
+view — a click inside the visible week used to be a no-op and read as broken; the account
+cluster became divided rows). The landing rebuilt dark and demo-first, its hero a live
+event card that reseals as the audience changes, where the TIME never moves: rule 1 drawn
+before the honesty block states it. An em-dash sweep across every user-facing string,
+pinned by a DOM assertion rather than by review. Week and day blocks became doors (edit and
+visibility from the grid, not just the agenda). And calendar creation: migration 0021,
+`create_calendar`, the board's "+ Add calendar" row, plus a Calendar picker on New event.
+
+**Keyboard navigation exists** (`calendar-hotkeys.tsx`): `t` today, `←`/`→` or `k`/`j`
+step, `1`-`4` views, `n` new event, `?` a help dialog. Single keys, no modifiers, because
+that is what Google Calendar and Fastmail trained everyone on and modifier chords collide
+with screen-reader bindings. The guard order IS the contract: handled event, any modifier,
+IME composition, focus inside text entry, or ANY open `dialog` all mean the key is not
+ours. That satisfies WCAG 2.1.4's text-entry condition; **a Settings toggle to disable
+them entirely is the recorded remaining gap**, not a claimed conformance. Controls that
+mirror a binding carry `aria-keyshortcuts`.
+
+**`lib/calendar-links.ts` is now the ONE nav-query builder.** Steppers (server), the view
+switch and Today (client), and the hotkeys all call it. Today-from-Week landing on the
+agenda was two builders disagreeing about when `view` is carried; one module plus
+`calendar-links.client.test.ts` is how that class of bug stays fixed.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
+4. A Settings toggle for keyboard shortcuts, per WCAG 2.1.4 above.
+5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
+   it needs an answer for the events first. Calendar-move on edit is the same shape —
+   `update_cloaked_event` (0011) takes no calendar id.
 
 **Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
 native iOS. **Independent security review is a hard gate before public launch.**

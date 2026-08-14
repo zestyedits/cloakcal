@@ -2,6 +2,9 @@
 
 import { Suspense, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { todayQuery, viewQuery } from '@/lib/calendar-links'
+import { CalendarHotkeys } from './calendar-hotkeys'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
@@ -43,6 +46,14 @@ import styles from './calendar-screen.module.css'
  * (agenda/week, only while the page holds the week fetch) and links (everything else).
  */
 export type CalendarView = 'agenda' | 'week' | 'day' | 'month'
+
+/** The number row bindings the hotkey layer owns; advertised on the controls they mirror. */
+const VIEW_KEY_HINTS: Record<CalendarView, string> = {
+  agenda: '1',
+  week: '2',
+  day: '3',
+  month: '4',
+}
 
 const VIEW_LABELS: Record<CalendarView, string> = {
   agenda: 'Agenda',
@@ -122,6 +133,7 @@ export function CalendarScreen({
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
   // page the server view wins and this is inert.
+  const router = useRouter()
   const onWeekFetch = serverView !== 'day' && serverView !== 'month'
   const [clientView, setClientView] = useState<'agenda' | 'week'>(
     serverView === 'week' ? 'week' : 'agenda',
@@ -174,12 +186,18 @@ export function CalendarScreen({
    * One href builder for every view link: anchored where the user already is, carrying
    * the audience, minimal for the agenda default.
    */
-  const hrefFor = (target: CalendarView): WeekLink => {
-    const query: Record<string, string> = {}
-    if (anchorDate !== undefined) query['date'] = anchorDate
-    if (target !== 'agenda') query['view'] = target
-    if (page.audience !== 'owner') query['as'] = page.audience
-    return { pathname: '/', query }
+  const hrefFor = (target: CalendarView): WeekLink => ({
+    pathname: '/',
+    query: viewQuery(target, anchorDate, page.audience),
+  })
+
+  /** The hotkey layer's view switch: same semantics as clicking the control. */
+  const selectView = (target: CalendarView) => {
+    if (onWeekFetch && (target === 'agenda' || target === 'week')) {
+      withViewTransition(() => setClientView(target === 'week' ? 'week' : 'agenda'))
+    } else if (target !== view) {
+      router.push(`/?${new URLSearchParams(viewQuery(target, anchorDate, page.audience))}`)
+    }
   }
 
   /** Agenda/week toggle while the week fetch is on the page; a real navigation otherwise. */
@@ -197,6 +215,7 @@ export function CalendarScreen({
         type="button"
         className={className}
         aria-current={item.active ? 'page' : undefined}
+        aria-keyshortcuts={VIEW_KEY_HINTS[item.id]}
         // Wrapped in a View Transition so the two layouts cross-fade where the browser
         // supports it; everywhere else this is exactly setClientView.
         onClick={() =>
@@ -211,6 +230,7 @@ export function CalendarScreen({
         className={className}
         href={item.href}
         aria-current={item.active ? 'page' : undefined}
+        aria-keyshortcuts={VIEW_KEY_HINTS[item.id]}
       >
         {VIEW_LABELS[item.id]}
       </Link>
@@ -218,6 +238,16 @@ export function CalendarScreen({
 
   return (
     <CloakProvider page={page} email={email} extraFields={audienceNames}>
+      {/* Inside CloakProvider so the `n` binding can honour the lock state, exactly like
+          the buttons it mirrors. */}
+      <CalendarHotkeys
+        view={view}
+        anchorDate={anchorDate}
+        audience={page.audience}
+        composeAvailable={composeDate !== undefined && page.audience === 'owner'}
+        onSelectView={selectView}
+        onCompose={() => setComposeOpen(true)}
+      />
       <div className={styles.shell}>
         <header className={styles.header}>
           <CloakLockup size="sm" />
@@ -231,13 +261,19 @@ export function CalendarScreen({
               className={styles.weekStep}
               href={previousHref}
               aria-label={`Previous ${stepUnit}`}
+              aria-keyshortcuts="ArrowLeft k"
             >
               ‹
             </Link>
             <p className={styles.range} aria-live="polite">
               {heading}
             </p>
-            <Link className={styles.weekStep} href={nextHref} aria-label={`Next ${stepUnit}`}>
+            <Link
+              className={styles.weekStep}
+              href={nextHref}
+              aria-label={`Next ${stepUnit}`}
+              aria-keyshortcuts="ArrowRight j"
+            >
               ›
             </Link>
           </nav>
@@ -249,17 +285,16 @@ export function CalendarScreen({
 
               `view` here is the resolved CLIENT view, so Today from the week toggle keeps
               week view. The old `!onWeekFetch` condition silently dropped it — Today from
-              Week landed on the agenda, which read as the button being broken. */}
+              Week landed on the agenda, which read as the button being broken. The query
+              now comes from the shared builder, so the fix cannot regress in one caller. */}
           <span className={styles.today}>
             <ButtonLink
               variant="outline"
               size="sm"
+              aria-keyshortcuts="t"
               href={{
                 pathname: '/',
-                query: {
-                  ...(view !== 'agenda' ? { view } : {}),
-                  ...(page.audience === 'owner' ? {} : { as: page.audience }),
-                },
+                query: todayQuery(view, page.audience),
               }}
             >
               Today
