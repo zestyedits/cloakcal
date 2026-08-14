@@ -556,6 +556,26 @@ one from a privacy product is indefensible even if nobody reads the logs. The wo
 text, so it always renders and cannot be blocked. Both templates warn about the two things
 above: recovery says you need the 24 words and must open it in the same browser.
 
+## The project agents
+
+Six specialists live in `.claude/agents/`, one per category of work this repo actually
+has: `cloak-boundary` (crypto, keys, leaks, privacy claims), `db-rpc` (migrations,
+functions, RLS), `calendar-ui` (front end, tokens, copy), `a11y-testing` (tests, axe,
+baselines, the environmental traps), `recurrence-domain` (time, DST, splits), and
+`senior-review` (the last gate: simplicity, maintainability, guarantees staying real).
+
+Three rules keep them coherent:
+- **This file is authoritative.** Agents cite CLAUDE.md and the ADRs; they do not restate
+  them. If an agent and this file disagree, this file wins and the agent is wrong.
+- **One source of truth per rule.** Each rule is stated in full in exactly one agent; the
+  others reference it by name. Restating a rule in a second file is how two copies drift.
+- **Declared handoffs.** Schema touching encrypted fields: `db-rpc` ↔ `cloak-boundary`.
+  Every new or changed control: `calendar-ui` → `a11y-testing`. Everything ends at
+  `senior-review`, which runs on the full diff after the specialists pass.
+
+Their external claims carry source URLs so they can be re-verified when they date; the
+research snapshots behind them were taken 2026-08.
+
 ## Working style
 
 Match the surrounding code: this repo comments the *why*, especially where a decision looks
