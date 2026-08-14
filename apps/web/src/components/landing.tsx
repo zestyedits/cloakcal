@@ -26,12 +26,12 @@ export function Landing() {
     <div className={styles.page} data-theme="dark">
       <header className={styles.header}>
         <CloakLockup size="sm" />
+        {/* One action, because one action is what exists. A "Get started" button beside a
+            page that announces it is not open yet is a contradiction a visitor has to
+            resolve by clicking, and the answer is always no. */}
         <div className={styles.headerActions}>
-          <ButtonLink variant="ghost" size="sm" href="/sign-in">
+          <ButtonLink variant="outline" size="sm" href="/sign-in">
             Sign in
-          </ButtonLink>
-          <ButtonLink variant="primary" size="sm" href="/sign-up">
-            Get started
           </ButtonLink>
         </div>
       </header>
@@ -39,6 +39,10 @@ export function Landing() {
       <main id="main" className={styles.main}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
+            {/* Text, not a pill: the eyebrow matches the section kickers below, and ink on
+                the page background is a contrast pair already pinned. A washed badge would
+                need its composite re-measured for one word. */}
+            <p className={styles.eyebrow}>Coming soon</p>
             <h1 className={styles.headline}>
               Not everything is for <em>everyone</em>.
             </h1>
@@ -48,9 +52,6 @@ export function Landing() {
               Everyone else sees nothing.
             </p>
             <div className={styles.ctaRow}>
-              <ButtonLink variant="primary" href="/sign-up">
-                Create your calendar
-              </ButtonLink>
               <ButtonLink variant="outline" href="/sign-in">
                 Sign in
               </ButtonLink>
@@ -175,11 +176,12 @@ export function Landing() {
         <LandingReveal>
           <section className={styles.closing}>
             <h2 className={styles.closingTitle}>Your time. Your business.</h2>
-            <div className={styles.ctaRow} data-centered="true">
-              <ButtonLink variant="primary" href="/sign-up">
-                Create your calendar
-              </ButtonLink>
-            </div>
+            {/* The page closes on a statement rather than a button, for the same reason
+                the hero does. There is nothing to sign up for yet, and saying when there
+                will be is more use than a control that refuses. */}
+            <p className={styles.closingNote}>
+              CloakCal is still being built. New accounts open soon.
+            </p>
           </section>
         </LandingReveal>
       </main>
