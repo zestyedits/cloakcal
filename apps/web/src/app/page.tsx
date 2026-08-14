@@ -29,7 +29,8 @@ import { Landing } from '@/components/landing'
 /**
  * The view/URL contract, in one place:
  *
- *   ?view=  agenda | week | day | month     absent or unknown -> agenda
+ *   ?view=  agenda | week | day | month     absent or unknown -> the workspace's stored
+ *                                           default_view (agenda in the fixture)
  *   ?date=  YYYY-MM-DD anchor               absent -> today in the workspace zone
  *   ?week=  accepted as a spelling of date  (old bookmarks; no new link emits it)
  *   ?as=    audience, orthogonal, carried on every link
@@ -42,8 +43,8 @@ import { Landing } from '@/components/landing'
  */
 const VIEWS: readonly CalendarView[] = ['agenda', 'week', 'day', 'month']
 
-const parseView = (view: string | undefined): CalendarView =>
-  VIEWS.includes(view as CalendarView) ? (view as CalendarView) : 'agenda'
+const parseView = (view: string | undefined, fallback: CalendarView = 'agenda'): CalendarView =>
+  VIEWS.includes(view as CalendarView) ? (view as CalendarView) : fallback
 
 /**
  * Server Component. Reads Tier A metadata plus ciphertext from Postgres as the signed-in
@@ -68,7 +69,6 @@ export default async function Page({
   }>
 }) {
   const { as, view: viewParam, week, date, landing } = await searchParams
-  const view = parseView(viewParam)
 
   const fixtureMode = isDevFixtureEnabled()
 
@@ -96,6 +96,11 @@ export default async function Page({
   const prefs = fixtureMode ? null : await loadWorkspacePrefs()
   const timezone = safeTimezone(prefs?.timezone)
   const weekStart = prefs?.weekStart ?? 0
+
+  // The URL always wins so links stay shareable; the STORED default only fills the
+  // absent-or-unknown case. Resolved here rather than at the top because the fallback is
+  // a preference the server has to read first — the fixture keeps the historical agenda.
+  const view = parseView(viewParam, prefs?.defaultView ?? 'agenda')
 
   // The anchor date every view hangs off. The fixture clamps it: week/agenda stay pinned
   // to the demo week (honouring ?date= there would render an empty grid that looks like a
@@ -202,6 +207,11 @@ export default async function Page({
       )}
       email={email}
       composeDate={composeDate}
+      // Real accounts: the stored opt-in, default off (WCAG 2.1.4 route one). The FIXTURE
+      // models a demo user who opted in, because the hotkey behaviour suite needs a live
+      // keyboard to test and the fixture has no settings write path to flip one. The OFF
+      // default itself is pinned where it lives: the 0022 column default and its db test.
+      hotkeysEnabled={prefs?.keyboardShortcuts ?? fixtureMode}
     />
   )
 }

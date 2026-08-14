@@ -106,6 +106,7 @@ export function CalendarScreen({
   groupsByContact = {},
   email,
   composeDate,
+  hotkeysEnabled = false,
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
@@ -129,6 +130,8 @@ export function CalendarScreen({
   email?: string | undefined
   /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
   composeDate?: string | undefined
+  /** The stored keyboard opt-in. Off unmounts the layer entirely; no listener, no `?`. */
+  hotkeysEnabled?: boolean
 }) {
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
@@ -240,14 +243,16 @@ export function CalendarScreen({
     <CloakProvider page={page} email={email} extraFields={audienceNames}>
       {/* Inside CloakProvider so the `n` binding can honour the lock state, exactly like
           the buttons it mirrors. */}
-      <CalendarHotkeys
-        view={view}
-        anchorDate={anchorDate}
-        audience={page.audience}
-        composeAvailable={composeDate !== undefined && page.audience === 'owner'}
-        onSelectView={selectView}
-        onCompose={() => setComposeOpen(true)}
-      />
+      {hotkeysEnabled && (
+        <CalendarHotkeys
+          view={view}
+          anchorDate={anchorDate}
+          audience={page.audience}
+          composeAvailable={composeDate !== undefined && page.audience === 'owner'}
+          onSelectView={selectView}
+          onCompose={() => setComposeOpen(true)}
+        />
+      )}
       <div className={styles.shell}>
         <header className={styles.header}>
           <CloakLockup size="sm" />

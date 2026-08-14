@@ -24,12 +24,19 @@ describe('workspace prefs', () => {
   let ws: string
   const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-  const setPrefs = (user: string, workspace: string, tz: string | null, weekStart: number | null) =>
-    db.as(user, 'select public.set_workspace_prefs($1::uuid, $2::text, $3::integer)', [
-      workspace,
-      tz,
-      weekStart,
-    ])
+  const setPrefs = (
+    user: string,
+    workspace: string,
+    tz: string | null,
+    weekStart: number | null,
+    defaultView: string | null = null,
+    keyboardShortcuts: boolean | null = null,
+  ) =>
+    db.as(
+      user,
+      'select public.set_workspace_prefs($1::uuid, $2::text, $3::integer, $4::text, $5::boolean)',
+      [workspace, tz, weekStart, defaultView, keyboardShortcuts],
+    )
 
   beforeAll(async () => {
     db = await createTestDb()
@@ -96,11 +103,61 @@ describe('workspace prefs', () => {
 
   it('is not callable without a session', async () => {
     await expect(
-      db.asUnauthenticated('select public.set_workspace_prefs($1::uuid, $2::text, $3::integer)', [
-        ws,
-        'Europe/London',
-        null,
-      ]),
+      db.asUnauthenticated(
+        'select public.set_workspace_prefs($1::uuid, $2::text, $3::integer, $4::text, $5::boolean)',
+        [ws, 'Europe/London', null, null, null],
+      ),
     ).rejects.toThrow()
+  })
+
+  it('exactly one overload exists, and short calls still resolve through defaults', async () => {
+    // create-or-replace with a new signature CREATES A SECOND FUNCTION, and two overloads
+    // would make a three-argument call AMBIGUOUS and break every existing caller. 0022
+    // drops the old signature; the null defaults keep the short call form working.
+    const { rows } = await db.as(
+      USER_A,
+      `select count(*)::int as overloads from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = 'set_workspace_prefs'`,
+    )
+    expect(rows[0]!['overloads']).toBe(1)
+
+    // The pre-0022 call shape keeps working via defaults — this is what saves the
+    // existing settings card from a lockstep deploy.
+    await db.as(USER_A, 'select public.set_workspace_prefs($1::uuid, $2::text, $3::integer)', [
+      ws,
+      'Europe/Vienna',
+      2,
+    ])
+    const after = await db.as(USER_A, 'select timezone, week_start from public.workspaces')
+    expect(after.rows[0]).toEqual({ timezone: 'Europe/Vienna', week_start: 2 })
+  })
+
+  it('defaults the new prefs to agenda and shortcuts off', async () => {
+    const { rows } = await db.as(
+      USER_A,
+      'select default_view, keyboard_shortcuts from public.workspaces',
+    )
+    expect(rows[0]).toEqual({ default_view: 'agenda', keyboard_shortcuts: false })
+  })
+
+  it('sets the default view and the shortcut opt-in, null leaving each unchanged', async () => {
+    await setPrefs(USER_A, ws, null, null, 'month', true)
+    let { rows } = await db.as(
+      USER_A,
+      'select default_view, keyboard_shortcuts from public.workspaces',
+    )
+    expect(rows[0]).toEqual({ default_view: 'month', keyboard_shortcuts: true })
+
+    await setPrefs(USER_A, ws, null, null, 'week', null)
+    ;({ rows } = await db.as(
+      USER_A,
+      'select default_view, keyboard_shortcuts from public.workspaces',
+    ))
+    expect(rows[0]).toEqual({ default_view: 'week', keyboard_shortcuts: true })
+  })
+
+  it('refuses a view name the calendar does not have', async () => {
+    expect(await hintOf(setPrefs(USER_A, ws, null, null, 'year', null))).toBe('unknown_view')
   })
 })
