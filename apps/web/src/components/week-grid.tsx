@@ -6,6 +6,7 @@ import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
 import { Icon, type IconName } from './ui/icons'
+import { wallTimeLabel } from '@/lib/wall-time'
 import styles from './week-grid.module.css'
 
 /**
@@ -276,7 +277,8 @@ export function WeekGrid({
                 // audience check is the deliberate second lock on the same door.
                 const editable =
                   audience === 'owner' && occurrence.version !== undefined
-                const timeLabel = occurrence.start.slice(11, 16)
+                // Empty for all-day: the grid positions those separately and a label would double up.
+                const timeLabel = wallTimeLabel(occurrence.start, '')
 
                 return (
                   <article

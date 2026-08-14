@@ -1,6 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill'
-import { redactPage, type AudienceId } from '@/server/audience'
-import { EMPTY_VISIBILITY, audienceIdOf, loadWorkspaceVisibility } from '@/server/visibility'
+import type { AudienceId } from '@/server/audience'
+import { resolveAndRedact } from '@/server/redaction'
 import { getCalendarPage } from '@/server/events'
 import {
   anchorFromParam,
@@ -16,13 +16,7 @@ import {
 import { loadWorkspacePrefs } from '@/server/settings'
 import { stepQuery } from '@/lib/calendar-links'
 import { supabaseServer } from '@/lib/supabase/server'
-import {
-  DEMO_WEEK,
-  FIXTURE_AUDIENCES,
-  FIXTURE_GROUPS,
-  FIXTURE_RULES,
-  isDevFixtureEnabled,
-} from '@/server/dev-fixture'
+import { DEMO_WEEK, FIXTURE_GROUPS, isDevFixtureEnabled } from '@/server/dev-fixture'
 import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
 import { Landing } from '@/components/landing'
 
@@ -134,39 +128,14 @@ export default async function Page({
 
   const calendarPage = await getCalendarPage(range, timezone)
 
-  // Contacts, groups and stored rules. Fixture mode has no workspace behind it, so it gets
-  // the fixed pair — owner and public — and no rules, which is the honest thing to show for
-  // data that has no owner.
-  const visibility =
-    calendarPage.workspaceId === null
-      ? {
-          ...EMPTY_VISIBILITY('fixture'),
-          audiences: FIXTURE_AUDIENCES,
-          workspaceRules: FIXTURE_RULES,
-        }
-      : await loadWorkspaceVisibility(calendarPage.workspaceId)
-
-  // `as` is validated against the audiences that actually exist, so a hand-edited URL naming
-  // a deleted contact falls back to the owner's view rather than resolving to an audience
-  // with no rules — which would look like "this person sees nothing" instead of "no such
-  // person" and is the wrong thing to show a user checking their own privacy settings.
-  const audience: AudienceId = visibility.audiences.some((a) => audienceIdOf(a) === as)
-    ? (as as AudienceId)
-    : 'owner'
-  // A fixed instant in fixture mode so the demo page is deterministic; request time otherwise.
-  const now = fixtureMode ? '2026-05-19T08:00:00-04:00' : new Date().toISOString()
-  const page = redactPage(calendarPage, audience, now, {
-    workspaceId: visibility.workspaceId,
-    workspaceRules: visibility.workspaceRules,
-    rulesByEvent: visibility.rulesByEvent,
-    // Real membership now loads with the rest of the visibility data. Until it did, real
-    // accounts passed an empty map here, so a group rule never applied when previewing an
-    // individual who belonged to one — the fixture was the only place group rules worked.
-    groupsByContact: fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
-    // No rule means hidden. A calendar that defaulted to visible would disclose everything
-    // the moment someone was added as a contact, before anyone decided what they should see.
-    defaultTimeVis: 'hidden',
-  })
+  // Audience resolution and redaction live in ONE function shared with the People
+  // preview, because the preview must show exactly what this page would serve that
+  // audience — sameness by construction, not by transcription.
+  const { visibility, audience, page } = await resolveAndRedact(
+    calendarPage,
+    as as AudienceId,
+    fixtureMode,
+  )
 
   // Steppers move the anchor by one unit of the current view, through the shared builder
   // (lib/calendar-links.ts) so the hotkey layer, the client screen and this page cannot

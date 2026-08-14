@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { todayQuery, viewQuery } from '@/lib/calendar-links'
+import { wallTimeLabel } from '@/lib/wall-time'
 import { CalendarHotkeys } from './calendar-hotkeys'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
@@ -73,7 +74,7 @@ const DAY_LABEL = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 
-const timeOf = (iso: string) => (iso.includes('T') ? iso.slice(11, 16) : 'All day')
+const timeOf = wallTimeLabel
 
 export interface WeekLink {
   readonly pathname: '/'

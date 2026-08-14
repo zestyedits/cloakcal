@@ -1,22 +1,11 @@
 import 'server-only'
-import { Temporal } from '@js-temporal/polyfill'
 import { getCalendarPage } from './events'
-import { redactPage, type AudienceId, type RedactedPage } from './audience'
-import {
-  EMPTY_VISIBILITY,
-  loadWorkspaceVisibility,
-  audienceIdOf,
-  type WorkspaceVisibility,
-} from './visibility'
+import type { AudienceId, RedactedPage } from './audience'
+import type { WorkspaceVisibility } from './visibility'
+import { resolveAndRedact } from './redaction'
 import { loadWorkspacePrefs } from './settings'
 import { currentWeek, safeTimezone } from './range'
-import {
-  DEMO_WEEK,
-  FIXTURE_AUDIENCES,
-  FIXTURE_GROUPS,
-  FIXTURE_RULES,
-  isDevFixtureEnabled,
-} from './dev-fixture'
+import { DEMO_WEEK, isDevFixtureEnabled } from './dev-fixture'
 import { supabaseServer } from '@/lib/supabase/server'
 
 /**
@@ -55,33 +44,16 @@ export async function loadPeopleData(audience: AudienceId): Promise<PeopleData |
   const range = fixtureMode ? DEMO_WEEK : currentWeek(timezone, prefs?.weekStart ?? 0)
 
   const calendarPage = await getCalendarPage(range, timezone)
-  const visibility =
-    calendarPage.workspaceId === null
-      ? {
-          ...EMPTY_VISIBILITY('fixture'),
-          audiences: FIXTURE_AUDIENCES,
-          workspaceRules: FIXTURE_RULES,
-        }
-      : await loadWorkspaceVisibility(calendarPage.workspaceId)
 
-  // Same validation as `/`: an audience that does not exist falls back to owner rather
-  // than rendering "this person sees nothing" for a person who is not there at all.
-  const resolved: AudienceId = visibility.audiences.some((a) => audienceIdOf(a) === audience)
-    ? audience
-    : 'owner'
+  // The shared pipeline `/` uses — sameness by construction. It resolves an unknown
+  // audience to 'owner'; for this loader that downgrade means "no such person", which the
+  // caller renders as the house 404.
+  const { visibility, audience: resolved, page, now } = await resolveAndRedact(
+    calendarPage,
+    audience,
+    fixtureMode,
+  )
   if (resolved !== audience) return null
-
-  const now = fixtureMode
-    ? '2026-05-19T08:00:00-04:00'
-    : Temporal.Now.instant().toString()
-
-  const page = redactPage(calendarPage, resolved, now, {
-    workspaceId: visibility.workspaceId,
-    workspaceRules: visibility.workspaceRules,
-    rulesByEvent: visibility.rulesByEvent,
-    groupsByContact: fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
-    defaultTimeVis: 'hidden',
-  })
 
   return { page, visibility, timezone, fixtureMode, email, previewedAt: now }
 }

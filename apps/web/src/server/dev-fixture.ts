@@ -25,6 +25,9 @@ import { isoLocalFromUtc } from './local-time'
  * protected, and treating it as though it were would be worse than saying so.
  */
 
+/** The fixture's fixed "now", so demo redactions are deterministic across renders. */
+export const FIXTURE_NOW = '2026-05-19T08:00:00-04:00'
+
 export const DEMO_WEEK: CalendarRange = {
   from: '2026-05-18T00:00:00-04:00',
   to: '2026-05-25T00:00:00-04:00',

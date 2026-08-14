@@ -9,6 +9,7 @@ import { useCloakedLabels } from './use-cloaked-labels'
 import { CloakedText } from './cloaked-text'
 import { CloakLockup } from './cloak-logo'
 import { ButtonLink } from './ui/button'
+import { wallTimeLabel } from '@/lib/wall-time'
 import styles from './people-screen.module.css'
 
 /**
@@ -194,13 +195,8 @@ function ContactPreviewBody({
   const names = useCloakedLabels('contact', [contactId], 'name')
   const name = names[contactId] ?? `Contact ${contactId.slice(0, 8)}…`
 
-  // `start` and `occurrenceLocal` are WALL-CLOCK strings, not instants. Never a
-  // `new Date()` on either: that reintroduces the host timezone (the exact trap
-  // CLAUDE.md documents) and throws outright on an all-day value with no time part.
-  // Times are sliced like the agenda's timeOf; day names come from Date.UTC read back
-  // with getUTC*, the mini month's fixed-instant pattern, which cannot drift.
-  const timeOf = (local: string) => (local.includes('T') ? local.slice(11, 16) : 'All day')
-
+  // Day names come from Date.UTC read back with getUTC*, the mini month's fixed-instant
+  // pattern, which cannot drift with the host timezone.
   const dayOf = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-US', {
       timeZone: 'UTC',
@@ -272,7 +268,7 @@ function ContactPreviewBody({
                   key={`${occurrence.eventId}-${occurrence.occurrenceLocal}`}
                   className={styles.eventRow}
                 >
-                  <span className={styles.eventTime}>{timeOf(occurrence.start)}</span>
+                  <span className={styles.eventTime}>{wallTimeLabel(occurrence.start)}</span>
                   {occurrence.time === 'busy' ? (
                     // The server sent no fields for this one: Busy is the whole story.
                     <span className={styles.eventTitle}>Busy</span>
