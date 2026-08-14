@@ -18,7 +18,7 @@ import { WeekGrid } from './week-grid'
 import { NewEvent, NewEventButton } from './new-event'
 import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
-import { CloakLockup, CloakMark } from './cloak-logo'
+import { CloakHomeLink, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
 import { MiniMonth } from './mini-month'
 import { MonthGrid } from './month-grid'
@@ -107,6 +107,7 @@ export function CalendarScreen({
   groupsByContact = {},
   email,
   composeDate,
+  composeDemo = false,
   hotkeysEnabled = false,
 }: {
   page: RedactedPage
@@ -131,6 +132,13 @@ export function CalendarScreen({
   email?: string | undefined
   /** YYYY-MM-DD the compose sheet opens on. Absent means composing is unavailable. */
   composeDate?: string | undefined
+  /**
+   * Fixture mode: the compose sheet opens and cannot write (see NewEvent.demo). The WRITE
+   * doors that have no demo mode — the add-calendar row, the sample-event seeder — gate on
+   * this separately, because "you can open the form" and "you can change data" stopped
+   * being the same fact when the demo gained a compose path.
+   */
+  composeDemo?: boolean
   /** The stored keyboard opt-in. Off unmounts the layer entirely; no listener, no `?`. */
   hotkeysEnabled?: boolean
 }) {
@@ -144,6 +152,8 @@ export function CalendarScreen({
   )
   const view: CalendarView = onWeekFetch ? clientView : serverView
   const [composeOpen, setComposeOpen] = useState(false)
+  /** The grid slot a compose was opened from; null = the buttons' anchor-date default. */
+  const [composeSlot, setComposeSlot] = useState<{ date: string; time: string } | null>(null)
   const [cloakOpen, setCloakOpen] = useState(false)
   /** Event id whose visibility sheet is open, or null. */
   const [visibilityFor, setVisibilityFor] = useState<string | null>(null)
@@ -212,6 +222,15 @@ export function CalendarScreen({
 
   const stepUnit = view === 'day' ? 'day' : view === 'month' ? 'month' : 'week'
 
+  /** One compose gate for every trigger: a date to open on, and the owner's own eyes. */
+  const canCompose = composeDate !== undefined && page.audience === 'owner'
+
+  /** Open the compose sheet, from a grid slot or (null) from a button's plain default. */
+  const composeAt = (slot: { date: string; time: string } | null) => {
+    setComposeSlot(slot)
+    setComposeOpen(true)
+  }
+
   const navControl = (item: NavItem, className: string | undefined) =>
     item.kind === 'toggle' ? (
       <button
@@ -249,91 +268,105 @@ export function CalendarScreen({
           view={view}
           anchorDate={anchorDate}
           audience={page.audience}
-          composeAvailable={composeDate !== undefined && page.audience === 'owner'}
+          composeAvailable={canCompose}
           onSelectView={selectView}
-          onCompose={() => setComposeOpen(true)}
+          onCompose={() => composeAt(null)}
         />
       )}
       <div className={styles.shell}>
+        {/* Three owned clusters, left to right: identity (the lockup, now the door home),
+            place (steppers + date + Today, one group), controls (view switch + Cloak +
+            theme, pinned right). One flexible gap between place and controls — the old
+            layout scattered five separate boxes across the row and the slack pooled in an
+            unowned centre. */}
         <header className={styles.header}>
-          <CloakLockup size="sm" />
+          <CloakHomeLink size="sm" />
 
-          {/* Real links, not buttons: a week is a location, so it should be shareable,
-              bookmarkable and reachable with the back button. Server navigation also keeps
-              redaction on the server — client-side week switching would mean shipping
-              occurrences the audience is not entitled to. */}
-          <nav className={styles.weekNav} aria-label={`Change ${stepUnit}`}>
-            <Link
-              className={styles.weekStep}
-              href={previousHref}
-              aria-label={`Previous ${stepUnit}`}
-              aria-keyshortcuts="ArrowLeft k"
-            >
-              ‹
-            </Link>
-            <p className={styles.range} aria-live="polite">
-              {heading}
-            </p>
-            <Link
-              className={styles.weekStep}
-              href={nextHref}
-              aria-label={`Next ${stepUnit}`}
-              aria-keyshortcuts="ArrowRight j"
-            >
-              ›
-            </Link>
-          </nav>
-
-          {/* Today is a navigation, so it is a link: the server defaults to today, and the
-              view and audience survive via the query exactly as on the steppers. The
-              wrapper span owns visibility — hiding the ButtonLink itself would fight the
-              Button class's own display in the cascade and lose on import order.
-
-              `view` here is the resolved CLIENT view, so Today from the week toggle keeps
-              week view. The old `!onWeekFetch` condition silently dropped it — Today from
-              Week landed on the agenda, which read as the button being broken. The query
-              now comes from the shared builder, so the fix cannot regress in one caller. */}
-          <span className={styles.today}>
-            <ButtonLink
-              variant="outline"
-              size="sm"
-              aria-keyshortcuts="t"
-              href={{
-                pathname: '/',
-                query: todayQuery(view, page.audience),
-              }}
-            >
-              Today
-            </ButtonLink>
-          </span>
-
-          {/* Desktop-only chrome (CSS): the segmented view control and a compact door to
-              the Cloak sheet. On phones both live in the bottom bar instead — the board
-              draws different chrome per device, not one bar stretched across both. */}
-          <div className={styles.headerViews}>
-            <nav className={styles.viewSwitch} aria-label="Calendar views">
-              {(['agenda', 'week', 'day', 'month'] as const).map((target) =>
-                navControl(navItemFor(target), styles.viewSegment),
-              )}
+          <div className={styles.placeCluster}>
+            {/* Real links, not buttons: a week is a location, so it should be shareable,
+                bookmarkable and reachable with the back button. Server navigation also keeps
+                redaction on the server — client-side week switching would mean shipping
+                occurrences the audience is not entitled to. */}
+            <nav className={styles.weekNav} aria-label={`Change ${stepUnit}`}>
+              <Link
+                className={styles.weekStep}
+                href={previousHref}
+                aria-label={`Previous ${stepUnit}`}
+                aria-keyshortcuts="ArrowLeft k"
+              >
+                ‹
+              </Link>
+              <p className={styles.range} aria-live="polite">
+                {heading}
+              </p>
+              <Link
+                className={styles.weekStep}
+                href={nextHref}
+                aria-label={`Next ${stepUnit}`}
+                aria-keyshortcuts="ArrowRight j"
+              >
+                ›
+              </Link>
             </nav>
-            <button
-              type="button"
-              className={styles.cloakHeaderButton}
-              aria-expanded={cloakOpen}
-              onClick={() => setCloakOpen(true)}
-            >
-              <CloakMark size={16} />
-              Cloak
-            </button>
+
+            {/* Today is a navigation, so it is a link: the server defaults to today, and the
+                view and audience survive via the query exactly as on the steppers. The
+                wrapper span owns visibility — hiding the ButtonLink itself would fight the
+                Button class's own display in the cascade and lose on import order.
+
+                `view` here is the resolved CLIENT view, so Today from the week toggle keeps
+                week view. The old `!onWeekFetch` condition silently dropped it — Today from
+                Week landed on the agenda, which read as the button being broken. The query
+                now comes from the shared builder, so the fix cannot regress in one caller. */}
+            <span className={styles.today}>
+              <ButtonLink
+                variant="outline"
+                size="sm"
+                aria-keyshortcuts="t"
+                href={{
+                  pathname: '/',
+                  query: todayQuery(view, page.audience),
+                }}
+              >
+                Today
+              </ButtonLink>
+            </span>
           </div>
 
-          <ThemeToggle />
+          <div className={styles.headerEnd}>
+            {/* Desktop-only chrome (CSS): the segmented view control and the Cloak door,
+                now sharing ONE sunken track instead of sitting as two stray boxes. On
+                phones both live in the bottom bar instead — the board draws different
+                chrome per device, not one bar stretched across both. The Cloak button
+                stays OUTSIDE the "Calendar views" nav: it opens a sheet, it does not
+                navigate, and a nav landmark that lies about one of its children is worse
+                than a hairline divider. */}
+            <div className={styles.headerViews}>
+              <nav className={styles.viewSwitch} aria-label="Calendar views">
+                {(['agenda', 'week', 'day', 'month'] as const).map((target) =>
+                  navControl(navItemFor(target), styles.viewSegment),
+                )}
+              </nav>
+              <span className={styles.controlDivider} aria-hidden="true" />
+              <button
+                type="button"
+                className={styles.cloakHeaderButton}
+                aria-expanded={cloakOpen}
+                onClick={() => setCloakOpen(true)}
+              >
+                <CloakMark size={16} />
+                Cloak
+              </button>
+            </div>
+
+            <ThemeToggle />
+          </div>
         </header>
 
         <aside className={styles.sidebar} aria-label="Calendars">
-          {composeDate !== undefined && page.audience === 'owner' && (
+          {canCompose && (
             <span className={styles.sidebarCompose}>
-              <NewEventButton variant="block" onOpen={() => setComposeOpen(true)} />
+              <NewEventButton variant="block" onOpen={() => composeAt(null)} />
             </span>
           )}
 
@@ -367,11 +400,11 @@ export function CalendarScreen({
             </Link>
           )}
 
-          {/* The add row shares the compose gate (real session + owner), so the fixture
-              never renders it and the demo baselines hold. A restricted audience keeps
-              seeing no section at all when it has no calendars to list. */}
-          {(page.calendars.length > 0 ||
-            (composeDate !== undefined && page.audience === 'owner')) && (
+          {/* The add row is a WRITE door with no demo mode, so it needs a real session:
+              composeDemo excludes the fixture even now that composing itself is demoable.
+              A restricted audience keeps seeing no section at all when it has no calendars
+              to list. */}
+          {(page.calendars.length > 0 || canCompose) && (
             <>
               <h2 className={styles.sidebarHeading}>My calendars</h2>
               <ul className={styles.calendarList}>
@@ -391,7 +424,7 @@ export function CalendarScreen({
                   </li>
                 ))}
               </ul>
-              {composeDate !== undefined && page.audience === 'owner' && (
+              {!composeDemo && canCompose && (
                 <span className={styles.calendarAdd}>
                   <NewCalendarButton />
                 </span>
@@ -458,6 +491,7 @@ export function CalendarScreen({
                   can come from is here, sealed in this browser with real keys. */}
               {page.audience === 'owner' &&
                 page.withheldCount === 0 &&
+                !composeDemo &&
                 composeDate !== undefined && (
                   <SeedSampleEvents from={page.from} timezone={timezone} />
                 )}
@@ -472,6 +506,7 @@ export function CalendarScreen({
               colorFor={colorFor}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
+              onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
             />
           )}
 
@@ -484,6 +519,7 @@ export function CalendarScreen({
               dayCount={1}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
+              onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
             />
           )}
 
@@ -661,14 +697,21 @@ export function CalendarScreen({
 
         {/* Composing is owner-only. Creating an event while viewing as someone else would
             be a confusing thing to offer and an easy thing to get wrong. */}
-        {composeDate !== undefined && page.audience === 'owner' && (
+        {canCompose && composeDate !== undefined && (
           <>
-            <NewEventButton variant="fab" onOpen={() => setComposeOpen(true)} />
+            <NewEventButton variant="fab" onOpen={() => composeAt(null)} />
             {composeOpen && (
               <NewEvent
                 timezone={timezone}
-                defaultDate={composeDate}
-                onClose={() => setComposeOpen(false)}
+                defaultDate={composeSlot?.date ?? composeDate}
+                defaultTime={composeSlot?.time ?? '09:00'}
+                demo={composeDemo}
+                onClose={() => {
+                  setComposeOpen(false)
+                  // Forget the slot: the next plain-button compose should get the anchor
+                  // date at 09:00, not wherever the grid was last clicked.
+                  setComposeSlot(null)
+                }}
               />
             )}
           </>

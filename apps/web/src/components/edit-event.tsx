@@ -7,6 +7,7 @@ import { useCloakStore } from './cloak-provider'
 import { useCloakedValue } from './use-cloaked-value'
 import { EventSheet } from './event-sheet'
 import { EventFields, type EventFieldValues } from './event-fields'
+import { DeleteEvent } from './delete-event'
 import { sealFields } from '@/lib/cloaked-fields'
 import { UnsafeSplitError, planSplit } from '@/lib/split-plan'
 import { planFieldChanges, isNoop, type EditableField } from '@/lib/field-changes'
@@ -77,6 +78,7 @@ export function EditEvent({
   /** This occurrence's start and end, as zoned ISO strings from the server render. */
   start,
   end,
+  label,
   onClose,
 }: {
   eventId: string
@@ -89,6 +91,8 @@ export function EditEvent({
   timezone: string
   start: string
   end: string
+  /** Describes the event without naming it, for the Delete flow's accessible names. */
+  label: string
   onClose: () => void
 }) {
   const store = useCloakStore()
@@ -320,6 +324,24 @@ export function EditEvent({
           They are shown blank and will be left exactly as they are. Type in one to replace it.
         </p>
       )}
+
+      {/* Delete lives IN the sheet now, because the sheet is reachable from every view and
+          the agenda's Delete button is not — Day and Week open this sheet, Month drills to
+          Day, and before this the agenda was the only place an event could die. The same
+          DeleteEvent flow as the agenda rows: same two-choice scope, same RPCs, same
+          refusal to offer an unverified truncation. Owner-only by construction — only the
+          owner can open an edit sheet at all. Below the scope picker and cut off by a
+          hairline, so "which occurrences to CHANGE" and "delete" never read as one form. */}
+      <div className={styles.deleteZone}>
+        <DeleteEvent
+          eventId={eventId}
+          version={version}
+          recurring={recurring}
+          occurrenceLocal={occurrenceLocal}
+          label={label}
+          onDone={onClose}
+        />
+      </div>
     </EventSheet>
   )
 }

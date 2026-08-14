@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import styles from './cloak-logo.module.css'
 import { markSvg } from './cloak-mark'
 
@@ -55,5 +56,25 @@ export function CloakLockup({
         {tagline && <span className={styles.tagline}>Your time. Your business.</span>}
       </span>
     </div>
+  )
+}
+
+/**
+ * The lockup as the door home. Every header wears this instead of a bare lockup, because a
+ * logo that goes nowhere is the one affordance literally every site has taught users to
+ * expect. One component rather than a Link wrapped around each call site — the lockup
+ * itself exists because eleven lines of markup were once copy-pasted into four components,
+ * and the wrapper would have gone the same way.
+ *
+ * UrlObject, not '/': typedRoutes rejects some computed string hrefs, and the object form
+ * is the shape the rest of the app already uses (WeekLink). The aria-label names the
+ * DESTINATION, not the image — "CloakCal home" tells a screen reader what the link does,
+ * where the inner text alone would just repeat the brand.
+ */
+export function CloakHomeLink({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  return (
+    <Link className={styles.homeLink} href={{ pathname: '/' }} aria-label="CloakCal home">
+      <CloakLockup size={size} />
+    </Link>
   )
 }

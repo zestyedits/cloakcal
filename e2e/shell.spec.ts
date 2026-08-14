@@ -133,8 +133,8 @@ test('the sidebar shows the calendars but not the add row in demo mode', async (
 
   // The list itself renders now (its base hide finally has a desktop counterpart)...
   await expect(page.getByRole('heading', { name: 'My calendars' })).toBeVisible()
-  // ...but the add row shares the compose gate: no real session in fixture mode, so no
-  // door to a write that could never succeed.
+  // ...but the add row is a WRITE door with no demo mode: composing is demoable in the
+  // fixture now, creating a calendar is not, so this stays absent on purpose.
   await expect(page.getByRole('button', { name: /Add calendar/ })).toHaveCount(0)
 })
 

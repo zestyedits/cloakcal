@@ -1,16 +1,21 @@
 'use client'
 
-import { useId, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import styles from './event-fields.module.css'
 
 /**
  * The event form's fields, fully controlled and entirely presentational.
  *
- * NO STATE, NO CRYPTO, NO NETWORK. Values in, changes out. Create and edit differ in what
- * they do with the values, not in how the values are collected, and this is the part they
- * genuinely share — so it is the only part extracted. The two submit paths stay separate:
- * different RPC, version guard or not, pre-fill or not, one failure mode or three. Merging
- * those would put a branch in every interesting line.
+ * NO VALUE STATE, NO CRYPTO, NO NETWORK. Values in, changes out. Create and edit differ in
+ * what they do with the values, not in how the values are collected, and this is the part
+ * they genuinely share — so it is the only part extracted. The two submit paths stay
+ * separate: different RPC, version guard or not, pre-fill or not, one failure mode or
+ * three. Merging those would put a branch in every interesting line.
+ *
+ * The one piece of local state is the custom-duration MODE (and its raw text) — which
+ * control collects the minutes, never what the minutes are. The value itself still flows
+ * out through onChange like every other field, so the create and edit sheets stay the
+ * single source of truth for what will be saved.
  *
  * IDS COME FROM useId(). The markup this replaces hardcoded `event-title`, `event-date` and
  * friends, which is fine for exactly as long as only one sheet can exist. An edit sheet and
@@ -55,6 +60,14 @@ export function EventFields({
 }) {
   const id = useId()
   const durations = [...new Set([...DURATIONS, ...extraDurations])].sort((a, b) => a - b)
+
+  // Custom-duration mode. Opened by the select's last option, closed by picking any
+  // preset. The raw text is kept separately from values.duration so someone can clear the
+  // field mid-edit without the form fighting them; only a valid whole number of minutes is
+  // ever pushed out through onChange, and the input's own required/min validation blocks a
+  // submit while the text is not one — so a stale duration can never ride out on a save.
+  const [customOpen, setCustomOpen] = useState(false)
+  const [customText, setCustomText] = useState('')
 
   return (
     <>
@@ -118,15 +131,53 @@ export function EventFields({
                 id={`${id}-duration`}
                 className={styles.input}
                 disabled={disabled}
-                value={values.duration}
-                onChange={(e) => onChange({ duration: Number(e.target.value) })}
+                value={customOpen ? 'custom' : values.duration}
+                onChange={(e) => {
+                  if (e.target.value === 'custom') {
+                    setCustomOpen(true)
+                    setCustomText(String(values.duration))
+                    return
+                  }
+                  setCustomOpen(false)
+                  onChange({ duration: Number(e.target.value) })
+                }}
               >
                 {durations.map((minutes) => (
                   <option key={minutes} value={minutes}>
                     {formatDuration(minutes)}
                   </option>
                 ))}
+                <option value="custom">Custom minutes</option>
               </select>
+              {customOpen && (
+                <>
+                  <label className={styles.label} htmlFor={`${id}-custom-minutes`}>
+                    Minutes
+                  </label>
+                  <input
+                    id={`${id}-custom-minutes`}
+                    className={styles.input}
+                    type="number"
+                    inputMode="numeric"
+                    // The floor matches the read side (initialTiming clamps to 1) and the
+                    // cap is a day: end_utc is derived as start + duration, and a typo'd
+                    // 90000 would quietly write an event ending months out.
+                    min={1}
+                    max={1440}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={customText}
+                    onChange={(e) => {
+                      setCustomText(e.target.value)
+                      const minutes = Math.floor(Number(e.target.value))
+                      if (e.target.value !== '' && Number.isFinite(minutes) && minutes >= 1) {
+                        onChange({ duration: Math.min(minutes, 1440) })
+                      }
+                    }}
+                  />
+                </>
+              )}
             </div>
 
             {children}

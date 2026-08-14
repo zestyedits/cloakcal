@@ -13,7 +13,7 @@ import { assessPassword } from '@cloakcal/crypto'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { signupsOpen } from '@/lib/signups'
 import { RecoveryPhrase } from './recovery-phrase'
-import { CloakLockup } from './cloak-logo'
+import { CloakHomeLink } from './cloak-logo'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
@@ -200,7 +200,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <form className={styles.card} onSubmit={submit}>
-      <CloakLockup />
+      <CloakHomeLink />
 
       <h1 className={styles.title}>
         {mode === 'sign-up' ? 'Create your calendar' : 'Welcome back'}

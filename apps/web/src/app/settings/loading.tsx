@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CloakLockup } from '@/components/cloak-logo'
+import { CloakHomeLink } from '@/components/cloak-logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import settingsStyles from '@/components/settings/settings.module.css'
 import styles from './loading.module.css'
@@ -23,7 +23,7 @@ export default function SettingsLoading() {
           ‹ Calendar
         </Link>
         <div className={settingsStyles.headerSpace} />
-        <CloakLockup size="sm" />
+        <CloakHomeLink size="sm" />
         <div className={settingsStyles.headerSpace} />
         <ThemeToggle />
       </header>

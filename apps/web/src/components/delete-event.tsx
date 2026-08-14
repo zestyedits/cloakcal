@@ -65,6 +65,7 @@ export function DeleteEvent({
   recurring,
   occurrenceLocal,
   label,
+  onDone,
 }: {
   eventId: string
   version: number
@@ -77,6 +78,13 @@ export function DeleteEvent({
   occurrenceLocal: string
   /** Describes the event without naming it — the title is encrypted and stays that way. */
   label: string
+  /**
+   * Called after a successful delete, before the refresh. The edit sheet hosts this
+   * component now, and a sheet left open over a row that no longer exists would refresh
+   * into showing a stale event — so the host gets to close itself first. The agenda rows
+   * pass nothing and behave exactly as they always did.
+   */
+  onDone?: (() => void) | undefined
 }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
@@ -105,6 +113,7 @@ export function DeleteEvent({
       if (rpcError !== null) throw rpcError
 
       setConfirming(false)
+      onDone?.()
       router.refresh()
     } catch (caught) {
       // The RPC distinguishes its failure modes deliberately, so say which one happened

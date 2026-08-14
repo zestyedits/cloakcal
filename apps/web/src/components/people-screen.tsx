@@ -7,7 +7,7 @@ import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider, type ExtraSealedField } from './cloak-provider'
 import { useCloakedLabels } from './use-cloaked-labels'
 import { CloakedText } from './cloaked-text'
-import { CloakLockup } from './cloak-logo'
+import { CloakHomeLink } from './cloak-logo'
 import { ButtonLink } from './ui/button'
 import { wallTimeLabel } from '@/lib/wall-time'
 import styles from './people-screen.module.css'
@@ -44,7 +44,7 @@ function PeopleShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <CloakLockup size="sm" />
+        <CloakHomeLink size="sm" />
         <Link className={styles.backLink} href={{ pathname: '/' }}>
           Back to calendar
         </Link>

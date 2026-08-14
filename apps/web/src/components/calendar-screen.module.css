@@ -20,38 +20,42 @@
   grid-area: header;
   display: flex;
   align-items: center;
-  /* Clusters, not space-between: four controls scattered across a wide window with
-     half-page gaps between them read as unfinished. The theme toggle anchors the right
-     edge via margin-left below; everything else groups from the left. */
+  /* Three clusters, one owned gap. Identity, then place, then controls pinned right by
+     .headerEnd's auto margin — the slack in a wide window lives in exactly one seam
+     instead of pooling between five scattered boxes. */
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-raised);
 }
 
-/* The theme toggle anchors the right edge on every breakpoint; on desktop the view
-   cluster's own auto margin takes the slack first, so the two sit together. */
-.header > :last-child {
-  margin-left: auto;
+/* Steppers + date + Today, one group: the things that answer "where am I / go somewhere
+   else" travel together, so the long day-view date string lengthens the CLUSTER rather
+   than shoving unrelated controls around. min-width lets the date ellipsis before the
+   cluster can force the header to overflow on narrow tablets. */
+.placeCluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-/* Desktop-only header chrome: the segmented view control and the compact Cloak door.
-   Hidden on phones, where the bottom bar owns both jobs. */
+/* The right cluster anchors the edge on every breakpoint. On phones it holds only the
+   theme toggle (.headerViews is display:none), so mobile pixels do not move. */
+.headerEnd {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Desktop-only header chrome: the segmented view control and the Cloak door in ONE
+   sunken track — they were two stray boxes, and the board draws a single assembly.
+   Hidden on phones, where the bottom bar owns both jobs. The track carries the border
+   and background; the nav inside is stripped bare below. */
 .headerViews {
   display: none;
-}
-
-@media (min-width: 900px) {
-  .headerViews {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-left: auto;
-  }
-}
-
-.viewSwitch {
-  display: flex;
+  align-items: center;
   gap: var(--space-1);
   /* 2px, not space-1: the segments inside hold the full 44px touch floor (the a11y sweep
      is a hard minimum), so the track stays slim by shrinking ITS chrome, not theirs. */
@@ -59,6 +63,27 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
+}
+
+@media (min-width: 900px) {
+  .headerViews {
+    display: flex;
+  }
+}
+
+/* Inside the shared track the nav has no chrome of its own left to carry. */
+.viewSwitch {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Cuts the views from the Cloak door inside the shared track. Decorative — the divider
+   carries no meaning the two controls' own labels do not. */
+.controlDivider {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--border-subtle);
+  flex: none;
 }
 
 .viewSegment {
@@ -82,20 +107,29 @@
   color: var(--text-primary);
 }
 
+/* The Button's press, on every control that behaves like one: 1px down, no colour
+   games. Reduced motion keeps it — a press offset is state, not choreography. */
+.viewSegment:active {
+  transform: translateY(1px);
+}
+
 .viewSegment[aria-current='page'] {
   background: var(--surface-raised);
   color: var(--text-primary);
   box-shadow: var(--shadow-sm), var(--edge-highlight);
 }
 
+/* A segment in the shared track, not a boxed button: same ink and geometry as the view
+   segments beside it (text-secondary on the sunken track is the pair those already pin),
+   with the open state raised exactly like an active segment. */
 .cloakHeaderButton {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--text-secondary);
   font: inherit;
@@ -104,10 +138,18 @@
   cursor: pointer;
 }
 
-.cloakHeaderButton:hover,
+.cloakHeaderButton:hover {
+  color: var(--text-primary);
+}
+
+.cloakHeaderButton:active {
+  transform: translateY(1px);
+}
+
 .cloakHeaderButton[aria-expanded='true'] {
   color: var(--text-primary);
-  background: var(--surface-overlay);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
 }
 
 
@@ -143,6 +185,10 @@
 .weekStep:hover {
   background: var(--surface-overlay);
   color: var(--text-primary);
+}
+
+.weekStep:active {
+  transform: translateY(1px);
 }
 
 /* Today is tablet-and-up chrome; on phones the week strip's filled disc answers "where
@@ -255,6 +301,12 @@
 .event:hover {
   border-color: var(--border-default);
   transform: translateX(2px);
+}
+
+/* Pressed: the whole row dips, whichever of its controls the press lands on — the row IS
+   the affordance (its body is one big edit door), so the row gives the feedback. */
+.event:active {
+  transform: translateX(2px) translateY(1px);
 }
 
 .event[data-color='indigo'] {
@@ -380,6 +432,10 @@
   transition: background var(--duration-fast) var(--ease-standard);
 }
 
+.navItem:active {
+  transform: translateY(1px);
+}
+
 .navItem[aria-current='page'] {
   background: var(--accent-quiet);
   color: var(--accent-text);
@@ -475,6 +531,10 @@
 
 .peopleLink:hover {
   background: var(--surface-overlay);
+}
+
+.peopleLink:active {
+  transform: translateY(1px);
 }
 
 .peopleLink span {
@@ -640,6 +700,10 @@
 
 .accountRow:hover {
   background: var(--surface-overlay);
+}
+
+.accountRow:active {
+  transform: translateY(1px);
 }
 
 .accountText {

@@ -41,6 +41,11 @@
   color: var(--text-primary);
 }
 
+/* The Button's press, matching the sidebar rows around it. */
+.day:active {
+  transform: translateY(1px);
+}
+
 /* Dimmed by the token, not by opacity: stacking opacity on tertiary ink lands under the
    4.5:1 floor and axe (rightly) fails the whole page over a neighbouring month's dates. */
 .day[data-outside='true'] {

@@ -10,7 +10,7 @@ import {
   rootKeyFromPassword,
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
-import { CloakLockup } from './cloak-logo'
+import { CloakHomeLink } from './cloak-logo'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
@@ -82,7 +82,7 @@ export function ChangePassword({ email }: { email: string }) {
 
   return (
     <form className={styles.card} onSubmit={submit}>
-      <CloakLockup />
+      <CloakHomeLink />
 
       <h1 className={styles.title}>Change your password</h1>
       <p className={styles.lede}>
