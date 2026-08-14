@@ -31,8 +31,10 @@
 
 /* Steppers + date + Today, one group: the things that answer "where am I / go somewhere
    else" travel together, so the long day-view date string lengthens the CLUSTER rather
-   than shoving unrelated controls around. min-width lets the date ellipsis before the
-   cluster can force the header to overflow on narrow tablets. */
+   than shoving unrelated controls around. min-width lets the cluster shrink under
+   pressure instead of forcing the header wider; the date then WRAPS (see .range for why
+   it must never be nowrap), which costs a taller header on narrow tablets and can never
+   expand the mobile layout viewport. */
 .placeCluster {
   display: flex;
   align-items: center;
@@ -159,6 +161,12 @@
   font-size: var(--text-sm);
   min-width: 11ch;
   text-align: center;
+  /* NO white-space: nowrap here, and that is load-bearing: nowrap makes the full date
+     string this element's min-content, which propagates up through the flex chain into
+     the header's min-content — and on a phone the layout viewport EXPANDS to fit it
+     (417px became 440px when this was tried) instead of squeezing anything. Same family
+     as the documented max-width feedback loop: mobile overflow does not trigger flex
+     shrink, it widens the page. Wrapping is the degradation that cannot do that. */
 }
 
 /* Week stepping. Thumb-sized on mobile because it is the most-used control on the screen. */

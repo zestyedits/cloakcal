@@ -323,9 +323,11 @@ export function WeekGrid({
                   >
                     {/* The block is the edit door, same semantics as tapping an agenda
                         row. A stretched button rather than a wrapping one, because the
-                        block's children are laid out by the grid. Delete stays on the
-                        agenda on purpose: a third control does not fit a 28px block, and
-                        delete is the one action that must never be a mis-tap. */}
+                        block's children are laid out by the grid. No delete control ON
+                        the block, on purpose: a third control does not fit a 28px block,
+                        and delete is the one action that must never be a mis-tap — the
+                        edit sheet this opens carries Delete now, behind its own
+                        confirmation. */}
                     {editable && occurrence.version !== undefined && (
                       <EditableEvent
                         variant="block"
