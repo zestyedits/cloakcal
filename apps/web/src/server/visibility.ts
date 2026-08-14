@@ -34,13 +34,13 @@ export interface WorkspaceVisibility {
   readonly workspaceRules: readonly VisibilityRule[]
   readonly rulesByEvent: ReadonlyMap<string, readonly VisibilityRule[]>
   /**
-   * Group membership, both ways round. `groupsByContact` is what the ENGINE needs — until
-   * this was loaded, the calendar passed an empty map for real accounts, so a group rule
-   * never applied when previewing an individual who belonged to one. `membersByGroup` is
-   * what the settings checkboxes render.
+   * Group membership, keyed the way the ENGINE needs it — until this was loaded, the
+   * calendar passed an empty map for real accounts, so a group rule never applied when
+   * previewing an individual who belonged to one. The contact file's membership
+   * checkboxes read this same map (a contact's row), so no inverse map exists anymore;
+   * the group-keyed inverse died with the Settings People card that rendered it.
    */
   readonly groupsByContact: ReadonlyMap<string, readonly string[]>
-  readonly membersByGroup: ReadonlyMap<string, readonly string[]>
 }
 
 /** Owner and public always exist; they are not rows and cannot be deleted. */
@@ -55,7 +55,6 @@ export const EMPTY_VISIBILITY = (workspaceId: string): WorkspaceVisibility => ({
   workspaceRules: [],
   rulesByEvent: new Map(),
   groupsByContact: new Map(),
-  membersByGroup: new Map(),
 })
 
 export async function loadWorkspaceVisibility(
@@ -92,13 +91,11 @@ export async function loadWorkspaceVisibility(
   if (nameResult.error !== null) throw nameResult.error
 
   const groupsByContact = new Map<string, string[]>()
-  const membersByGroup = new Map<string, string[]>()
   for (const row of (memberResult.data ?? []) as Array<{ group_id: string; contact_id: string }>) {
     groupsByContact.set(row.contact_id, [
       ...(groupsByContact.get(row.contact_id) ?? []),
       row.group_id,
     ])
-    membersByGroup.set(row.group_id, [...(membersByGroup.get(row.group_id) ?? []), row.contact_id])
   }
 
   const sealed = new Map<string, CiphertextField>()
@@ -147,6 +144,5 @@ export async function loadWorkspaceVisibility(
     workspaceRules: workspace,
     rulesByEvent: byEvent,
     groupsByContact,
-    membersByGroup,
   }
 }

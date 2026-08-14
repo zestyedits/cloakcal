@@ -16,7 +16,7 @@ import {
 import { loadWorkspacePrefs } from '@/server/settings'
 import { stepQuery } from '@/lib/calendar-links'
 import { supabaseServer } from '@/lib/supabase/server'
-import { DEMO_WEEK, FIXTURE_GROUPS, isDevFixtureEnabled } from '@/server/dev-fixture'
+import { DEMO_WEEK, isDevFixtureEnabled } from '@/server/dev-fixture'
 import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
 import { Landing } from '@/components/landing'
 
@@ -131,7 +131,7 @@ export default async function Page({
   // Audience resolution and redaction live in ONE function shared with the People
   // preview, because the preview must show exactly what this page would serve that
   // audience — sameness by construction, not by transcription.
-  const { visibility, audience, page } = await resolveAndRedact(
+  const { visibility, audience, page, groupsByContact } = await resolveAndRedact(
     calendarPage,
     as as AudienceId,
     fixtureMode,
@@ -173,9 +173,8 @@ export default async function Page({
           : {}
       }
       // A Record, not a Map: this crosses the RSC boundary. Ids about ids, nothing more.
-      groupsByContact={Object.fromEntries(
-        fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
-      )}
+      // The map the engine redacted with, from resolveAndRedact — never re-derived here.
+      groupsByContact={Object.fromEntries(groupsByContact)}
       email={email}
       composeDate={composeDate}
       composeDemo={fixtureMode}

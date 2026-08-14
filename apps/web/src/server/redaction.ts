@@ -31,6 +31,14 @@ export interface ResolvedRedaction {
   readonly page: RedactedPage
   /** The instant the redaction was computed: fixed in fixture mode, request time otherwise. */
   readonly now: string
+  /**
+   * The membership map the engine JUST redacted with — fixture groups under the fixture,
+   * the workspace's rows otherwise. Callers that hand a client the engine's inputs (the
+   * visibility sheet, the contact file) must forward THIS map, not re-derive the fixture
+   * split: the split existed in three places once, and three copies of a conditional is
+   * how group rules shipped never applying on real accounts.
+   */
+  readonly groupsByContact: ReadonlyMap<string, readonly string[]>
 }
 
 export async function resolveAndRedact(
@@ -53,15 +61,19 @@ export async function resolveAndRedact(
 
   const now = fixtureMode ? FIXTURE_NOW : new Date().toISOString()
 
+  // Resolved ONCE and returned, so what the engine used and what a page forwards to the
+  // client are the same value by construction rather than by repeated conditionals.
+  const groupsByContact = fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact
+
   const page = redactPage(calendarPage, audience, now, {
     workspaceId: visibility.workspaceId,
     workspaceRules: visibility.workspaceRules,
     rulesByEvent: visibility.rulesByEvent,
-    groupsByContact: fixtureMode ? FIXTURE_GROUPS : visibility.groupsByContact,
+    groupsByContact,
     // No rule means hidden. A calendar that defaulted to visible would disclose
     // everything the moment someone was added as a contact.
     defaultTimeVis: 'hidden',
   })
 
-  return { visibility, audience, page, now }
+  return { visibility, audience, page, now, groupsByContact }
 }

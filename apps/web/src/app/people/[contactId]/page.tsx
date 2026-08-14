@@ -1,6 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
 import { loadPeopleData } from '@/server/people'
-import { FIXTURE_GROUPS } from '@/server/dev-fixture'
 import { ContactFile } from '@/components/contact-file'
 
 export const metadata = { title: 'Contact file · CloakCal' }
@@ -34,15 +33,14 @@ export default async function ContactPage({
       timezone={data.timezone}
       previewedAt={data.previewedAt}
       fixtureMode={data.fixtureMode}
-      // Null in fixture mode so every write door stays structurally shut — the fixture's
-      // 'fixture' placeholder id must never reach an RPC parameter.
-      workspaceId={data.fixtureMode ? null : data.visibility.workspaceId}
+      // Null under the fixture so every write door stays structurally shut; the loader
+      // decides that once (see PeopleData.workspaceId).
+      workspaceId={data.workspaceId}
       workspaceRules={data.visibility.workspaceRules}
-      // A Record, not a Map: this crosses the RSC boundary. Same fixture split `/` makes —
-      // the engine needs alex's colleagues membership for the level to read honestly.
-      groupsByContact={Object.fromEntries(
-        data.fixtureMode ? FIXTURE_GROUPS : data.visibility.groupsByContact,
-      )}
+      // A Record, not a Map: this crosses the RSC boundary. The map the engine redacted
+      // with, from resolveAndRedact — the file's level picker must read the same
+      // memberships the preview above it was computed under.
+      groupsByContact={Object.fromEntries(data.groupsByContact)}
     />
   )
 }
