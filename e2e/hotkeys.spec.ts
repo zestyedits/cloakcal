@@ -111,10 +111,14 @@ test('? opens the shortcut help, which scans clean and closes on Escape', async 
   await expect(help).toHaveCount(0)
 })
 
-test('n is inert in fixture mode, like the disabled compose button', async ({ page }) => {
+test('n opens the compose sheet, which in fixture mode cannot save', async ({ page }) => {
+  // This used to pin "n is inert in fixture mode". The fixture composes now — as a demo
+  // whose Save is disabled and whose submit refuses (compose.spec.ts covers the sheet
+  // itself) — so the binding behaves like the button it mirrors: it opens the sheet.
   await page.goto('/')
   await settle(page)
   await page.keyboard.press('n')
-  await page.waitForTimeout(300)
-  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  const dialog = page.locator('dialog[open]')
+  await expect(dialog).toHaveCount(1)
+  await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
 })

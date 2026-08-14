@@ -6,6 +6,10 @@
   grid-template-columns: repeat(7, 1fr);
   border-top: 1px solid var(--border-subtle);
   border-left: 1px solid var(--border-subtle);
+  /* The entrance the agenda already has, on a surface that had none: month is always a
+     server navigation, and it used to hard-cut in. One rise for the whole grid — 42
+     staggered cells would be spectacle. Reduced motion collapses it via the tokens. */
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
 .dayName {
@@ -34,6 +38,12 @@
 
 .cell:hover {
   background: var(--surface-overlay);
+}
+
+/* The Button's press. A wash, not a transform: a dipping cell would shear the grid's
+   shared borders. */
+.cell:active {
+  background: var(--surface-sunken);
 }
 
 /* Dimmed BY TOKEN, never opacity over ink — the axe trap the mini month hit. */

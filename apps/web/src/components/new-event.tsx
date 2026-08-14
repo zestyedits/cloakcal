@@ -49,10 +49,10 @@ interface Target {
   readonly calendars: readonly string[]
 }
 
-const EMPTY = (defaultDate: string): EventFieldValues => ({
+const EMPTY = (defaultDate: string, defaultTime: string): EventFieldValues => ({
   title: '',
   date: defaultDate,
-  time: '09:00',
+  time: defaultTime,
   duration: 30,
   location: '',
   notes: '',
@@ -104,10 +104,22 @@ export function NewEventButton({
 export function NewEvent({
   timezone,
   defaultDate,
+  defaultTime = '09:00',
+  demo = false,
   onClose,
 }: {
   timezone: string
   defaultDate: string
+  /** HH:MM the sheet opens on — the clicked grid slot's hour, or the 09:00 default. */
+  defaultTime?: string
+  /**
+   * Fixture mode's compose: the sheet opens, the fields work, and NOTHING can be written.
+   * The demo has no session and no workspace, so a live Save could only fail confusingly;
+   * disabling it (and skipping the workspace lookup) keeps "the fixture never writes" a
+   * structural property rather than a hoped-for one. This is what lets the e2e suite
+   * finally open the create path at all — axe had never seen this sheet.
+   */
+  demo?: boolean
   onClose: () => void
 }) {
   const store = useCloakStore()
@@ -117,7 +129,7 @@ export function NewEvent({
 
   const [target, setTarget] = useState<Target | null>(null)
   const [calendarId, setCalendarId] = useState<string | null>(null)
-  const [values, setValues] = useState<EventFieldValues>(() => EMPTY(defaultDate))
+  const [values, setValues] = useState<EventFieldValues>(() => EMPTY(defaultDate, defaultTime))
   const [repeat, setRepeat] = useState('')
   const [detailed, setDetailed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -129,7 +141,9 @@ export function NewEvent({
   // never has to carry a workspace id it would then be shipping to every audience. RLS
   // restricts this to the caller's own rows. Mounting is opening, so no `open` gate.
   useEffect(() => {
-    if (target !== null) return
+    // Demo: no session exists, so the lookup could only return nothing. Not fetching at
+    // all keeps the fixture's network surface identical to the rest of the demo.
+    if (demo || target !== null) return
 
     void (async () => {
       const workspaceId = await resolveOwnWorkspace()
@@ -156,6 +170,11 @@ export function NewEvent({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    // Belt to the disabled Save's braces: implicit form submission (Enter in a field) is
+    // browser-defined territory, and this return is what makes "the demo cannot write" a
+    // property of the code rather than of one button's disabled attribute.
+    if (demo) return
 
     if (store === null || !store.isUnlocked) {
       setError('Your calendar is locked. Unlock it before adding an event.')
@@ -198,7 +217,7 @@ export function NewEvent({
       if (rpcError !== null) throw rpcError
 
       onClose()
-      setValues(EMPTY(defaultDate))
+      setValues(EMPTY(defaultDate, defaultTime))
       setDetailed(false)
       router.refresh()
     } catch (caught) {
@@ -214,6 +233,7 @@ export function NewEvent({
       error={error}
       busy={busy}
       submitLabel={busy ? 'Encrypting and saving' : 'Save'}
+      submitDisabled={demo}
       onSubmit={submit}
       onClose={onClose}
     >
@@ -223,7 +243,11 @@ export function NewEvent({
         disabled={busy}
         detailed={detailed}
         onDisclose={() => setDetailed(true)}
-        titleHint="Encrypted on this device before it is saved."
+        titleHint={
+          demo
+            ? 'This is the demo calendar. Try the form; nothing typed here is saved or sent anywhere.'
+            : 'Encrypted on this device before it is saved.'
+        }
       >
         {/* Only when there is a real choice: one calendar needs no picker and the sheet
             stays minimal. Labels are decrypted client-side (ViewAsBar's pattern —

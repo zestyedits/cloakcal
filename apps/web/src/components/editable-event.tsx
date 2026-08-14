@@ -91,6 +91,7 @@ export function EditableEvent({
           timezone={timezone}
           start={start}
           end={end}
+          label={label}
           onClose={() => setEditing(false)}
         />
       )}

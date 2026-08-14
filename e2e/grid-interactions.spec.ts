@@ -34,6 +34,9 @@ test('a week block opens the edit sheet', async ({ page }) => {
   await finishAnimations(page)
   // Pre-filled from decrypted values: the sheet read the store, not the server.
   await expect(dialog.getByLabel('What is it')).not.toHaveValue('')
+  // The sheet carries Delete now, which is what makes deleting reachable from the grid
+  // views at all — edit-event.spec.ts covers the confirmation itself.
+  await expect(dialog.getByRole('button', { name: /^Delete the/ })).toBeVisible()
 })
 
 test("a week block's privacy line opens the visibility sheet", async ({ page }) => {

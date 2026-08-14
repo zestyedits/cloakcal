@@ -16,8 +16,9 @@ import styles from './event-sheet.module.css'
  * behind is unavailable when it is not. `showModal()` provides all four, plus the top layer
  * and `::backdrop`, with no focus-management code to get subtly wrong.
  *
- * Nobody noticed because the a11y suite never opens a sheet — `<NewEvent>` does not render
- * in fixture mode, so axe has never seen one. Worth fixing before a second sheet inherits it.
+ * Nobody noticed because for two milestones no automated check could open a sheet —
+ * `<NewEvent>` did not render in fixture mode at all. It does now (as a demo that cannot
+ * write), and compose.spec.ts / edit-event.spec.ts both run axe against an open sheet.
  *
  * MOUNTING IS OPENING. The parent renders this component only while the sheet should be
  * open, so there is no `open` prop to keep in sync with the DOM's own idea of openness —

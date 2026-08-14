@@ -14,6 +14,11 @@
   /* Snap so a swipe lands on a day boundary rather than half a Tuesday. */
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+  /* The entrance the agenda already has, on the surface that had none: day and week
+     navigations used to hard-cut in. One rise on the container, not per-block — 40
+     staggering event blocks is spectacle, and the grid should read as one arriving
+     surface. Reduced motion collapses it with everything else via the tokens. */
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
 .grid {
@@ -137,6 +142,27 @@
 
 .hourLine {
   border-top: 1px solid var(--border-subtle);
+}
+
+/* The composable hour cell: the same gridline, as a button. No 44px concern here — the
+   cell is a full grid row (48 to 56px by --hour-height), taller than the floor by
+   construction. Feedback is a wash, not a transform: these cells ARE the grid, and a
+   pressed cell that moved would drag its own gridline with it. */
+.hourSlot {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: none;
+  cursor: pointer;
+}
+
+.hourSlot:hover {
+  background: var(--surface-overlay);
+}
+
+.hourSlot:active {
+  background: var(--surface-sunken);
 }
 
 .event {

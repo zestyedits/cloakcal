@@ -1,0 +1,55 @@
+/*
+ * The People skeleton's shapes. The chrome around them is the REAL people header (same
+ * stylesheet), per the settings-loading lesson: an all-grey page reads as a third, alien
+ * place between the calendar and where you were going.
+ */
+
+.titleBar {
+  height: 1.4rem;
+  width: 9rem;
+  margin: var(--space-4) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.ledeBar {
+  height: 0.9rem;
+  width: 70%;
+  margin: 0 0 var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+}
+
+.name {
+  height: 0.9rem;
+  width: 10rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+}
+
+.action {
+  height: 0.8rem;
+  width: 5.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+}
+
+/* Same pulse the calendar skeleton uses; keyframes are module-scoped, so it is restated
+   rather than shared. */
+.pulse {
+  animation: people-pulse 1.2s var(--ease-standard) infinite alternate;
+}
+
+@keyframes people-pulse {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}

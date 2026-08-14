@@ -187,3 +187,81 @@ test('shows no edit affordance to an audience that is not the owner', async ({ p
   await page.goto('/?as=contact%3Asarah')
   await expect(page.getByRole('button', { name: /, edit the event at/ })).toHaveCount(0)
 })
+
+test('offers custom minutes behind the duration presets', async ({ page }) => {
+  const dialog = await openSheet(page, ONE_OFF)
+  const duration = dialog.getByLabel('For')
+
+  // The presets stay the fast path; Custom is the escape hatch for everything between them.
+  await duration.selectOption('custom')
+  const minutes = dialog.getByLabel('Minutes')
+  await expect(minutes).toBeVisible()
+  // Seeded from the event's own duration, so opening custom mode changes nothing by itself.
+  await expect(minutes).toHaveValue('60')
+  await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
+
+  await minutes.fill('25')
+  await expect(dialog.getByRole('button', { name: 'Save' })).toBeEnabled()
+
+  // Picking a preset again puts the number input away rather than leaving two controls
+  // arguing over one value.
+  await duration.selectOption('30')
+  await expect(dialog.getByLabel('Minutes')).toHaveCount(0)
+})
+
+/*
+ * Delete, inside the sheet. Day and Week open this sheet and Month drills to Day, so
+ * before this the agenda was the only view an event could be deleted from — which is what
+ * Keith hit in Day view. The confirmation is the same DeleteEvent flow the agenda rows
+ * carry (delete-event.spec.ts covers its scope semantics exhaustively); these tests pin
+ * that it exists in the sheet, asks the same questions, and scans clean — a control
+ * behind a click is a control nobody tested until a spec opens it.
+ */
+
+test('carries a Delete action, behind the same two-scope confirmation', async ({ page }) => {
+  const dialog = await openSheet(page, RECURRING)
+  await dialog.getByRole('button', { name: /^Delete the/ }).click()
+
+  const confirm = dialog.getByRole('group', { name: /^Confirm deleting/ })
+  await expect(confirm.getByRole('radio', { name: 'Only this one' })).toBeChecked()
+  await expect(confirm.getByRole('radio', { name: 'The whole series' })).not.toBeChecked()
+  // The consequence copy rides along, unchanged from the agenda's confirmation.
+  await expect(confirm).toContainText('The rest of the series stays')
+})
+
+test('asks a one-off event the plain delete question', async ({ page }) => {
+  const dialog = await openSheet(page, ONE_OFF)
+  await dialog.getByRole('button', { name: /^Delete the/ }).click()
+
+  const confirm = dialog.getByRole('group', { name: /^Confirm deleting/ })
+  await expect(confirm).toContainText('Delete this event?')
+  await expect(confirm.getByRole('radio')).toHaveCount(0)
+})
+
+test('Keep backs out of the delete and returns to the edit form intact', async ({ page }) => {
+  const dialog = await openSheet(page, ONE_OFF)
+  await dialog.getByLabel('What is it').fill('still being edited')
+  await dialog.getByRole('button', { name: /^Delete the/ }).click()
+  await dialog.getByRole('button', { name: 'Keep' }).click()
+
+  // The sheet survives the detour and so does the typing.
+  await expect(dialog.getByRole('button', { name: /^Delete the/ })).toBeVisible()
+  await expect(dialog.getByLabel('What is it')).toHaveValue('still being edited')
+})
+
+test('the open delete confirmation in the sheet has no accessibility violations', async ({
+  page,
+}) => {
+  const dialog = await openSheet(page, RECURRING)
+  await dialog.getByRole('button', { name: /^Delete the/ }).click()
+  await expect(
+    dialog.getByRole('group', { name: /^Confirm deleting/ }).getByRole('radio').first(),
+  ).toBeVisible()
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(
+    results.violations.flatMap((v) => v.nodes.map((n) => `${v.id} @ ${n.target.join(' ')}`)),
+  ).toEqual([])
+})

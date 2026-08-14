@@ -29,10 +29,17 @@
   color: var(--text-primary);
 }
 
+.backLink:active {
+  transform: translateY(1px);
+}
+
 .main {
   max-width: 44rem;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4) var(--space-12);
+  /* The settings page's entrance, for the same reason: People is a server navigation and
+     used to hard-cut in. Reduced motion collapses it via the tokens. */
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
 .title {
@@ -70,6 +77,10 @@
 
 .personRow:hover {
   background: var(--surface-overlay);
+}
+
+.personRow:active {
+  transform: translateY(1px);
 }
 
 .personName {

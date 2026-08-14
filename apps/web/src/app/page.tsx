@@ -146,10 +146,12 @@ export default async function Page({
     query: stepQuery(dateParam(anchor), view, step, audience),
   })
 
-  // Composing needs a real session and a real workspace, so it is unavailable in fixture
-  // mode rather than present-and-broken. The ANCHOR, not range.from: on a month page the
-  // range starts in the previous month's grid margin.
-  const composeDate = fixtureMode ? undefined : dateParam(anchor)
+  // The ANCHOR, not range.from: on a month page the range starts in the previous month's
+  // grid margin. The fixture now composes too — as a demo that structurally cannot write
+  // (NewEvent.demo skips the workspace lookup and refuses the submit) — because a compose
+  // sheet no test could ever open is how the first sheet shipped without a focus trap.
+  // composeDemo is what keeps the actual WRITE doors (add calendar, seed samples) closed.
+  const composeDate = dateParam(anchor)
 
   return (
     <CalendarScreen
@@ -176,6 +178,7 @@ export default async function Page({
       )}
       email={email}
       composeDate={composeDate}
+      composeDemo={fixtureMode}
       // Real accounts: the stored opt-in, default off (WCAG 2.1.4 route one). The FIXTURE
       // models a demo user who opted in, because the hotkey behaviour suite needs a live
       // keyboard to test and the fixture has no settings write path to flip one. The OFF

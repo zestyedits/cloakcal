@@ -7,7 +7,7 @@ import type { RedactedPage } from '@/server/audience'
 import type { SettingsCalendar, SettingsDevice, WorkspacePrefs } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
-import { CloakLockup } from '../cloak-logo'
+import { CloakHomeLink } from '../cloak-logo'
 import { ThemeToggle } from '../theme-toggle'
 import { ChangePassword } from '../change-password'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
@@ -163,7 +163,7 @@ export function SettingsScreen({
             ‹ Calendar
           </Link>
           <div className={styles.headerSpace} />
-          <CloakLockup size="sm" />
+          <CloakHomeLink size="sm" />
           <div className={styles.headerSpace} />
           <ThemeToggle />
         </header>

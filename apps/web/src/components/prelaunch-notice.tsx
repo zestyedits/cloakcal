@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { CloakLockup } from './cloak-logo'
+import { CloakHomeLink } from './cloak-logo'
 import styles from './auth.module.css'
 
 /**
@@ -17,7 +17,7 @@ import styles from './auth.module.css'
 export function PrelaunchNotice() {
   return (
     <div className={styles.card}>
-      <CloakLockup />
+      <CloakHomeLink />
 
       <h1 className={styles.title}>Not open yet</h1>
       <p className={styles.lede}>

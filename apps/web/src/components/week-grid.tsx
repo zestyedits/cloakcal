@@ -103,6 +103,7 @@ export function WeekGrid({
   dayCount = 7,
   audience,
   onOpenVisibility,
+  onComposeSlot,
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
@@ -119,6 +120,12 @@ export function WeekGrid({
   audience?: string | undefined
   /** The screen-level Event Visibility sheet's opener; absent = no visibility door. */
   onOpenVisibility?: ((eventId: string) => void) | undefined
+  /**
+   * Compose-at-this-slot: clicking empty grid opens the compose sheet on that day and
+   * hour. Absent (a non-owner, or nowhere to compose) the empty grid stays plain
+   * decoration, exactly as before — same present-or-absent grammar as the doors above.
+   */
+  onComposeSlot?: ((date: string, time: string) => void) | undefined
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -268,9 +275,29 @@ export function WeekGrid({
 
           return (
             <div key={`col-${day}`} className={styles.column} data-today={day === today}>
-              {hours.slice(0, -1).map((hour) => (
-                <div key={hour} className={styles.hourLine} aria-hidden="true" />
-              ))}
+              {/* Empty grid becomes a compose door when there is somewhere to compose: one
+                  button per hour cell, named by day and hour so the accessible name carries
+                  exactly what the click will prefill — and, like every constructed name in
+                  the grids, no title can ever leak into it. Event blocks sit ABOVE these
+                  (absolute, z-index 1 and 2), so a click on an event still opens the event.
+                  The 91-control density has precedent: the month and mini-month grids are
+                  42 links each. Without the handler these stay the decorative hour lines
+                  they always were. */}
+              {hours.slice(0, -1).map((hour) =>
+                onComposeSlot === undefined ? (
+                  <div key={hour} className={styles.hourLine} aria-hidden="true" />
+                ) : (
+                  <button
+                    key={hour}
+                    type="button"
+                    className={styles.hourSlot}
+                    aria-label={`New event on ${day} at ${formatHour(hour)}`}
+                    onClick={() =>
+                      onComposeSlot(day, `${String(((hour % 24) + 24) % 24).padStart(2, '0')}:00`)
+                    }
+                  />
+                ),
+              )}
 
               {placed.map(({ occurrence, top, height, lane, lanes }) => {
                 // The agenda's guard, verbatim: version only exists for the owner, and the
@@ -296,9 +323,11 @@ export function WeekGrid({
                   >
                     {/* The block is the edit door, same semantics as tapping an agenda
                         row. A stretched button rather than a wrapping one, because the
-                        block's children are laid out by the grid. Delete stays on the
-                        agenda on purpose: a third control does not fit a 28px block, and
-                        delete is the one action that must never be a mis-tap. */}
+                        block's children are laid out by the grid. No delete control ON
+                        the block, on purpose: a third control does not fit a 28px block,
+                        and delete is the one action that must never be a mis-tap — the
+                        edit sheet this opens carries Delete now, behind its own
+                        confirmation. */}
                     {editable && occurrence.version !== undefined && (
                       <EditableEvent
                         variant="block"
