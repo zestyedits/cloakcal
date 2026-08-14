@@ -238,6 +238,26 @@ with a shadow of the previous one behind it.
 is still unused, and `deriveFieldKey` returns a NON-EXTRACTABLE key, so envelope material
 cannot be read out of it. That is the next crypto change and it needs an ADR.
 
+**Crypto-agility audit, 2026-08-14 (cloak-boundary's first pass).** Verified, not assumed:
+the ciphertext format is ALREADY versioned and fail-closed, so no `format_version` column
+is needed and adding one would be a second copy of versioning that can drift. The version
+lives in the `cloak_alg` enum value itself (`aes-256-gcm-v1`); 0004 removed the only
+constraint that hardcoded v1 (nonces are now simply required for every alg), RPCs cast
+`(field ->> 'alg')::public.cloak_alg` and accept any enum value, and
+`packages/crypto/src/cloak.ts` throws on an alg it does not implement. A future padded /
+AAD-bound format is one `alter type public.cloak_alg add value 'aes-256-gcm-v2'` plus a
+client that writes v2 and still reads v1 — that work is next phase, behind an ADR, along
+with: padding sealed fields to length buckets (ciphertext length currently leaks content
+length), binding the plaintext times into the AES-GCM AAD so the server can see times but
+not forge them (Proton's model), and the per-calendar key layer for sharing. The KDF is
+Argon2id at exactly the OWASP floor (m=19456, t=2, p=1) with `assertKdfParams` refusing
+any server-supplied weakening; at-the-floor is fine today, above-the-floor is worth
+considering since the wrapped root key is servable to an offline attacker. **One real gap:
+there is NO Content-Security-Policy anywhere** — no headers in next.config.ts, none in
+middleware. For a browser-E2EE app XSS is total compromise, so a per-response-nonce CSP
+(ASVS V3.4.3 at L3) is the single highest-value security change on the board. Next phase,
+not this one; noted so it cannot be forgotten.
+
 **Day and Month are real views now** (second pass, same day). `?view=agenda|week|day|month`
 + `?date=YYYY-MM-DD` (`?week=` accepted as a legacy alias); agenda/week stay ONE fetch with
 an instant client toggle, day/month are server navigations; steppers move the anchor by the
