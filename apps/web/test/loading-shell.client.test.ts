@@ -45,6 +45,17 @@ describe('the root loading fallback', () => {
     expect(source).toContain('cal.nav')
   })
 
+  it('draws its view controls from the shared orderings, not a second copy', () => {
+    // calendar-views.ts is the single source of which views exist, in what order, under
+    // which labels. The fallback's job is to draw exactly the chrome the screen is about
+    // to commit, so BOTH must consume it — a hardcoded list in either file is the drift
+    // that flashes four segments while the real header renders five.
+    expect(source).toContain("from '@/lib/calendar-views'")
+    expect(read('../src/components/calendar-screen.tsx')).toContain(
+      "from '@/lib/calendar-views'",
+    )
+  })
+
   it('marks the main region busy, once, instead of narrating shimmer', () => {
     expect(source).toContain('aria-busy="true"')
     expect(source).toContain('aria-label="Loading your calendar"')

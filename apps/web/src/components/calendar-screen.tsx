@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { todayQuery, viewQuery } from '@/lib/calendar-links'
+import { HEADER_VIEWS, NAV_LEADING, NAV_TRAILING, VIEW_LABELS } from '@/lib/calendar-views'
 import { wallTimeLabel } from '@/lib/wall-time'
 import { CalendarHotkeys } from './calendar-hotkeys'
 import type { VisibilityRule } from '@cloakcal/policy'
@@ -55,13 +56,6 @@ const VIEW_KEY_HINTS: Record<CalendarView, string> = {
   week: '2',
   day: '3',
   month: '4',
-}
-
-const VIEW_LABELS: Record<CalendarView, string> = {
-  agenda: 'Agenda',
-  week: 'Week',
-  day: 'Day',
-  month: 'Month',
 }
 
 type NavItem =
@@ -380,9 +374,7 @@ export function CalendarScreen({
                 than a hairline divider. */}
             <div className={styles.headerViews}>
               <nav className={styles.viewSwitch} aria-label="Calendar views">
-                {(['agenda', 'week', 'day', 'month'] as const).map((target) =>
-                  navControl(navItemFor(target), styles.viewSegment),
-                )}
+                {HEADER_VIEWS.map((target) => navControl(navItemFor(target), styles.viewSegment))}
               </nav>
               <span className={styles.controlDivider} aria-hidden="true" />
               <button
@@ -727,9 +719,7 @@ export function CalendarScreen({
             statement that privacy is a place you go. Day and Month are real navigations
             now; agenda/week stay instant toggles while the week fetch is on the page. */}
         <nav className={styles.nav} aria-label="Calendar views">
-          {(['day', 'week'] as const).map((target) =>
-            navControl(navItemFor(target), styles.navItem),
-          )}
+          {NAV_LEADING.map((target) => navControl(navItemFor(target), styles.navItem))}
           <button
             type="button"
             className={styles.cloakTile}
@@ -739,9 +729,7 @@ export function CalendarScreen({
             <CloakMark size={18} />
             Cloak
           </button>
-          {(['agenda', 'month'] as const).map((target) =>
-            navControl(navItemFor(target), styles.navItem),
-          )}
+          {NAV_TRAILING.map((target) => navControl(navItemFor(target), styles.navItem))}
         </nav>
 
         {/* Composing is owner-only. Creating an event while viewing as someone else would

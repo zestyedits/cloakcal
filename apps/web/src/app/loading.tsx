@@ -1,5 +1,6 @@
 import { CloakHomeLink, CloakMark } from '@/components/cloak-logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { HEADER_VIEWS, NAV_LEADING, NAV_TRAILING, VIEW_LABELS } from '@/lib/calendar-views'
 import cal from '@/components/calendar-screen.module.css'
 import styles from './loading.module.css'
 
@@ -47,10 +48,11 @@ export default function Loading() {
         <div className={cal.headerEnd}>
           <div className={`${cal.headerViews} ${styles.inert}`} aria-hidden="true">
             <span className={cal.viewSwitch}>
-              <span className={cal.viewSegment}>Agenda</span>
-              <span className={cal.viewSegment}>Week</span>
-              <span className={cal.viewSegment}>Day</span>
-              <span className={cal.viewSegment}>Month</span>
+              {HEADER_VIEWS.map((view) => (
+                <span key={view} className={cal.viewSegment}>
+                  {VIEW_LABELS[view]}
+                </span>
+              ))}
             </span>
             <span className={cal.controlDivider} />
             <span className={cal.cloakHeaderButton}>
@@ -88,14 +90,20 @@ export default function Loading() {
       </main>
 
       <nav className={`${cal.nav} ${styles.inert}`} aria-hidden="true">
-        <span className={cal.navItem}>Day</span>
-        <span className={cal.navItem}>Week</span>
+        {NAV_LEADING.map((view) => (
+          <span key={view} className={cal.navItem}>
+            {VIEW_LABELS[view]}
+          </span>
+        ))}
         <span className={cal.cloakTile}>
           <CloakMark size={18} />
           Cloak
         </span>
-        <span className={cal.navItem}>Agenda</span>
-        <span className={cal.navItem}>Month</span>
+        {NAV_TRAILING.map((view) => (
+          <span key={view} className={cal.navItem}>
+            {VIEW_LABELS[view]}
+          </span>
+        ))}
       </nav>
     </div>
   )
