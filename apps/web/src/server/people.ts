@@ -26,6 +26,15 @@ export interface PeopleData {
   readonly email: string
   /** The instant the preview was computed, for the "as of now" label. */
   readonly previewedAt: string
+  /**
+   * The workspace id it is SAFE to hand an RPC parameter — null under the fixture, where
+   * `visibility.workspaceId` is the 'fixture' placeholder that must never reach a write.
+   * The null keeps every write door structurally shut; deciding that here, once, is what
+   * stops a page from forwarding the placeholder by accident.
+   */
+  readonly workspaceId: string | null
+  /** The membership map the engine redacted with, from resolveAndRedact — never re-derived. */
+  readonly groupsByContact: ReadonlyMap<string, readonly string[]>
 }
 
 export async function loadPeopleData(audience: AudienceId): Promise<PeopleData | null> {
@@ -48,12 +57,21 @@ export async function loadPeopleData(audience: AudienceId): Promise<PeopleData |
   // The shared pipeline `/` uses — sameness by construction. It resolves an unknown
   // audience to 'owner'; for this loader that downgrade means "no such person", which the
   // caller renders as the house 404.
-  const { visibility, audience: resolved, page, now } = await resolveAndRedact(
+  const { visibility, audience: resolved, page, now, groupsByContact } = await resolveAndRedact(
     calendarPage,
     audience,
     fixtureMode,
   )
   if (resolved !== audience) return null
 
-  return { page, visibility, timezone, fixtureMode, email, previewedAt: now }
+  return {
+    page,
+    visibility,
+    timezone,
+    fixtureMode,
+    email,
+    previewedAt: now,
+    workspaceId: fixtureMode ? null : visibility.workspaceId,
+    groupsByContact,
+  }
 }

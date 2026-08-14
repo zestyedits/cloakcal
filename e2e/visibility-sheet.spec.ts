@@ -53,6 +53,30 @@ test('the open sheet has no accessibility violations', async ({ page }) => {
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
 })
 
+test('holds its state: no light dismiss, and quick-add is demo-gated in place', async ({
+  page,
+}) => {
+  const dialog = await openSheet(page)
+
+  // The sheet holds unsaved permission state, so it must never light-dismiss: no
+  // `closedby` attribute exists, leaving Escape and the Close button as the only exits.
+  expect(await dialog.getAttribute('closedby')).toBeNull()
+
+  // The quick-add row is the sheet's one outright write door. Under the fixture it is
+  // the demo sentence instead — the same split the compose sheet drew — because the dev
+  // key unlocks the fixture and "unlocked" alone cannot gate a demo write.
+  await expect(
+    dialog.getByText('Demo data. Sign in to change visibility or add people.'),
+  ).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'New person' })).toHaveCount(0)
+
+  // The groups tab does not offer person quick-add.
+  await dialog.getByRole('tab', { name: 'Groups' }).click()
+  await expect(
+    dialog.getByText('Demo data. Sign in to change visibility or add people.'),
+  ).toHaveCount(0)
+})
+
 test('closes on Escape and returns to the calendar', async ({ page }) => {
   const dialog = await openSheet(page)
   await page.keyboard.press('Escape')

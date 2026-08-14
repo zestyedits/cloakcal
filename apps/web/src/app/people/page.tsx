@@ -20,6 +20,9 @@ export default async function PeoplePage() {
       email={data.email}
       audiences={data.visibility.audiences}
       fixtureMode={data.fixtureMode}
+      // Null under the fixture so every write door stays structurally shut; the loader
+      // decides that once (see PeopleData.workspaceId).
+      workspaceId={data.workspaceId}
     />
   )
 }

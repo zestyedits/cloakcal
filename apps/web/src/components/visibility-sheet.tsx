@@ -15,7 +15,9 @@ import {
 import { PRIVACY_LEVELS, PRIVACY_ORDER, type PrivacyLevel } from '@cloakcal/ui'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
+import { sealFields } from '@/lib/cloaked-fields'
 import type { AudienceOption } from '@/lib/audiences'
+import { useCloakStore } from './cloak-provider'
 import { useCloakedLabels } from './use-cloaked-labels'
 import { Button } from './ui/button'
 import { Icon, type IconName } from './ui/icons'
@@ -67,6 +69,7 @@ export function VisibilitySheet({
   workspaceRules,
   eventRules,
   groupsByContact,
+  demo = false,
   onClose,
 }: {
   eventId: string
@@ -75,16 +78,26 @@ export function VisibilitySheet({
   /** Event-scoped rules already stored for THIS event. */
   eventRules: readonly VisibilityRule[]
   groupsByContact: Readonly<Record<string, readonly string[]>>
+  /**
+   * Fixture mode, the compose sheet's split (NewEvent.demo): the fixture unlocks with the
+   * dev key, so "unlocked" cannot gate demo writes on its own. The quick-add row is the
+   * one WRITE door this sheet owns outright, and in demo it is a sentence instead.
+   */
+  demo?: boolean
   onClose: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const router = useRouter()
+  const store = useCloakStore()
+  const locked = store === null || !store.isUnlocked
 
   const [tab, setTab] = useState<'people' | 'groups'>('people')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [customizing, setCustomizing] = useState<string | null>(null)
+  /** The quick-add draft name, or null while the row is collapsed to its button. */
+  const [quickDraft, setQuickDraft] = useState<string | null>(null)
   // Resolved once, client-side, exactly as the compose sheet does — the redacted payload
   // deliberately never carries a workspace id.
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
@@ -95,6 +108,10 @@ export function VisibilitySheet({
   }, [])
 
   useEffect(() => {
+    // Demo: no session exists, so the lookup could only return nothing. Not fetching at
+    // all keeps the fixture's network surface identical to the rest of the demo, the
+    // same reasoning as NewEvent's demo branch.
+    if (demo) return
     void (async () => {
       const { data } = await supabaseBrowser()
         .from('workspaces')
@@ -214,6 +231,27 @@ export function VisibilitySheet({
       if (rpcError !== null) throw rpcError
     })
 
+  /**
+   * Quick-add: create the missing contact WITHOUT leaving the event's permission work.
+   * The same sealing path the People register uses — the id is generated here, before
+   * sealing, because the AEAD binds the sealed name to it — and the refresh brings the
+   * new contact back through the server payload, into this list, level picker ready.
+   */
+  const addPerson = () =>
+    run(async () => {
+      if (demo || store === null || workspaceId === null || quickDraft === null) return
+      const value = quickDraft.trim()
+      if (value === '') return
+      const id = crypto.randomUUID()
+      const { error: rpcError } = await supabaseBrowser().rpc('upsert_contact', {
+        p_contact_id: id,
+        p_workspace_id: workspaceId,
+        p_fields: await sealFields(store, 'contact', id, [['name', value]]),
+      })
+      if (rpcError !== null) throw rpcError
+      setQuickDraft(null)
+    })
+
   const offline = workspaceId === null
 
   return (
@@ -253,8 +291,8 @@ export function VisibilitySheet({
         {rows.length === 0 && (
           <p className={styles.note}>
             {tab === 'people'
-              ? 'No contacts yet. Add people in Settings first.'
-              : 'No groups yet. Create them in Settings first.'}
+              ? 'No contacts yet. Add someone below.'
+              : 'No groups yet. Create them in People first.'}
           </p>
         )}
 
@@ -332,9 +370,67 @@ export function VisibilitySheet({
           )
         })}
 
-        {offline && audiences.some((a) => a.kind !== 'owner' && a.kind !== 'public') && (
-          <p className={styles.note}>Demo data. Sign in to change visibility.</p>
-        )}
+        {/* The one write door this sheet owns outright: a person who is not a contact yet
+            cannot be given a level, and a trip to the book mid-permission-work loses the
+            unsaved state this dialog is holding (which is also why it has no light
+            dismiss: no closedby, Escape and Close only). */}
+        {tab === 'people' &&
+          (demo ? (
+            <p className={styles.note}>Demo data. Sign in to change visibility or add people.</p>
+          ) : quickDraft === null ? (
+            <div className={styles.quickAdd}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || offline || locked}
+                title={
+                  !offline && locked
+                    ? 'Unlock your calendar first. Names are encrypted.'
+                    : undefined
+                }
+                onClick={() => setQuickDraft('')}
+              >
+                New person
+              </Button>
+            </div>
+          ) : (
+            <div className={styles.quickAdd}>
+              <input
+                className={styles.quickInput}
+                value={quickDraft}
+                maxLength={120}
+                autoFocus
+                disabled={busy}
+                aria-label="New person's name"
+                placeholder="Name"
+                onChange={(event) => setQuickDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void addPerson()
+                  }
+                  if (event.key === 'Escape') {
+                    // Collapse the row, not the dialog: Escape inside the draft is "never
+                    // mind this name", and losing the whole sheet with it would be rude.
+                    event.preventDefault()
+                    setQuickDraft(null)
+                  }
+                }}
+              />
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => setQuickDraft(null)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                busy={busy}
+                disabled={quickDraft.trim() === ''}
+                onClick={() => void addPerson()}
+              >
+                Add
+              </Button>
+            </div>
+          ))}
+
       </div>
     </dialog>
   )

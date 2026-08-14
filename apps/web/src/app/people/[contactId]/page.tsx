@@ -1,8 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import { loadPeopleData } from '@/server/people'
-import { ContactPreview } from '@/components/people-screen'
+import { ContactFile } from '@/components/contact-file'
 
-export const metadata = { title: 'What they see · CloakCal' }
+export const metadata = { title: 'Contact file · CloakCal' }
 
 // Reads the session and per-user data; CI has no Supabase variables, so without this the
 // build prerenders (and dies) exactly as /account did twice. See CLAUDE.md.
@@ -25,7 +25,7 @@ export default async function ContactPage({
   }
 
   return (
-    <ContactPreview
+    <ContactFile
       page={data.page}
       email={data.email}
       audiences={data.visibility.audiences}
@@ -33,6 +33,14 @@ export default async function ContactPage({
       timezone={data.timezone}
       previewedAt={data.previewedAt}
       fixtureMode={data.fixtureMode}
+      // Null under the fixture so every write door stays structurally shut; the loader
+      // decides that once (see PeopleData.workspaceId).
+      workspaceId={data.workspaceId}
+      workspaceRules={data.visibility.workspaceRules}
+      // A Record, not a Map: this crosses the RSC boundary. The map the engine redacted
+      // with, from resolveAndRedact — the file's level picker must read the same
+      // memberships the preview above it was computed under.
+      groupsByContact={Object.fromEntries(data.groupsByContact)}
     />
   )
 }

@@ -12,10 +12,10 @@ import { ThemeToggle } from '../theme-toggle'
 import { ChangePassword } from '../change-password'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
 import { SignOutButton } from '../sign-out-button'
+import { ButtonLink } from '../ui/button'
 import { AppearanceSection } from './appearance-section'
 import { TimeRegionSection } from './time-region-section'
 import { CalendarsSection } from './calendars-section'
-import { PeopleSection } from './people-section'
 import { VisibilitySection } from './visibility-section'
 import styles from './settings.module.css'
 
@@ -104,7 +104,6 @@ export interface SettingsProps {
   readonly devices: readonly SettingsDevice[]
   readonly audiences: readonly AudienceOption[]
   readonly workspaceRules: readonly VisibilityRule[]
-  readonly membersByGroup: Readonly<Record<string, readonly string[]>>
   readonly groupsByContact: Readonly<Record<string, readonly string[]>>
 }
 
@@ -116,7 +115,6 @@ export function SettingsScreen({
   devices,
   audiences,
   workspaceRules,
-  membersByGroup,
   groupsByContact,
 }: SettingsProps) {
   const workspaceId = prefs?.workspaceId ?? null
@@ -225,12 +223,20 @@ export function SettingsScreen({
                 return parts.join(' · ')
               })()}
             >
-              <PeopleSection
-                workspaceId={workspaceId}
-                fixtureMode={fixtureMode}
-                audiences={audiences}
-                membersByGroup={membersByGroup}
-              />
+              {/* The card used to hold the whole contact manager; that moved to /people
+                  when the People area became the book (add, rename, groups, per-person
+                  visibility, all beside the preview). A settings card that duplicated it
+                  would be a second copy to drift, so this one is a signpost. */}
+              <p className={styles.sectionLede}>
+                Your contacts live in People now: add and rename them, organize groups,
+                and decide what each person sees, all in one place beside the preview of
+                what they get.
+              </p>
+              <div>
+                <ButtonLink variant="outline" href={{ pathname: '/people' }}>
+                  Open People
+                </ButtonLink>
+              </div>
             </SettingsSection>
 
             <SettingsSection

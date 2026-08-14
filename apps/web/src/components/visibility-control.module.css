@@ -1,0 +1,79 @@
+/* The per-audience visibility control: preset chips, customize, reset, and the engine's
+   sentence. One grammar wherever a workspace-level rule is decided (the Settings card for
+   public and groups, the contact file for a person), so the two homes cannot drift. */
+
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.presets {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preset {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.preset:hover:not(:disabled) {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+.preset:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.preset:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.preset[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
+  color: var(--accent-text);
+}
+
+.note {
+  width: 100%;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.customize {
+  width: 100%;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.checkboxRow input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent);
+}

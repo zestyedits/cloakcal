@@ -55,6 +55,26 @@ test('demo mode says so instead of offering dead controls', async ({ page }) => 
   await expect(shortcuts).toHaveValue('off')
 })
 
+test('the People card is a signpost into the book, not a second manager', async ({ page }) => {
+  // The contact manager moved to /people; a copy left behind would drift. The card now
+  // points across, and none of the old write controls exist here.
+  await page.getByRole('heading', { level: 2, name: 'People' }).click()
+  await expect(page.getByRole('link', { name: 'Open People' })).toHaveAttribute(
+    'href',
+    '/people',
+  )
+  await expect(page.getByRole('button', { name: 'Add contact' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add group' })).toHaveCount(0)
+})
+
+test('the Visibility card names where per-person rules went', async ({ page }) => {
+  // Fixture settings has no workspace, so the card shows the honest demo sentence; the
+  // lede still tells the truth about the split (link and groups here, people in files).
+  await page.getByRole('heading', { level: 2, name: 'Visibility' }).click()
+  await expect(page.getByText(/Rules for a person live in their file/)).toBeVisible()
+  await expect(page.getByText('Demo data. Sign in to set visibility.')).toBeVisible()
+})
+
 test('the theme radios switch the page and persist across reload', async ({ page }) => {
   const light = page.getByRole('radio', { name: 'Light' })
   await light.check()
