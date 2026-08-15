@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic'
 export default async function SecurityPage() {
   const fixtureMode = isDevFixtureEnabled()
 
-  if (fixtureMode) return <SecurityScreen email="" devices={[]} />
+  if (fixtureMode) return <SecurityScreen demo email="" devices={[]} />
 
   const devicesPromise = loadDevices()
   devicesPromise.catch(() => undefined)
@@ -37,5 +37,10 @@ export default async function SecurityPage() {
   // Middleware already guards this, but a Server Component must not assume middleware ran.
   if (data.user === null) redirect('/sign-in')
 
-  return <SecurityScreen email={data.user.email ?? ''} devices={await devicesPromise} />
+  // `demo` is passed explicitly rather than left to be inferred from the email: a user
+  // whose email is null is signed in, not demoing, and the screen owes them a different
+  // sentence.
+  return (
+    <SecurityScreen demo={false} email={data.user.email ?? ''} devices={await devicesPromise} />
+  )
 }

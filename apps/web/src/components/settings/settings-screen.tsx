@@ -317,7 +317,10 @@ export function SettingsScreen({
                 Your password and your recovery phrase both open the same key. Changing
                 either one re-wraps that key; neither one touches an event.
               </p>
-              {email === '' ? (
+              {/* fixtureMode, not `email === ''`. The two are the same thing here today
+                  and are not the same FACT — a signed-in account with no email would have
+                  been told it was a demo. */}
+              {fixtureMode ? (
                 <p className={styles.lockedNote}>
                   Demo. Sign in to manage your password and recovery phrase.
                 </p>
