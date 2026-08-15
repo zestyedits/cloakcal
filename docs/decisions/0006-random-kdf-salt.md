@@ -1,83 +1,90 @@
-# ADR 0006 — The KDF salt is random and stored, not the account email
+# ADR 0006 — A random KDF salt, considered and REJECTED
 
-**Status:** Accepted, 2026-08-15. Binding.
-**Supersedes:** nothing. **Amends:** ADR 0002 (changes how the password wrap key is derived
-for accounts created from now on).
+**Status:** Rejected, 2026-08-15. Binding as a record of why not.
+**Supersedes:** nothing. **Amends:** nothing.
 
-## Context
+## What was proposed
 
-`deriveMasterSecret` salts Argon2id with the normalised account email. That was a
-reasonable default — a salt must be unique per user and an email already is — and it has
-one consequence that has been documented in CLAUDE.md for months as a hazard:
+Salting Argon2id with a random per-account value stored in the wrap's `kdf` blob, instead
+of with the normalised account email, so that changing an email address stops silently
+destroying an account.
 
-> The account email is the KDF salt, so changing it is as destructive as changing a
-> password. A new address derives a different wrap key and the existing wrap stops opening,
-> with no error that says so.
+## Why it was proposed
 
-Today that is survivable because there is no email-change UI, so the only way to hit it is
-to go looking. Two things change that.
+The email-as-salt hazard is real and is documented in CLAUDE.md: a new address derives a
+different wrap key, the existing wrap stops opening, and the failure is indistinguishable
+from a wrong password because both end in a failed AES-GCM tag. It is survivable today only
+because there is no email-change UI. Adding Google and Apple sign-in looked like it would
+change that — Apple's Hide My Email relay and Workspace domain migrations both alter an
+address without asking.
 
-**Sign in with Google and Apple.** Apple's Hide My Email issues a relay address, and a user
-who later turns it off, or switches from the relay to their real address, changes the
-account email. Google Workspace domain migrations do the same thing to whole organisations
-at once. Under OAuth this stops being a trap someone has to seek out and becomes routine
-maintenance that silently destroys accounts.
+## Why it is rejected
 
-**The failure is silent by construction.** A wrong salt produces a wrong key, and a wrong
-key produces a failed AES-GCM tag, which is indistinguishable from a wrong password. The
-user is told their password is wrong. It is not. Nothing anywhere says "this account was
-set up under a different address", and the data is unreachable.
+**It cannot be built, and `packages/crypto/src/kdf.ts` had already said so.** The comment is
+sitting above the function:
 
-## Decision
+> WHY A DETERMINISTIC SALT. The salt must be reproducible on a device that has not talked to
+> the server yet, because deriving the authSecret is a *precondition* of logging in. A random
+> per-user salt would have to be fetched first, which turns "does this account exist" into an
+> unauthenticated oracle and adds a round trip to every unlock.
 
-**Accounts created from now on derive their password wrap key with a random 16-byte salt,
-generated client-side and stored in the wrap's `kdf` jsonb as `salt`.**
+One Argon2id run produces one master secret, and that master feeds **both** halves:
 
-Accounts that already exist keep deriving from their email. The `kdf` blob already records
-`saltEmail` for exactly this kind of diagnosis, so the rule is unambiguous at read time:
+```
+masterSecret = Argon2id(password, salt)
+  ├── authSecret → sent to Supabase AS THE PASSWORD   ← needed BEFORE any session exists
+  └── wrapKey    → opens the root key                  ← needs the wrap, which needs a session
+```
 
-- `kdf.salt` present → use those bytes.
-- otherwise → use `saltEmail`, falling back to the current account email.
+A salt stored in the wrap is unreachable at the moment the first half needs it. The
+rejected ADR asserted the opposite — "the wrap is already fetched before the derivation
+runs" — which is true of `rootKeyFromPassword` and false of `signInAndUnlock`, the path
+that matters. Sign-in does not call `loadWrap` at all; it derives, authenticates, and only
+then fetches.
 
-No migration of existing wraps, no forced re-derivation, no flag day. An existing account
-moves to a random salt the next time it changes its password, because `rewrapPasswordWrap`
-writes a fresh `kdf` blob and will write a random salt into it.
+The two ways out are both worse than the problem:
 
-## Why
+- **Split the salts** — email for the authSecret, random for the wrap key. Correct, and it
+  costs a second 64 MiB Argon2id run on every sign-in. Roughly doubling the wait on the one
+  interaction people already find slow, to fix a hazard that needs a UI we have not built.
+- **An unauthenticated salt endpoint** — hand out a salt for any address someone asks
+  about. That is an account enumeration oracle, and for this product "does this person use
+  a privacy calendar" is often more sensitive than any event inside it.
+  `signup-enumeration.client.test.ts` exists to keep exactly that out of the sign-up form.
 
-**A salt is not a secret and was never required to be meaningful.** Its job is to stop one
-precomputed table attacking many accounts. Sixteen random bytes do that strictly better than
-an email address, which is low-entropy, guessable, and often reused across services.
+## What we do instead
 
-**It removes an entire class of unrecoverable failure**, rather than adding a warning to it.
-The alternative — keep the email salt and refuse to let anyone change their address — does
-not survive OAuth, where the identity provider changes the address without asking.
+**1. The email stays the salt.** It is structurally required, and the trade is the one
+Bitwarden and 1Password make.
 
-**It costs nothing to derive.** The salt travels with the wrap, and the wrap is already
-fetched before the derivation runs (`loadWrap` precedes `unwrapWithPassword`). No extra
-round trip, no new table, no new column.
+**2. OAuth sidesteps it rather than colliding with it.** The hazard belongs to the
+*password* wrap only. Recovery derives from the BIP-39 phrase; a passkey derives from the
+authenticator's PRF output (ADR 0005). An account created through Google or Apple has no
+password wrap at all, so there is no email-derived key to strand when the relay address
+changes. This is the thing the rejected ADR got backwards: passkeys do not make a random
+salt necessary, they make it unnecessary.
 
-**Rejected: re-wrapping every existing account at next sign-in.** Tempting, because then
-there is one rule instead of two. But it means silently re-deriving a key during a routine
-sign-in, and the failure mode of getting that wrong is the exact thing this ADR exists to
-prevent. Two documented rules beat one clever migration touching every account's only
-password wrap.
+**3. A mismatch says so, instead of saying "wrong password".** `kdf.saltEmail` already
+records the address a wrap was derived under, and nothing reads it. It should: when
+unwrapping fails and the recorded address differs from the current one, the user is told
+their account was set up under a different email and offered the phrase or a passkey —
+rather than being told, falsely, that they typed their password wrong.
 
-## Consequences
+**4. Any future email-change UI must re-wrap first.** Open the key under the old address,
+re-wrap under the new one, then change the address. Changing the address alone is the
+destructive operation, and it must not be reachable.
 
-**Two derivation paths exist, and both are load-bearing.** `packages/crypto/src/kdf.ts`
-takes a salt rather than an email, and the caller decides. A test pins that an existing
-`saltEmail` wrap still opens, because deleting that path is the change that would strand
-every account created before today.
+## The general lesson, recorded because it was expensive
 
-**The email keeps being recorded in `kdf.saltEmail`** for accounts that use it, and is
-worth keeping for new accounts too as a diagnostic — it says which address the account was
-set up under even when it is not the salt.
+The rejected proposal reached "Accepted" without anyone reading the fifteen lines of prose
+directly above the function it was changing. Those lines existed, named this exact failure,
+and named both escape hatches. **When a decision looks obviously right, check whether the
+code already argues against it** — this repo comments the *why*, and that is the reason.
 
-**Changing an account email becomes safe for new accounts, and stays destructive for old
-ones.** Any future email-change UI must check for `kdf.salt` and refuse, or re-wrap first,
-for accounts without it. This ADR does not build that UI; it makes it possible.
+## One thing worth keeping from it
 
-**This does not touch the recovery or passkey wraps.** Neither derives from the email:
-recovery derives from the BIP-39 phrase, and a passkey (ADR 0005) derives from the
-authenticator's PRF output. The email salt was only ever the password wrap's problem.
+Had a `salt` key been added to the `kdf` blob, `assertKdfParams` would not have validated
+it. That function floors `memoryKiB`, `iterations` and `parallelism` against server-supplied
+weakening, and a salt arriving from the same untrusted place would have had no floor at all
+— a one-byte salt would have sailed through. Any future field added to that blob needs a
+check in `assertKdfParams` in the same commit.

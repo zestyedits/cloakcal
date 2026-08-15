@@ -125,7 +125,11 @@ second passphrase. A passkey is that wrap, which is why it lands first and OAuth
 it. Worth stating plainly in product copy when it does: signing in with Google tells Google
 you use a privacy calendar, which is the same fact `signup-enumeration.client.test.ts`
 exists to keep the sign-up form from leaking. Apple's Hide My Email is materially better
-here, and interacts with ADR 0006.
+here.
+
+An OAuth account has **no password wrap**, so it has no email-derived key and none of the
+email-as-salt hazard ADR 0006 was written to solve — which is why that ADR turned out to be
+unnecessary as well as unbuildable. A passkey is what opens the vault for those accounts.
 
 ## What this does not change
 
