@@ -12,6 +12,7 @@ import { RecoveryPhrase } from './recovery-phrase'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
+import panel from './panel.module.css'
 
 /**
  * Get a new recovery phrase.
@@ -94,7 +95,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
   // checkbox measures nothing, and this phrase matters exactly as much as the original.
   if (issued !== null) {
     return (
-      <div className={styles.card}>
+      <div className={panel.panel}>
         <RecoveryPhrase
           phrase={issued}
           onConfirmed={() => {
@@ -108,9 +109,9 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
 
   if (!open) {
     return (
-      <div className={styles.card}>
-        <h2 className={styles.title}>Recovery phrase</h2>
-        <p className={styles.lede}>
+      <div className={panel.panel}>
+        <h2 className={panel.panelTitle}>Recovery phrase</h2>
+        <p className={panel.panelLede}>
           Lost the 24 words, or think someone else has seen them? Get a new set. The old ones
           stop working immediately.
         </p>
@@ -122,9 +123,9 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
   }
 
   return (
-    <form className={styles.card} onSubmit={submit}>
-      <h2 className={styles.title}>Get a new recovery phrase</h2>
-      <p className={styles.lede}>
+    <form className={panel.panel} onSubmit={submit}>
+      <h2 className={panel.panelTitle}>Get a new recovery phrase</h2>
+      <p className={panel.panelLede}>
         Your events are not touched and your password does not change. The{' '}
         <strong>old 24 words stop working</strong> the moment the new ones are issued. If
         you are doing this because someone saw them, this is the thing that shuts them out.

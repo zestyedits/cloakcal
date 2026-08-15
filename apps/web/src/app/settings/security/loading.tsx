@@ -1,4 +1,5 @@
 import { PageMasthead, PageShell } from '@/components/page-shell'
+import { SettingsNav } from '@/components/settings/settings-nav'
 import settingsStyles from '@/components/settings/settings.module.css'
 import styles from '../loading.module.css'
 
@@ -13,13 +14,17 @@ import styles from '../loading.module.css'
  */
 export default function SecurityLoading() {
   return (
-    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+    <PageShell back={{ href: '/settings', label: 'Settings' }}>
       <PageMasthead
         title="Security"
         lede="Your password, your passkeys and your recovery phrase all open the same key. Changing any one of them re-wraps that key; none of them touches an event."
       />
 
-      <div className={settingsStyles.narrowBody}>
+      {/* The REAL rail, from the one component that draws it. Copying its markup here is
+          how the old settings fallback drifted to a five-chip rail the page no longer had. */}
+      <div className={settingsStyles.layout}>
+        <SettingsNav current="security" scope="settings" />
+
         <div
           className={settingsStyles.sections}
           aria-busy="true"

@@ -13,6 +13,7 @@ import {
 import { ProofFieldset, type Proof } from './proof-fieldset'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
+import panel from './panel.module.css'
 
 /**
  * Change your password, deliberately.
@@ -83,9 +84,9 @@ export function ChangePassword({ email }: { email: string }) {
        which was fine when it WAS a page (/account) and became two h1s and a stray brand
        mark mid-scroll the moment it was rendered inside something else. Its page is
        /settings/security now, and a page owns its own chrome. */
-    <form className={styles.card} onSubmit={submit}>
-      <h2 className={styles.title}>Change your password</h2>
-      <p className={styles.lede}>
+    <form className={panel.panel} onSubmit={submit}>
+      <h2 className={panel.panelTitle}>Change your password</h2>
+      <p className={panel.panelLede}>
         Your events are not re-encrypted. Your password wraps the key that opens them, so only
         the wrapper changes. Nothing about your calendar is rewritten, and your recovery
         phrase keeps working.

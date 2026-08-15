@@ -1,55 +1,6 @@
-/*
- * The settings shell, in the same restrained file room as People: raised panels, engraved
- * hairlines, caps display labels, monospace for the values a row reports. Settings was the
- * one screen the design pass never reached — it touched the display face twice and DM Mono
- * never, so it sat next to the contact book reading as generic dark-mode SaaS.
- *
- * What is here is the hierarchy and the shared row grammar: one h1, a rail of anchors, h2
- * sections in cards, ONE field shape, ONE row shape, and a deferred list that is quieter
- * than everything that works. There used to be five unrelated row shapes on this page —
- * theme cards, a wrapping select grid, hairline rows, baseline-aligned deferred prose, and
- * whole auth-page cards — and nothing rhymed with anything.
- */
-
-.page {
-  min-height: 100dvh;
-  background: var(--surface-base);
-  color: var(--text-primary);
-}
-
-.header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sheet);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  background: color-mix(in srgb, var(--surface-base) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--touch-min);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: var(--text-sm);
-}
-
 .back:hover {
   color: var(--text-primary);
   background: var(--surface-overlay);
-}
-
-.headerSpace {
-  flex: 1;
 }
 
  /* The rail-and-cards grid. The page's measure, masthead and top bar are the shared
@@ -68,17 +19,6 @@
     align-items: start;
     gap: var(--space-10);
   }
-}
-
-/* Engraved: the display face has one weight, so the h1 earns presence from size and a
-   touch of positive tracking rather than a synthesised bold. */
-.title {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
-  grid-column: 1 / -1;
 }
 
 /* The demo banner, above the rail and spanning both columns: one statement of what this
@@ -473,62 +413,23 @@
   color: var(--brand-white);
 }
 
-/* The preset picker and checkbox rows moved to visibility-control.module.css with the
-   shared VisibilityControl; this file keeps only what the settings cards still render. */
-
-/* The single-column body /settings/security uses: no rail, because a page with three
-   sections does not need a table of contents. Narrower than the shell's measure on
-   purpose — these are forms, and a form field stretched to 64rem is a worse form. */
-.narrowBody {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.pageLede {
-  margin: 0;
-  max-width: 40rem;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  line-height: var(--leading-relaxed);
-}
-
-/* A plain panel, for content that is not a collapsible setting — the devices list, the
-   sharing card's Defaults block. Same raised ground and hairline the contact book uses. */
+/* The panel grammar lives in panel.module.css now: it existed here, in the People
+   register and in the contact file, agreeing on everything that mattered and disagreeing
+   on padding, tracking and the count's ink. */
 .panel {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm), var(--edge-highlight);
-  padding: var(--space-4);
-  display: grid;
-  gap: var(--space-3);
+  composes: panel from '../panel.module.css';
 }
 
 .panelHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-bottom: var(--space-3);
-  /* The engraved rule, same hairline as the agenda's day headings and the register's
-     panel tabs. Decorative like them. */
-  border-bottom: 1px solid var(--engrave-hairline);
+  composes: panelHead from '../panel.module.css';
 }
 
 .panelTitle {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  font-weight: var(--weight-regular);
+  composes: panelTitle from '../panel.module.css';
 }
 
 .panelCount {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--numeral-ink);
+  composes: panelCount from '../panel.module.css';
 }
 
 .plainList {

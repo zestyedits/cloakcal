@@ -23,6 +23,7 @@ import { ProofFieldset, type Proof } from './proof-fieldset'
 import { InlineError } from './ui/inline-error'
 import { Button } from './ui/button'
 import styles from './auth.module.css'
+import panel from './panel.module.css'
 
 /**
  * Passkeys — the third way into an account, and the reason a forgotten password stops
@@ -160,9 +161,9 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
   }
 
   return (
-    <form className={styles.card} onSubmit={add}>
-      <h2 className={styles.title}>Passkeys</h2>
-      <p className={styles.lede}>
+    <form className={panel.panel} onSubmit={add}>
+      <h2 className={panel.panelTitle}>Passkeys</h2>
+      <p className={panel.panelLede}>
         A passkey lets your face, fingerprint or device PIN open your calendar, and reset
         your password without the recovery phrase. Your events are not re-encrypted: a
         passkey wraps the same key everything else opens.

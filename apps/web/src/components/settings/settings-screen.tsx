@@ -7,6 +7,7 @@ import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { VIEW_LABELS } from '@/lib/calendar-views'
 import { SECTIONS } from '@/lib/settings-sections'
+import { SettingsNav } from './settings-nav'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { PageMasthead, PageShell } from '../page-shell'
 import { SignOutButton } from '../sign-out-button'
@@ -121,24 +122,6 @@ function useOpenOnHash(): string | null {
   return current
 }
 
-/** The rail, with the section the hash names marked. */
-function SectionNav({ current }: { current: string | null }) {
-  return (
-    <nav className={styles.nav} aria-label="Settings sections">
-      {SECTIONS.map((section) => (
-        <a
-          key={section.id}
-          className={styles.navLink}
-          href={`#${section.id}`}
-          aria-current={section.id === current ? 'true' : undefined}
-        >
-          {section.label}
-        </a>
-      ))}
-    </nav>
-  )
-}
-
 /** Serializable throughout: this crosses the RSC boundary. Maps arrive as plain records. */
 export interface SettingsProps {
   readonly email: string
@@ -221,7 +204,7 @@ export function SettingsScreen({
             </p>
           )}
 
-          <SectionNav current={openSection} />
+          <SettingsNav current={openSection} />
 
           <main id="main" className={styles.sections}>
             <SettingsSection
