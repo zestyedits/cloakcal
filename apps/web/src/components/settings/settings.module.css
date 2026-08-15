@@ -227,6 +227,13 @@
      the cramped padding was most of what made these read as strips. */
   padding: var(--space-4) var(--space-5);
   cursor: pointer;
+  /* Scrolling a band to the top must not tuck its head under the sticky bar. The section
+     carries this for `#hash` landings; the summary needs its own because that is what the
+     rail scrolls. */
+  /* Bar height plus breathing room, not bar height exactly: landing flush against the
+     sticky bar's underside reads as clipped rather than as positioned. Matches the
+     section's own margin so a `#hash` landing and a rail click come to rest identically. */
+  scroll-margin-top: calc(var(--touch-min) + var(--space-6));
   /* The platform triangle is replaced by our chevron, which can rotate. */
   list-style: none;
 }

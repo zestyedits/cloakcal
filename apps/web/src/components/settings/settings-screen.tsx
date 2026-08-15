@@ -218,34 +218,34 @@ export function SettingsScreen({
     setPinnedSection(id)
 
     /**
-     * WAIT FOR THE DISCLOSURE TO FINISH, then scroll only if there is a reason to.
+     * WAIT FOR THE DISCLOSURE TO FINISH, then put the clicked band's head at the top.
      *
-     * Two rounds of this landed at the foot of the page, for two different reasons, and the
-     * second is the interesting one:
+     * Three rounds landed at the foot of the page, and the last two are the instructive
+     * ones:
      *
      *   1. `scrollIntoView` on the `<details>` fits the ELEMENT, and an open band is taller
-     *      than the viewport, so "nearest" pushed the page down until its bottom edge
-     *      showed. The summary is one row, so it asks for far less.
-     *   2. Even then, two animation frames is not long enough. The band being CLOSED is
-     *      still mid-collapse, so the target summary is measured hundreds of pixels lower
-     *      than where it is about to be — the scroll was correct for a layout that no longer
-     *      existed by the time it landed, and the shrinking document then clamped it to the
-     *      bottom.
+     *      than the viewport, so it pushed the page down until the bottom edge showed.
+     *   2. Two animation frames is not long enough. The band being CLOSED is still
+     *      mid-collapse, so the target measures hundreds of pixels below where it is about
+     *      to be — correct for a layout that no longer exists by the time it lands.
+     *   3. And the one that survived both fixes: closing a tall band SHRINKS the document,
+     *      so the browser clamps the scroll offset to the new maximum. A reader who had
+     *      scrolled at all was dumped at the end of the page by that clamp alone, before
+     *      any of our code ran. A conditional "only scroll if it is not already visible"
+     *      cannot help, because after the clamp the summary IS visible — sitting under the
+     *      sticky bar, with the roadmap footer filling the screen.
      *
-     * So this waits out the transition and then checks whether a scroll is warranted at all.
-     * With one band open the whole plate is usually on screen and the answer is no, which is
-     * the right answer: the least disorienting scroll is the one that does not happen.
+     * So it is unconditional and boring now: the band you clicked puts its head at the top,
+     * every time, which is what an anchor has always done and what nobody has to think
+     * about. `scroll-margin-top` on the summary keeps it clear of the sticky bar.
      */
     const motion = getComputedStyle(document.documentElement).getPropertyValue('--duration-base')
     const settle = Number.parseFloat(motion) || 220
     window.setTimeout(() => {
-      const summary = document.getElementById(id)?.querySelector('summary')
-      if (summary === null || summary === undefined) return
-      const box = summary.getBoundingClientRect()
-      const headroom = 96
-      const clear = box.top >= headroom && box.bottom <= window.innerHeight
-      if (clear) return
-      summary.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      document
+        .getElementById(id)
+        ?.querySelector('summary')
+        ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
     }, settle + 40)
   }
   /**
