@@ -49,6 +49,6 @@ export const SECTIONS = [
   {
     id: 'security',
     label: 'Security',
-    description: 'Password, recovery phrase, and the devices that can open your calendar.',
+    description: 'Password, passkeys, recovery phrase, and the devices that can open your calendar.',
   },
 ] as const

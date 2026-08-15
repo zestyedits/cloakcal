@@ -1,7 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { signInAndUnlock, signOut, unlockWithRecoveryPhrase } from '@/lib/cloak-session'
+import { useEffect, useState } from 'react'
+import {
+  WrapEmailMismatchError,
+  WrongPasswordError,
+  WrongRecoveryPhraseError,
+  hasPasskey,
+  signInAndUnlock,
+  signOut,
+  unlockWithPasskey,
+  unlockWithRecoveryPhrase,
+} from '@/lib/cloak-session'
+import {
+  PasskeyCancelledError,
+  PasskeyNoPrfError,
+  isPasskeySupported,
+} from '@/lib/passkey'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
@@ -13,28 +27,84 @@ import styles from './auth.module.css'
  * patterns of every event — which is exactly the set of facts the server holds in plaintext
  * under the hybrid model (plan D1). Showing that a locked calendar still has a visible
  * shape is more honest than a blank screen implying the server knows nothing.
+ *
+ * A PASSKEY IS OFFERED FIRST when the account has one, because that is the entire point of
+ * having one. It is an action rather than a field, so it sits above the form instead of
+ * joining the password/phrase toggle, which stays binary.
  */
 
 export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: () => void }) {
   const [mode, setMode] = useState<'password' | 'recovery'>('password')
   const [password, setPassword] = useState('')
   const [phrase, setPhrase] = useState('')
-  const [busy, setBusy] = useState(false)
+  /**
+   * `string | null`, not a boolean, and that is not tidying.
+   *
+   * The old boolean rendered one hardcoded line: "Deriving your key". On the passkey path
+   * nothing is derived — the app is idle, waiting on the operating system — so the only
+   * honest label is a different one, and a boolean cannot carry it. The other three auth
+   * surfaces already use this shape; this file was the outlier.
+   */
+  const [working, setWorking] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [passkeyOffered, setPasskeyOffered] = useState(false)
+
+  /**
+   * Whether to OFFER the passkey route. Two questions, and both have to be yes: can this
+   * browser do it, and does this account have one. Asking the account costs a round trip on
+   * mount, which buys not raising a biometric prompt that cannot possibly succeed.
+   */
+  useEffect(() => {
+    if (!isPasskeySupported()) return
+    let live = true
+    void hasPasskey()
+      .then((has) => {
+        if (live) setPasskeyOffered(has)
+      })
+      .catch(() => {
+        // A failed read means we simply do not offer it. The password path is unaffected,
+        // and an error here would be about a feature the user has not asked for yet.
+      })
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const busy = working !== null
+
+  const runPasskey = async () => {
+    setError(null)
+    setNotice(null)
+    setWorking('Waiting for your passkey')
+    try {
+      await unlockWithPasskey(email)
+      onUnlocked()
+    } catch (caught) {
+      // Cancelling is a normal outcome, not a failure: neutral notice, not role="alert".
+      if (caught instanceof PasskeyCancelledError) setNotice(caught.message)
+      else setError(messageFor(caught))
+    } finally {
+      setWorking(null)
+      // Deliberately does NOT clear `password` or `phrase`. A cancelled passkey attempt
+      // wiping a half-typed password would be its own small betrayal.
+    }
+  }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
-    setBusy(true)
+    setNotice(null)
+    setWorking('Deriving your key')
 
     try {
       if (mode === 'password') await signInAndUnlock(email, password)
       else await unlockWithRecoveryPhrase(email, phrase)
       onUnlocked()
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
+      setError(messageFor(caught))
     } finally {
-      setBusy(false)
+      setWorking(null)
       setPassword('')
       setPhrase('')
     }
@@ -52,6 +122,28 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
         </p>
 
         <InlineError>{error}</InlineError>
+
+        {notice !== null && (
+          <p className={styles.notice} role="status">
+            {notice}
+          </p>
+        )}
+
+        {passkeyOffered && (
+          <>
+            <button
+              type="button"
+              className={styles.submit}
+              disabled={busy}
+              onClick={() => void runPasskey()}
+            >
+              Unlock with a passkey
+            </button>
+            <p className={styles.switch} aria-hidden="true">
+              or
+            </p>
+          </>
+        )}
 
         <div className={styles.form}>
           {mode === 'password' ? (
@@ -93,7 +185,7 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
           {busy ? (
             <p className={styles.working} aria-live="polite">
               <span className={styles.pulse} aria-hidden="true" />
-              Deriving your key
+              {working}
             </p>
           ) : (
             <button type="submit" className={styles.submit}>
@@ -128,4 +220,21 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
       </form>
     </div>
   )
+}
+
+/**
+ * This panel had no error mapping at all — it surfaced `caught.message` raw, which was
+ * survivable while every error here came from our own code and already read as English.
+ * A passkey adds errors whose default text is right for a form and wrong for a lock screen,
+ * so the ladder every other auth surface uses arrives here too: typed errors first, raw
+ * message as the honest fallback.
+ */
+function messageFor(caught: unknown): string {
+  if (caught instanceof WrongPasswordError) return caught.message
+  if (caught instanceof WrongRecoveryPhraseError) return caught.message
+  if (caught instanceof WrapEmailMismatchError) return caught.message
+  if (caught instanceof PasskeyNoPrfError) {
+    return 'That passkey would not derive your key on this device. Use your password or your recovery phrase.'
+  }
+  return caught instanceof Error ? caught.message : String(caught)
 }

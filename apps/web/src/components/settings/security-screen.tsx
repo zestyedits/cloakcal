@@ -3,6 +3,7 @@
 import type { SettingsDevice } from '@/server/settings'
 import { PageMasthead, PageShell } from '../page-shell'
 import { ChangePassword } from '../change-password'
+import { PasskeysSection } from '../passkeys-section'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
 import { SignOutButton } from '../sign-out-button'
 import styles from './settings.module.css'
@@ -40,15 +41,23 @@ export function SecurityScreen({
     <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
       <PageMasthead
         title="Security"
-        lede="Your password and your recovery phrase both open the same key. Changing either one re-wraps that key; neither one touches an event."
+        lede="Your password, your passkeys and your recovery phrase all open the same key. Changing any one of them re-wraps that key; none of them touches an event."
       />
 
       <div className={styles.narrowBody}>
         <main id="main" className={styles.sections}>
           {demo ? (
-            <p className={styles.lockedNote}>
-              Demo. Sign in to manage your password and recovery phrase.
-            </p>
+            /* The demo renders the Passkeys card too, disabled, and that is a TESTING
+               decision as much as an honesty one. Every Playwright project runs in fixture
+               mode, so a control that appears only for signed-in users is measured by
+               nothing — not the axe scan on this page, not the 44px target sweep. Rendering
+               it here, honestly disabled, is what puts it in front of both. */
+            <>
+              <p className={styles.lockedNote}>
+                Demo. Sign in to manage your password and recovery phrase.
+              </p>
+              <PasskeysSection email={email} demo />
+            </>
           ) : email === '' ? (
             /* Signed in, but the account carries no email address. Not a demo and not a
                bug in this page: the email IS the KDF salt (see /account in CLAUDE.md), so
@@ -67,6 +76,9 @@ export function SecurityScreen({
                   than behind a menu. */}
               <ChangePassword email={email} />
               <ReissueRecoveryPhrase email={email} />
+              {/* After the two things people arrive for, before the Devices inventory: a
+                  passkey is a WAY IN, and devices are a list of what got in. */}
+              <PasskeysSection email={email} demo={false} />
 
               <section className={styles.panel}>
                 <div className={styles.panelHead}>
@@ -77,8 +89,9 @@ export function SecurityScreen({
                 </div>
                 {devices.length === 0 ? (
                   <p className={styles.rowNote}>
-                    Only this browser so far. Pairing another device is the next milestone;
-                    until then your recovery phrase is the single way back in.
+                    Only this browser so far. Add a passkey above and your face, fingerprint
+                    or device PIN opens your calendar, with the recovery phrase kept as the
+                    last resort rather than the only one.
                   </p>
                 ) : (
                   <ul className={styles.plainList}>

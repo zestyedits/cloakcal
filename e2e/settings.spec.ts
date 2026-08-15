@@ -232,4 +232,38 @@ test('the security page scans clean and keeps its targets', async ({ page }) => 
       .map((el) => `${(el.textContent ?? '').trim().slice(0, 30)}: ${Math.round(el.getBoundingClientRect().height)}px`),
   )
   expect(tooSmall).toEqual([])
+
+  // This page had the h1-count assertion but never a level-skip sweep, which stopped
+  // mattering the moment it grew an h2. Both belong here: one h1 is about duplication,
+  // this is about the outline being navigable.
+  const levels = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).map((el) =>
+      Number(el.tagName.slice(1)),
+    ),
+  )
+  for (let i = 1; i < levels.length; i += 1) {
+    expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1)
+  }
+})
+
+test('the passkeys card is offered, and says why it cannot act in the demo', async ({ page }) => {
+  await page.goto('/settings/security')
+
+  // Rendered in the DEMO branch deliberately. Playwright has no session, so a control that
+  // appears only when signed in is measured by neither the axe scan nor the 44px sweep
+  // above — the two assertions on this page that exist to catch exactly this class of
+  // problem would go on passing while checking nothing.
+  await expect(page.getByRole('heading', { level: 2, name: 'Passkeys' })).toBeVisible()
+
+  // Never a control that silently does nothing: it is disabled AND the page says why.
+  await expect(page.getByRole('button', { name: 'Add a passkey' })).toBeDisabled()
+  await expect(page.getByText('Demo. Sign in to add a passkey.')).toBeVisible()
+})
+
+test('the roadmap no longer claims the phrase is the only way back', async ({ page }) => {
+  await page.goto('/settings/security')
+  // The empty devices state used to read "until then your recovery phrase is the single
+  // way back in", which passkeys made false. Copy that outlives the code it describes is
+  // how a product starts lying to its users in small ways.
+  await expect(page.getByText(/single way back in/)).toHaveCount(0)
 })
