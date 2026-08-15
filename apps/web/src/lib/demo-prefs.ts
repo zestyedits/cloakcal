@@ -1,5 +1,6 @@
 import type { WeekStart } from '@/server/range'
-import type { CalendarPrefs, CalendarViewPref } from '@/server/settings'
+import type { CalendarPrefs } from '@/server/settings'
+import { isCalendarView } from './calendar-views'
 
 /**
  * Preferences for the demo calendar, kept in a COOKIE.
@@ -42,8 +43,6 @@ export const DEMO_DEFAULT_PREFS: CalendarPrefs = {
   keyboardShortcuts: true,
 }
 
-const VIEWS: readonly CalendarViewPref[] = ['agenda', 'week', 'day', 'month']
-
 /**
  * Parse the cookie into prefs, falling back field by field.
  *
@@ -78,8 +77,8 @@ export function parseDemoPrefs(raw: string | undefined): CalendarPrefs {
       ? (rawWeekStart as WeekStart)
       : DEMO_DEFAULT_PREFS.weekStart
 
-  const defaultView = VIEWS.includes(record['defaultView'] as CalendarViewPref)
-    ? (record['defaultView'] as CalendarViewPref)
+  const defaultView = isCalendarView(record['defaultView'])
+    ? record['defaultView']
     : DEMO_DEFAULT_PREFS.defaultView
 
   const keyboardShortcuts =

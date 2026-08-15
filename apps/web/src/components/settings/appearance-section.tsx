@@ -4,17 +4,12 @@ import { useEffect, useState } from 'react'
 import { applyTheme, readStoredTheme, type Theme } from '@/lib/theme'
 import { rpcErrorMessage } from '@/lib/rpc-error'
 import { canSavePrefs, saveCalendarPrefs } from '@/lib/save-prefs'
-import type { CalendarPrefs, CalendarViewPref } from '@/server/settings'
+import type { CalendarPrefs } from '@/server/settings'
+import { CALENDAR_VIEWS, VIEW_LABELS } from '@/lib/calendar-views'
+import type { CalendarView } from '../calendar-screen'
 import { useRouter } from 'next/navigation'
 import { InlineError } from '../ui/inline-error'
 import styles from './settings.module.css'
-
-const VIEWS = [
-  ['agenda', 'Agenda'],
-  ['week', 'Week'],
-  ['day', 'Day'],
-  ['month', 'Month'],
-] as const
 
 /**
  * How the calendar looks and answers you: theme, the view it opens on, the keyboard.
@@ -37,7 +32,7 @@ export function AppearanceSection({
 }: {
   workspaceId: string | null
   fixtureMode: boolean
-  defaultView: CalendarViewPref
+  defaultView: CalendarView
   keyboardShortcuts: boolean
 }) {
   const router = useRouter()
@@ -120,12 +115,16 @@ export function AppearanceSection({
           value={defaultView}
           disabled={disabled}
           onChange={(event) =>
-            void save({ defaultView: event.target.value as CalendarViewPref })
+            void save({ defaultView: event.target.value as CalendarView })
           }
         >
-          {VIEWS.map(([value, label]) => (
+          {/* The shared ordering and the shared labels: this select is where a view
+              name gets CHOSEN, and every validator that later accepts it reads the same
+              array. Four independent copies of this list is how a select comes to offer
+              a value a parser rejects. */}
+          {CALENDAR_VIEWS.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {VIEW_LABELS[value]}
             </option>
           ))}
         </select>

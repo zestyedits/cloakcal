@@ -200,7 +200,10 @@ export function CalendarScreen({
 
   /**
    * One href builder for every view link: anchored where the user already is, carrying
-   * the audience, minimal for the agenda default.
+   * the audience, and always NAMING its view — including agenda. This used to say
+   * "minimal for the agenda default", which is the reasoning calendar-links.ts now spends
+   * its header refuting: once a workspace could store a default view, an agenda link with
+   * no view param resolved to whatever that default was.
    */
   const hrefFor = (target: CalendarView): WeekLink => ({
     pathname: '/',

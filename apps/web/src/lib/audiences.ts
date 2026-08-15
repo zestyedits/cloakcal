@@ -43,12 +43,21 @@ export function audienceIdOf(option: AudienceOption): string {
  * Owner DELETES the param rather than setting `as=owner`, so the plain calendar URL stays
  * the plain calendar URL.
  *
- * The `as Route` is the one typedRoutes escape hatch, in one place. Next types `push` as
- * `RouteImpl<…>` and cannot check a string built at runtime; inlined template literals
- * happen to satisfy it, which is why this compiled everywhere until the logic moved behind
- * a function. Worth knowing that `pnpm typecheck` does NOT see this — typedRoutes only
- * exists during `next build`, so a green typecheck is not evidence a computed href
- * compiles. Same family as WeekLink, which exists for exactly this reason.
+ * THE `as Route` HERE IS NOT THE SAME PROBLEM WeekLink SOLVES, and the difference is the
+ * whole reason this returns a string. `WeekLink` is a UrlObject because `<Link href>`
+ * accepts one; `router.push` does NOT — it takes a route string, at the type level and at
+ * runtime — and both callers of this are `router.push`. Returning the object form here
+ * typechecks nowhere and would fail in the browser if it did. So: one cast, in one module,
+ * rather than a template literal at each call site (which is what typedRoutes happens to
+ * accept, and is exactly how two builders drifted apart the last time).
+ *
+ * Worth knowing regardless: `pnpm typecheck` does NOT see typedRoutes. The route union
+ * only exists during `next build`, so a green typecheck is no evidence a computed href
+ * compiles — this one shipped green and failed the build.
+ *
+ * The pathname is `/` because both doors into preview render on the calendar. If a third
+ * ever renders elsewhere, this needs the current pathname passed in rather than silently
+ * teleporting home.
  */
 export function audienceHref(currentQuery: string, audienceId: string): Route {
   const next = new URLSearchParams(currentQuery)

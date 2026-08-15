@@ -16,6 +16,7 @@ import {
 import { loadWorkspacePrefs, type CalendarPrefs } from '@/server/settings'
 import { readDemoPrefs } from '@/server/demo-prefs'
 import { stepQuery } from '@/lib/calendar-links'
+import { isCalendarView } from '@/lib/calendar-views'
 import { supabaseServer } from '@/lib/supabase/server'
 import { DEMO_WEEK, isDevFixtureEnabled } from '@/server/dev-fixture'
 import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
@@ -36,10 +37,8 @@ import { Landing } from '@/components/landing'
  * with PlainDate arithmetic (day ±1 day, week ±7 days, month ±1 month pinned to day 1 so
  * repeated steps cannot drift through short months), then re-range.
  */
-const VIEWS: readonly CalendarView[] = ['agenda', 'week', 'day', 'month']
-
 const parseView = (view: string | undefined, fallback: CalendarView = 'agenda'): CalendarView =>
-  VIEWS.includes(view as CalendarView) ? (view as CalendarView) : fallback
+  isCalendarView(view) ? view : fallback
 
 /**
  * Server Component. Reads Tier A metadata plus ciphertext from Postgres as the signed-in

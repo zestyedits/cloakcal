@@ -6,6 +6,8 @@ import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
 import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
+import { VIEW_LABELS } from '@/lib/calendar-views'
+import { SECTIONS } from '@/lib/settings-sections'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { CloakHomeLink } from '../cloak-logo'
 import { ThemeToggle } from '../theme-toggle'
@@ -29,33 +31,7 @@ import styles from './settings.module.css'
  * is the one door into the store.
  */
 
-/**
- * Five cards, down from seven.
- *
- * Two of the seven contained no settings: People was a lede and a link, and "Coming soon"
- * was four rows of things that do not exist. Both wore the same card, chevron and weight
- * as the cards that work, so a third of the page was furniture dressed as controls —
- * which is most of what made it read as half built. People merged into the card that
- * decides what people see; the deferred list became a quiet footer that is not a card at
- * all. Security became a signpost to a page of its own.
- */
-const SECTIONS = [
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'time-region', label: 'Time & region' },
-  { id: 'calendars', label: 'Calendars' },
-  { id: 'sharing', label: 'People & sharing' },
-  { id: 'security', label: 'Security' },
-] as const
-
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-/** The summary row showed the raw enum, so it read "opens on agenda" mid-sentence. */
-const VIEW_NAMES: Record<CalendarPrefs['defaultView'], string> = {
-  agenda: 'Agenda',
-  week: 'Week',
-  day: 'Day',
-  month: 'Month',
-}
 
 /**
  * One collapsible section card, on native <details> — keyboard and screen-reader
@@ -250,7 +226,7 @@ export function SettingsScreen({
             <SettingsSection
               id="appearance"
               title="Appearance"
-              state={`${VIEW_NAMES[prefs?.defaultView ?? 'agenda']} · shortcuts ${
+              state={`${VIEW_LABELS[prefs?.defaultView ?? 'agenda']} · shortcuts ${
                 prefs?.keyboardShortcuts === true ? 'on' : 'off'
               }`}
               defaultOpen

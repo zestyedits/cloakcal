@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { rpcErrorMessage } from '@/lib/rpc-error'
 import { canSavePrefs, saveCalendarPrefs, type PrefsTarget } from '@/lib/save-prefs'
-import type { CalendarViewPref } from '@/server/settings'
+import { VIEW_LABELS } from '@/lib/calendar-views'
+import type { CalendarView } from './calendar-screen'
 import { Button } from './ui/button'
 import { InlineError } from './ui/inline-error'
 import styles from './default-view-control.module.css'
@@ -32,9 +33,9 @@ export function DefaultViewControl({
   target,
 }: {
   /** The view on screen right now. */
-  current: CalendarViewPref
+  current: CalendarView
   /** The stored preference. */
-  defaultView: CalendarViewPref
+  defaultView: CalendarView
   target: PrefsTarget
 }) {
   const router = useRouter()
@@ -77,11 +78,4 @@ export function DefaultViewControl({
       <InlineError>{error}</InlineError>
     </div>
   )
-}
-
-const VIEW_LABELS: Record<CalendarViewPref, string> = {
-  agenda: 'Agenda',
-  week: 'Week',
-  day: 'Day',
-  month: 'Month',
 }

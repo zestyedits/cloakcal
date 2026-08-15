@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CloakHomeLink } from '@/components/cloak-logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { SECTIONS } from '@/lib/settings-sections'
 import settingsStyles from '@/components/settings/settings.module.css'
 import styles from './loading.module.css'
 
@@ -32,17 +33,20 @@ export default function SettingsLoading() {
         <h1 className={settingsStyles.title}>Settings</h1>
 
         <nav className={settingsStyles.nav} aria-label="Settings sections">
-          {['Appearance', 'Time & region', 'Calendars', 'People & sharing', 'Security'].map(
-            (label) => (
-              <span key={label} className={settingsStyles.navLink}>
-                {label}
-              </span>
-            ),
-          )}
+          {/* The REAL list, not a second copy of it. Both were hand-edited when the page
+              went from seven cards to five, which is one edit away from the fallback
+              flashing a rail the loaded page does not have. It comes from lib/, not from
+              the screen: this file is a SERVER component, and importing a plain value out
+              of a 'use client' module hands back a reference proxy rather than the value. */}
+          {SECTIONS.map((section) => (
+            <span key={section.id} className={settingsStyles.navLink}>
+              {section.label}
+            </span>
+          ))}
         </nav>
 
         <div className={settingsStyles.sections} aria-busy="true" aria-label="Loading settings">
-          {Array.from({ length: 5 }, (_, i) => (
+          {Array.from({ length: SECTIONS.length }, (_, i) => (
             <div key={i} className={`${styles.sectionRow} ${styles.pulse}`}>
               <div className={styles.rowTitle} />
               <div className={styles.rowState} />

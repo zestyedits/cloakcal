@@ -147,6 +147,8 @@ refuses rather than soften, `global-error` with zero imports, a text-free skelet
 that cannot distinguish "missing" from "not yours", an offline banner); and `/settings` —
 appearance, time & region, calendars (recolour live while locked, rename not — the privacy
 model made visible), people, visibility defaults, security, honest coming-soon rows.
+*(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
+security is its own route — see the 2026-08-15 pass below.)*
 
 **Migrations 0018–0022 are applied to production** (prefs incl. timezone + week_start,
 `update_calendar`, the four group RPCs 0017 never had, `create_calendar`, and
@@ -405,6 +407,16 @@ and re-add.
   colours are shape colours only; `--privacy-hidden` is 1.32:1 on dark raised BY DESIGN, so
   nothing may render a raw privacy colour as ink or rely on it being seen.
 
+- **A server component importing a plain VALUE out of a `'use client'` module gets a
+  reference proxy, not the value — and inside a Suspense fallback that failure renders as
+  a DOUBLED PAGE rather than an error.** Exporting the settings section list from
+  `settings-screen.tsx` and importing it into `app/settings/loading.tsx` threw
+  `SECTIONS.map is not a function` on every load; because the throw happened in the
+  fallback, `/settings` came back with two `<h1>`s, two `<main>`s and ten `<details>` where
+  five belonged, which looks like a rendering bug and not an import one. Typecheck passes
+  either way. Shared lists that a fallback and a screen both draw from live in `lib/` —
+  that is what `lib/calendar-views.ts` and `lib/settings-sections.ts` are for, and both say
+  so in their headers.
 - **`pnpm typecheck` does NOT see typedRoutes, so a green typecheck is not evidence a
   computed href compiles.** The route union is generated during `next build`, so
   `router.push(someFunction(...))` typechecks fine and then fails the build with "Argument
