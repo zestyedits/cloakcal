@@ -32,3 +32,19 @@ export function audienceIdOf(option: AudienceOption): string {
   if (option.kind === 'owner' || option.kind === 'public') return option.kind
   return `${option.kind === 'group' ? 'group' : 'contact'}:${option.id}`
 }
+
+/**
+ * The URL for previewing as an audience, keeping every other query param.
+ *
+ * One implementation because there are now two doors into preview — the sidebar's picker
+ * and the Cloak sheet's per-person rows — and the last time this screen had two ways to do
+ * one thing, they were two live copies of the same control fighting over the same state.
+ * Owner DELETES the param rather than setting `as=owner`, so the plain calendar URL stays
+ * the plain calendar URL.
+ */
+export function audienceHref(currentQuery: string, audienceId: string): string {
+  const next = new URLSearchParams(currentQuery)
+  if (audienceId === 'owner') next.delete('as')
+  else next.set('as', audienceId)
+  return next.size > 0 ? `/?${next.toString()}` : '/'
+}

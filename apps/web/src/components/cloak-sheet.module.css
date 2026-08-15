@@ -46,11 +46,41 @@
   white-space: nowrap;
 }
 
+/* The row the calendar behind this sheet is currently redacted for. Accent as a SHAPE —
+   a left rule and a tinted ground — never as ink, which is the pair CONTRAST_PAIRS pins
+   at 3:1 in both themes. */
+.audience[data-viewing] {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-overlay);
+}
+
 .consequence {
   width: 100%;
   margin: 0;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+/* Full-width beneath the chip and sentence rather than crowded onto the name row: the
+   name can be long, and a control that shuffles position as names change is a control
+   people mis-tap. The Button owns the 44px floor. */
+.preview {
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: var(--space-1);
+}
+
+.viewingNow {
+  width: 100%;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.exitPreview {
+  align-self: flex-start;
+  margin-top: var(--space-3);
 }
 
 .settingsLink {

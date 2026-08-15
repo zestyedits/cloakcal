@@ -101,3 +101,33 @@ test('the owner response does carry ciphertext, proving the previous test is not
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
   expect(bodies.join('\n')).toContain('aes-256-gcm-v1')
 })
+
+/**
+ * The Cloak sheet as the second door into preview.
+ *
+ * It used to contain a copy of the sidebar's picker; the rows carry the action now, so
+ * these assert the door still opens and, more importantly, that it closes again — a sheet
+ * that could take you into someone else's view and not out of it would be a trap.
+ */
+
+test('the Cloak sheet previews from a row and offers the way back', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+
+  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+
+  await dialog.getByRole('button', { name: /^View as / }).first().click()
+  await expect(page).toHaveURL(/as=/)
+  // The sheet closes on its way out: it is a modal over the page that just changed
+  // underneath it, and leaving it up would cover the answer.
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // The sidebar bar is where the resulting MODE is visible, which is why it stayed.
+  await expect(page.getByRole('combobox', { name: /viewing as/i })).not.toHaveValue('owner')
+
+  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  await page.getByRole('button', { name: 'Back to my own view' }).click()
+  await expect(page).not.toHaveURL(/as=/)
+})

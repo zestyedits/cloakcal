@@ -792,7 +792,6 @@ export function CalendarScreen({
             <CloakSheet
               audiences={audiences}
               currentAudience={page.audience}
-              withheldCount={page.withheldCount}
               workspaceRules={workspaceRules}
               groupsByContact={groupsByContact}
               onClose={() => setCloakOpen(false)}
