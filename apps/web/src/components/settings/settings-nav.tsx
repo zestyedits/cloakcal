@@ -25,10 +25,25 @@ import styles from './settings.module.css'
 export function SettingsNav({
   current,
   scope = 'hash',
+  onSelect,
 }: {
   current: string | null
   /** `hash` on /settings, where the sections are on the page; `settings` from a sub-page. */
   scope?: 'hash' | 'settings'
+  /**
+   * Handle the click instead of letting the browser follow the anchor.
+   *
+   * THE BUG THIS EXISTS FOR. A rail link is an `#id`, so the browser jumps to that section
+   * the instant it is clicked — and only THEN does the accordion close the tall band above
+   * it. The page shrinks by however tall that band was, the scroll offset the browser just
+   * set is now past the end of a shorter document, and the reader lands at the bottom.
+   * Nothing was wrong with the destination; the layout moved out from under it.
+   *
+   * So the jump has to not happen, and the scrolling has to wait until the page has settled
+   * into its new height. Only /settings passes this — from a sub-page the link is a real
+   * navigation and must stay one.
+   */
+  onSelect?: (id: string) => void
 }) {
   const listRef = useRef<HTMLElement | null>(null)
   const [marker, setMarker] = useState<{ x: number; y: number; w: number; h: number } | null>(
@@ -96,6 +111,21 @@ export function SettingsNav({
           className={styles.navLink}
           href={scope === 'hash' ? `#${section.id}` : `/settings#${section.id}`}
           aria-current={section.id === current ? 'true' : undefined}
+          onClick={
+            onSelect === undefined
+              ? undefined
+              : (event) => {
+                  // Modified clicks still belong to the browser: open-in-new-tab on a
+                  // settings anchor is rare but taking it away would be rude.
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                  event.preventDefault()
+                  // replaceState, not a hash assignment: the address stays shareable and
+                  // the back button does not fill with five settings sections, and no
+                  // `hashchange` fires to race the state update below.
+                  history.replaceState(null, '', `#${section.id}`)
+                  onSelect(section.id)
+                }
+          }
         >
           {/* The index that ties the rail to the plate: the same figure heads the band. */}
           <span className={styles.navIndex} aria-hidden="true">

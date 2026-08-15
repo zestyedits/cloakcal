@@ -171,32 +171,88 @@ export function SettingsScreen({
    */
   const [openSectionId, setOpenSectionId] = useState<string | null>('appearance')
 
-  // A hash opens what it names, and closes whatever else was open.
+  /**
+   * The section the reader last CHOSE, which pins the rail until they scroll away.
+   *
+   * Owned here rather than read back out of the URL, because the rail writes the hash with
+   * `replaceState` — which fires no `hashchange`, so a hash-derived pin never engaged and
+   * the marker snapped straight back to whatever the scroll tracker said. Clicking Security
+   * left the rail pointing at Calendars.
+   */
+  const [pinnedSection, setPinnedSection] = useState<string | null>(null)
+  const openSection = useVisibleSection(SECTION_IDS, pinnedSection)
+
+  // A hash, on arrival or from the back button, opens what it names and pins it.
   useEffect(() => {
-    if (hashSection !== null) setOpenSectionId(hashSection)
+    if (hashSection === null) return
+    setOpenSectionId(hashSection)
+    setPinnedSection(hashSection)
   }, [hashSection])
 
   /**
-   * Bring a newly opened band to the reader rather than leaving them to find it.
+   * Open or close a band. NO scrolling here, deliberately.
    *
-   * `scroll-margin-top` on the section already keeps the heading clear of the sticky bar,
-   * so this only has to ask. `block: 'nearest'` means a band already in view does not move,
-   * which matters: scrolling a section that was fine where it was is more disorienting than
-   * not scrolling at all.
+   * This used to scroll the newly opened band into view, which was the second half of the
+   * jump-to-the-bottom bug: clicking a rail item fired the browser's anchor jump AND this,
+   * both against a layout that was still collapsing the previous band. Clicking a summary
+   * needs no scroll at all — the reader's pointer is already on the thing that just opened,
+   * and the content expands underneath it, which is exactly where they are looking.
    */
   const openBand = (id: string, next: boolean) => {
     setOpenSectionId(next ? id : (previous) => (previous === id ? null : previous))
-    if (!next) return
-    requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-    })
+  }
+
+  /**
+   * A rail click: open the band, then bring it into view ONCE THE PAGE HAS SETTLED.
+   *
+   * Two frames, not one. The first lets React commit the new open state; the second lets
+   * the browser lay out the shorter document that results from closing the previous band.
+   * Scrolling before either has happened is scrolling to a position that is about to mean
+   * something else, which is how this landed at the bottom of the page.
+   *
+   * `block: 'nearest'` because with one band open at a time the target is usually already
+   * on screen, and moving a section that was fine where it was is worse than not moving.
+   */
+  const selectBand = (id: string) => {
+    setOpenSectionId(id)
+    setPinnedSection(id)
+
+    /**
+     * WAIT FOR THE DISCLOSURE TO FINISH, then scroll only if there is a reason to.
+     *
+     * Two rounds of this landed at the foot of the page, for two different reasons, and the
+     * second is the interesting one:
+     *
+     *   1. `scrollIntoView` on the `<details>` fits the ELEMENT, and an open band is taller
+     *      than the viewport, so "nearest" pushed the page down until its bottom edge
+     *      showed. The summary is one row, so it asks for far less.
+     *   2. Even then, two animation frames is not long enough. The band being CLOSED is
+     *      still mid-collapse, so the target summary is measured hundreds of pixels lower
+     *      than where it is about to be — the scroll was correct for a layout that no longer
+     *      existed by the time it landed, and the shrinking document then clamped it to the
+     *      bottom.
+     *
+     * So this waits out the transition and then checks whether a scroll is warranted at all.
+     * With one band open the whole plate is usually on screen and the answer is no, which is
+     * the right answer: the least disorienting scroll is the one that does not happen.
+     */
+    const motion = getComputedStyle(document.documentElement).getPropertyValue('--duration-base')
+    const settle = Number.parseFloat(motion) || 220
+    window.setTimeout(() => {
+      const summary = document.getElementById(id)?.querySelector('summary')
+      if (summary === null || summary === undefined) return
+      const box = summary.getBoundingClientRect()
+      const headroom = 96
+      const clear = box.top >= headroom && box.bottom <= window.innerHeight
+      if (clear) return
+      summary.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }, settle + 40)
   }
   /**
    * Where the reader IS, not where they were sent. A hash stops being the answer the moment
    * someone scrolls, and a rail that keeps pointing at the last thing they clicked is a rail
    * that is quietly wrong most of the time.
    */
-  const openSection = useVisibleSection(SECTION_IDS, hashSection)
 
   // The provider's page: calendars carry their sealed names; occurrences are empty because
   // settings renders none. Withheld/audience fields are the owner's trivially.
@@ -277,7 +333,7 @@ export function SettingsScreen({
             </p>
           )}
 
-          <SettingsNav current={openSection} />
+          <SettingsNav current={openSection} onSelect={selectBand} />
 
           <main id="main" className={styles.sections}>
             <SettingsSection
