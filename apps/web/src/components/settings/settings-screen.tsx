@@ -4,7 +4,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
-import type { SettingsCalendar, SettingsDevice, WorkspacePrefs } from '@/server/settings'
+import type { CalendarPrefs, SettingsCalendar, SettingsDevice } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { CloakHomeLink } from '../cloak-logo'
@@ -42,6 +42,14 @@ const SECTIONS = [
 ] as const
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** The summary row showed the raw enum, so it read "opens on agenda" mid-sentence. */
+const VIEW_NAMES: Record<CalendarPrefs['defaultView'], string> = {
+  agenda: 'Agenda',
+  week: 'Week',
+  day: 'Day',
+  month: 'Month',
+}
 
 /**
  * One collapsible section card, on native <details> — keyboard and screen-reader
@@ -99,7 +107,10 @@ function useOpenOnHash() {
 export interface SettingsProps {
   readonly email: string
   readonly fixtureMode: boolean
-  readonly prefs: WorkspacePrefs | null
+  /** Display preferences, from the workspace row or from the demo cookie. */
+  readonly prefs: CalendarPrefs | null
+  /** Null in the demo and for a signed-in user with no workspace yet: nothing to write to. */
+  readonly workspaceId: string | null
   readonly calendars: readonly SettingsCalendar[]
   readonly devices: readonly SettingsDevice[]
   readonly audiences: readonly AudienceOption[]
@@ -111,13 +122,13 @@ export function SettingsScreen({
   email,
   fixtureMode,
   prefs,
+  workspaceId,
   calendars,
   devices,
   audiences,
   workspaceRules,
   groupsByContact,
 }: SettingsProps) {
-  const workspaceId = prefs?.workspaceId ?? null
   useOpenOnHash()
 
   // The provider's page: calendars carry their sealed names; occurrences are empty because
@@ -188,7 +199,7 @@ export function SettingsScreen({
               state={
                 prefs === null
                   ? 'Not set up yet'
-                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]} · opens on ${prefs.defaultView}`
+                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]} · opens on ${VIEW_NAMES[prefs.defaultView]}`
               }
             >
               <TimeRegionSection

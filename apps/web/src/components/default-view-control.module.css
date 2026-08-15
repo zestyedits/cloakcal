@@ -1,0 +1,38 @@
+/* "Make this my default view" — sidebar chrome, so it must read as quieter than the
+   things it sits between (the mini month above, the View As trust card below). Ghost
+   Button plus tertiary ink; nothing here competes for attention until you want it. */
+
+.control {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* Full width so the label wraps inside the sidebar rather than pushing it wider. The
+   Button owns its own min-height, which is where the 44px floor comes from. */
+.control > button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* The satisfied state. A sentence, not a disabled button: a control you cannot press
+   makes people hunt for the reason it is off. */
+.settled {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Inherits the sentence's own tertiary ink rather than taking --status-success. The raw
+   status colours are SHAPE colours, checked against a surface at 3:1 and not against the
+   4.5:1 that text owes; a tick rendered in one would be the third time this project
+   shipped that mistake. It is aria-hidden and decorative either way. */
+.tick {
+  font-size: var(--text-sm);
+  line-height: 1;
+}

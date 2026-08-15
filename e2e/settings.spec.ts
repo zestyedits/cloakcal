@@ -2,10 +2,15 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
 /**
- * /settings under the dev fixture: no workspace and no session, so every section renders
- * with controls disabled and honest copy. That split is deliberate and mirrors the CRUD
- * suite — e2e owns structure, headings, targets and honesty; the db tests own what the
- * RPCs actually do. A fixture that could mutate would prove less, not more.
+ * /settings under the dev fixture: no workspace and no session, so everything needing a
+ * row to write to renders disabled with honest copy. That split is deliberate and mirrors
+ * the CRUD suite — e2e owns structure, headings, targets and honesty; the db tests own what
+ * the RPCs actually do. A fixture that could mutate real data would prove less, not more.
+ *
+ * The four DISPLAY preferences are the exception, and it is not a weakening. They now write
+ * to a cookie (lib/demo-prefs.ts), so the demo can show them working without touching an
+ * account. The rule the old assertions were protecting — never render a control that does
+ * nothing — is better served by a control that does something than by a grey one.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -40,19 +45,34 @@ test('sections are closed by default with their state on the row', async ({ page
   await expect(page.locator('#calendars')).toHaveAttribute('open', '')
 })
 
-test('demo mode says so instead of offering dead controls', async ({ page }) => {
-  // Sections that need a workspace disable with the same honest sentence, not a spinner
-  // and not a silent no-op.
+test('demo display preferences work, and say where they are kept', async ({ page }) => {
   await page.getByRole('heading', { level: 2, name: 'Time & region' }).click()
+  await expect(page.getByText(/kept in this browser only/)).toBeVisible()
+
+  for (const label of ['Timezone', 'Week starts on', 'Default view', 'Keyboard shortcuts']) {
+    await expect(page.getByLabel(label)).toBeEnabled()
+  }
+
+  // The demo models a user who OPTED IN to single-key shortcuts, which is why the hotkey
+  // suite has a live keyboard to test. It is not the product default: WCAG 2.1.4 wants
+  // those off until asked for, and that default is pinned where it lives, on the 0022
+  // column and its db test, rather than being inferred from a fixture.
+  await expect(page.getByLabel('Keyboard shortcuts')).toHaveValue('on')
+
+  // The one that matters most, end to end: choose it, reload, it is still chosen. A
+  // preference that forgets on refresh is worse than one that is disabled, because it
+  // looks like it worked.
+  await page.getByLabel('Default view').selectOption('month')
+  await page.reload()
+  await page.getByRole('heading', { level: 2, name: 'Time & region' }).click()
+  await expect(page.getByLabel('Default view')).toHaveValue('month')
+})
+
+test('sections with no demo write path stay honestly disabled', async ({ page }) => {
+  // Everything that would touch real rows is still inert, with a sentence rather than a
+  // spinner or a silent no-op. Only display preferences got a demo destination.
+  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
   await expect(page.getByText(/Demo data\. Sign in/).first()).toBeVisible()
-  await expect(page.getByLabel('Timezone')).toBeDisabled()
-  await expect(page.getByLabel('Week starts on')).toBeDisabled()
-  await expect(page.getByLabel('Opens on')).toBeDisabled()
-  // Present AND defaulting to off: the toggle is the WCAG 2.1.4 compliance mechanism for
-  // the single-key shortcuts, so its default is part of the guarantee, not a style choice.
-  const shortcuts = page.getByLabel('Keyboard shortcuts')
-  await expect(shortcuts).toBeDisabled()
-  await expect(shortcuts).toHaveValue('off')
 })
 
 test('the People card is a signpost into the book, not a second manager', async ({ page }) => {

@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
+import { canSavePrefs, saveCalendarPrefs } from '@/lib/save-prefs'
+import type { CalendarPrefs, CalendarViewPref } from '@/server/settings'
+import type { WeekStart } from '@/server/range'
 import { InlineError } from '../ui/inline-error'
 import styles from './settings.module.css'
 
@@ -27,6 +29,13 @@ const VIEWS = [
  * On success, `router.refresh()` — the server re-frames the week in the new zone, which is
  * the visible proof the setting did something (ADR 0001: display framing only; a 9:00
  * meeting stays at 9:00).
+ *
+ * TWO destinations, one set of controls. A real account writes `set_workspace_prefs`; the
+ * demo writes a cookie the server reads back (lib/demo-prefs.ts). The demo used to have no
+ * destination at all, so all four selects rendered disabled — which made the page read as
+ * unfinished and made "opens on the view I chose" untryable without an account. Only the
+ * "nobody is signed in and this is not the demo either" case is still inert, because then
+ * there genuinely is nowhere to put the value.
  */
 export function TimeRegionSection({
   workspaceId,
@@ -39,8 +48,8 @@ export function TimeRegionSection({
   workspaceId: string | null
   fixtureMode: boolean
   timezone: string | null
-  weekStart: number
-  defaultView: string
+  weekStart: WeekStart
+  defaultView: CalendarViewPref
   keyboardShortcuts: boolean
 }) {
   const router = useRouter()
@@ -56,26 +65,14 @@ export function TimeRegionSection({
       : supported
   }, [timezone])
 
-  const disabled = workspaceId === null || busy
+  const target = { demo: fixtureMode, workspaceId }
+  const disabled = !canSavePrefs(target) || busy
 
-  const save = async (patch: {
-    timezone?: string
-    weekStart?: number
-    defaultView?: string
-    keyboardShortcuts?: boolean
-  }) => {
-    if (workspaceId === null) return
+  const save = async (patch: Partial<CalendarPrefs>) => {
     setBusy(true)
     setError(null)
     try {
-      const { error: rpcError } = await supabaseBrowser().rpc('set_workspace_prefs', {
-        p_workspace_id: workspaceId,
-        p_timezone: patch.timezone ?? null,
-        p_week_start: patch.weekStart ?? null,
-        p_default_view: patch.defaultView ?? null,
-        p_keyboard_shortcuts: patch.keyboardShortcuts ?? null,
-      })
-      if (rpcError !== null) throw rpcError
+      await saveCalendarPrefs(target, patch)
       router.refresh()
     } catch (caught) {
       setError(rpcErrorMessage(caught))
@@ -93,12 +90,15 @@ export function TimeRegionSection({
 
       <InlineError>{error}</InlineError>
 
-      {workspaceId === null && (
+      {fixtureMode ? (
         <p className={styles.lockedNote}>
-          {fixtureMode
-            ? 'Demo data. Sign in to change these.'
-            : 'These arrive once your calendar is set up.'}
+          Demo. These choices are kept in this browser only, so you can try them without
+          an account.
         </p>
+      ) : (
+        workspaceId === null && (
+          <p className={styles.lockedNote}>These arrive once your calendar is set up.</p>
+        )
       )}
 
       <div className={styles.controls}>
@@ -130,7 +130,7 @@ export function TimeRegionSection({
             className={styles.select}
             value={weekStart}
             disabled={disabled}
-            onChange={(event) => void save({ weekStart: Number(event.target.value) })}
+            onChange={(event) => void save({ weekStart: Number(event.target.value) as WeekStart })}
           >
             {WEEKDAYS.map((day, index) => (
               <option key={day} value={index}>
@@ -141,15 +141,21 @@ export function TimeRegionSection({
         </div>
 
         <div>
+          {/* "Default view", not the old "Opens on". The feature was built, shipped and
+              invisible: nobody looking for it searches the page for "opens", and it sits
+              inside a card called Time & region that is closed by default. The words a
+              person would actually look for are the cheapest fix available. */}
           <label className={styles.fieldLabel} htmlFor="settings-default-view">
-            Opens on
+            Default view
           </label>
           <select
             id="settings-default-view"
             className={styles.select}
             value={defaultView}
             disabled={disabled}
-            onChange={(event) => void save({ defaultView: event.target.value })}
+            onChange={(event) =>
+              void save({ defaultView: event.target.value as CalendarViewPref })
+            }
           >
             {VIEWS.map(([value, label]) => (
               <option key={value} value={value}>

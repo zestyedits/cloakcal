@@ -17,14 +17,26 @@ import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
 
 export type CalendarViewPref = 'agenda' | 'week' | 'day' | 'month'
 
-export interface WorkspacePrefs {
-  readonly workspaceId: string
+/**
+ * The four preferences that frame a calendar render, WITHOUT saying where they came from.
+ *
+ * Split out from WorkspacePrefs so the demo's cookie-backed prefs (lib/demo-prefs.ts) can
+ * satisfy the same shape: `app/page.tsx` then reads one object and does not branch on
+ * whether there is an account behind it. The workspace id is the part that genuinely
+ * differs, and it stays below — a demo has no row to write to, and code that needs an id
+ * should not be handed a plausible-looking fake one.
+ */
+export interface CalendarPrefs {
   readonly timezone: string
   readonly weekStart: WeekStart
   /** The view `/` opens on when the URL names none. `?view=` always wins. */
   readonly defaultView: CalendarViewPref
   /** Single-key shortcuts are opt-in (WCAG 2.1.4 route one): off until turned on. */
   readonly keyboardShortcuts: boolean
+}
+
+export interface WorkspacePrefs extends CalendarPrefs {
+  readonly workspaceId: string
 }
 
 const VIEW_PREFS: readonly CalendarViewPref[] = ['agenda', 'week', 'day', 'month']
