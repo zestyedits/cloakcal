@@ -9,6 +9,7 @@ import { CALENDAR_VIEWS, VIEW_LABELS } from '@/lib/calendar-views'
 import type { CalendarView } from '../calendar-screen'
 import { useRouter } from 'next/navigation'
 import { InlineError } from '../ui/inline-error'
+import { HOTKEYS, HOTKEY_CAVEAT } from '@/lib/hotkeys'
 import styles from './settings.module.css'
 
 /**
@@ -137,10 +138,14 @@ export function AppearanceSection({
         <label className={styles.fieldLabel} htmlFor="settings-keyboard">
           Keyboard shortcuts
         </label>
-        {/* A select, not a bare checkbox: same control family as the rest of the page, and
-            the two options state their consequence instead of a naked on/off. Off is the
-            default on purpose — single-key shortcuts are opt-in (WCAG 2.1.4), and
-            speech-input users trigger them with ordinary dictation. */}
+        {/* A select, not a bare checkbox: same control family as the rest of the page. Off
+            is the default on purpose — single-key shortcuts are opt-in (WCAG 2.1.4), and
+            speech-input users trigger them with ordinary dictation.
+
+            The option labels are now plainly "Off" and "On". The on-label used to read
+            "On: t, arrows, j/k, 1-4, n, ?", which listed the keys and none of their
+            meanings — everything a reader needed to make the decision was missing from the
+            one place the decision is made. The list below says what they do instead. */}
         <select
           id="settings-keyboard"
           className={styles.select}
@@ -149,8 +154,22 @@ export function AppearanceSection({
           onChange={(event) => void save({ keyboardShortcuts: event.target.value === 'on' })}
         >
           <option value="off">Off</option>
-          <option value="on">On: t, arrows, j/k, 1-4, n, ?</option>
+          <option value="on">On</option>
         </select>
+        <p className={styles.fieldNote}>{HOTKEY_CAVEAT}</p>
+
+        {/* Shown whichever way the switch is set: someone deciding to turn these ON needs
+            to see what they are getting, and that is exactly when the setting is still off. */}
+        <dl className={styles.keyList}>
+          {HOTKEYS.map(([keys, action]) => (
+            <div key={keys} className={styles.keyRow}>
+              <dt className={styles.keyCombo}>
+                <kbd>{keys}</kbd>
+              </dt>
+              <dd className={styles.keyAction}>{action}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </>
   )

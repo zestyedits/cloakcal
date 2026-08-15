@@ -99,7 +99,18 @@ test('? opens the shortcut help, which scans clean and closes on Escape', async 
   await page.keyboard.press('?')
   const help = page.getByRole('dialog', { name: 'Keyboard shortcuts' })
   await expect(help).toBeVisible()
-  await expect(help.getByText('Shortcuts are ignored while you are typing.')).toBeVisible()
+  // The overlay and the Settings control now describe the SAME list from lib/hotkeys.ts,
+  // and both carry the same caveat. Matched on its two conditions rather than on the exact
+  // sentence: what has to stay true is that a reader is told shortcuts take no modifier and
+  // go quiet while typing, not that the wording never improves.
+  await expect(help.getByText(/no Ctrl or Cmd/i)).toBeVisible()
+  await expect(help.getByText(/while you are typing/i)).toBeVisible()
+
+  // Every binding is described by an ACTION, not only named by its key. The Settings
+  // control used to offer "On: t, arrows, j/k, 1-4, n, ?" and nothing else, which told a
+  // reader deciding whether to enable them precisely nothing about what they do.
+  await expect(help.getByText('Jump to today')).toBeVisible()
+  await expect(help.getByText('New event')).toBeVisible()
 
   // A control behind a keypress is still a control nobody tested unless a spec opens it.
   const results = await new AxeBuilder({ page })

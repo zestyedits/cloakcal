@@ -53,7 +53,8 @@ function SettingsSection({
   title,
   description,
   state,
-  defaultOpen = false,
+  open,
+  onOpen,
   children,
 }: {
   id: string
@@ -62,11 +63,20 @@ function SettingsSection({
   description: string
   /** Plain-language current value shown while closed. */
   state: string
-  defaultOpen?: boolean
+  /** Controlled: the page opens ONE band at a time (see openSection). */
+  open: boolean
+  onOpen: (next: boolean) => void
   children: ReactNode
 }) {
   return (
-    <details id={id} className={styles.section} open={defaultOpen}>
+    <details
+      id={id}
+      className={styles.section}
+      open={open}
+      /* onToggle, not onClick: `details` also opens from the keyboard, from find-in-page
+         and from a `#hash`, and a click handler would miss all three. */
+      onToggle={(event) => onOpen(event.currentTarget.open)}
+    >
       <summary className={styles.summary}>
         <span className={styles.summaryText}>
           <h2 className={styles.sectionTitle}>{title}</h2>
@@ -150,6 +160,37 @@ export function SettingsScreen({
   groupsByContact,
 }: SettingsProps) {
   const hashSection = useOpenOnHash()
+  /**
+   * ONE band open at a time.
+   *
+   * Every band staying open grew the plate without limit, so opening the fifth thing left
+   * it pinned to the bottom of a very long page under four expanded ones you were no longer
+   * reading. An accordion keeps the plate a legible size and keeps the rail's marker
+   * meaningful, since "the section you are in" stops being a useful idea when five of them
+   * are in view.
+   */
+  const [openSectionId, setOpenSectionId] = useState<string | null>('appearance')
+
+  // A hash opens what it names, and closes whatever else was open.
+  useEffect(() => {
+    if (hashSection !== null) setOpenSectionId(hashSection)
+  }, [hashSection])
+
+  /**
+   * Bring a newly opened band to the reader rather than leaving them to find it.
+   *
+   * `scroll-margin-top` on the section already keeps the heading clear of the sticky bar,
+   * so this only has to ask. `block: 'nearest'` means a band already in view does not move,
+   * which matters: scrolling a section that was fine where it was is more disorienting than
+   * not scrolling at all.
+   */
+  const openBand = (id: string, next: boolean) => {
+    setOpenSectionId(next ? id : (previous) => (previous === id ? null : previous))
+    if (!next) return
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
   /**
    * Where the reader IS, not where they were sent. A hash stops being the answer the moment
    * someone scrolls, and a rail that keeps pointing at the last thing they clicked is a rail
@@ -241,12 +282,13 @@ export function SettingsScreen({
           <main id="main" className={styles.sections}>
             <SettingsSection
               id="appearance"
+              open={openSectionId === 'appearance'}
+              onOpen={(next) => openBand('appearance', next)}
               title="Appearance"
               description={describe('appearance')}
               state={`${VIEW_LABELS[prefs?.defaultView ?? 'agenda']} · shortcuts ${
                 prefs?.keyboardShortcuts === true ? 'on' : 'off'
               }`}
-              defaultOpen
             >
               <AppearanceSection
                 workspaceId={workspaceId}
@@ -258,6 +300,8 @@ export function SettingsScreen({
 
             <SettingsSection
               id="time-region"
+              open={openSectionId === 'time-region'}
+              onOpen={(next) => openBand('time-region', next)}
               title="Time & region"
               description={describe('time-region')}
               state={
@@ -276,6 +320,8 @@ export function SettingsScreen({
 
             <SettingsSection
               id="calendars"
+              open={openSectionId === 'calendars'}
+              onOpen={(next) => openBand('calendars', next)}
               title="Calendars"
               description={describe('calendars')}
               state={`${calendars.length} ${calendars.length === 1 ? 'calendar' : 'calendars'}`}
@@ -291,6 +337,8 @@ export function SettingsScreen({
                 live in the person's file where the preview of them is. */}
             <SettingsSection
               id="sharing"
+              open={openSectionId === 'sharing'}
+              onOpen={(next) => openBand('sharing', next)}
               title="People & sharing"
               description={describe('sharing')}
               state={
@@ -334,6 +382,8 @@ export function SettingsScreen({
                 h1, so /settings rendered two h1s and a stray brand mark mid-scroll. */}
             <SettingsSection
               id="security"
+              open={openSectionId === 'security'}
+              onOpen={(next) => openBand('security', next)}
               title="Security"
               description={describe('security')}
               state="Password & recovery phrase"

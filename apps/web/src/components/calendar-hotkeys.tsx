@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { HOTKEYS, HOTKEY_CAVEAT } from '@/lib/hotkeys'
 import { stepQuery, todayQuery } from '@/lib/calendar-links'
 import { useCloakStore } from './cloak-provider'
 import type { CalendarView } from './calendar-screen'
@@ -135,17 +136,6 @@ export function CalendarHotkeys({
   return helpOpen ? <HotkeyHelp onClose={() => setHelpOpen(false)} /> : null
 }
 
-const BINDINGS: ReadonlyArray<readonly [keys: string, action: string]> = [
-  ['t', 'Today'],
-  ['← or k', 'Previous period'],
-  ['→ or j', 'Next period'],
-  ['1', 'Agenda'],
-  ['2', 'Week'],
-  ['3', 'Day'],
-  ['4', 'Month'],
-  ['n', 'New event'],
-  ['?', 'This list'],
-]
 
 function HotkeyHelp({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -171,7 +161,7 @@ function HotkeyHelp({ onClose }: { onClose: () => void }) {
         Keyboard shortcuts
       </h2>
       <dl className={styles.list}>
-        {BINDINGS.map(([keys, action]) => (
+        {HOTKEYS.map(([keys, action]) => (
           <div key={keys} className={styles.row}>
             <dt className={styles.keys}>
               <kbd>{keys}</kbd>
@@ -180,7 +170,7 @@ function HotkeyHelp({ onClose }: { onClose: () => void }) {
           </div>
         ))}
       </dl>
-      <p className={styles.note}>Shortcuts are ignored while you are typing.</p>
+      <p className={styles.note}>{HOTKEY_CAVEAT}</p>
       <button type="button" className={styles.close} onClick={onClose}>
         Close
       </button>

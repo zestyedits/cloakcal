@@ -25,6 +25,13 @@
  * component is how a design system rots.
  */
 
+/* Lets `auto` be an endpoint of a transition, which is what makes a disclosure able to
+   glide to its natural height instead of jumping to it. Ignored where unsupported, and
+   nothing depends on it: see .section::details-content in settings.module.css. */
+:root {
+  interpolate-size: allow-keywords;
+}
+
 :root {
   /* ---------------------------------------------------------------------
    * Brand ramp — literal values from the Visual Guide. Do not use directly.

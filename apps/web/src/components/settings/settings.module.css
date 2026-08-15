@@ -177,6 +177,41 @@
   scroll-margin-top: calc(var(--touch-min) + var(--space-6));
 }
 
+/* THE DISCLOSURE GLIDES.
+
+   `<details>` has no animation of its own: the body is simply absent and then present, so
+   the plate jumped to a new height and the band you just opened arrived already at the
+   bottom of it. `::details-content` is what makes the box animatable at all, and
+   `interpolate-size: allow-keywords` (set on :root) is what lets `auto` be a transition
+   endpoint — without it there is no height to travel to and the whole thing stays a jump.
+
+   PROGRESSIVE, not required. Browsers without `::details-content` ignore every line here
+   and get exactly today's instant open, which is correct rather than broken. Nothing about
+   the disclosure's behaviour depends on the animation running. */
+.section::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--duration-base) var(--ease-decelerate),
+    content-visibility var(--duration-base) allow-discrete;
+}
+
+.section[open]::details-content {
+  block-size: auto;
+}
+
+/* The chevron turns with the body rather than snapping ahead of it. */
+.summaryChevron {
+  transition: transform var(--duration-base) var(--ease-decelerate);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section::details-content,
+  .summaryChevron {
+    transition: none;
+  }
+}
+
 .section + .section,
 .section + .band,
 .band + .section {
@@ -644,4 +679,45 @@
 
 .band {
   composes: band from '../panel.module.css';
+}
+
+/* The shortcut list, in Settings.
+
+   Shown whether the setting is on or off, because the moment a reader is deciding is the
+   moment it is still off. The old control offered "On: t, arrows, j/k, 1-4, n, ?" and
+   nothing else — every key named, not one of their meanings. */
+.keyList {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+}
+
+.keyRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.keyCombo {
+  flex: none;
+  /* Wide enough for "← or k" so every action starts on one line. */
+  min-width: 5rem;
+}
+
+.keyCombo kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--numeral-ink);
+}
+
+.keyAction {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
