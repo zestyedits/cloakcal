@@ -7,6 +7,7 @@ import {
   RewrapHalfAppliedError,
   WrongRecoveryPhraseError,
   rewrapPasswordWrap,
+  persistUnlockedSession,
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
 import { supabaseBrowser } from '@/lib/supabase/client'
@@ -162,8 +163,14 @@ export function RecoverForm() {
       setWorking('Re-locking it to your new password')
       await rewrapPasswordWrap(rootKey, address, password)
 
-      // Straight to the calendar: the session is valid and the key is already open, so
-      // bouncing through sign-in would only ask for the password just chosen.
+      // UNLOCK BEFORE NAVIGATING. This step was missing, and the comment that stood here
+      // claimed the opposite — "the key is already open" — which it was not:
+      // rootKeyFromRecoveryPhrase only unwraps, and nothing on this path had ever written
+      // the session to the vault. So the user finished recovery and was dropped straight
+      // onto the unlock panel, having just typed 24 words and chosen a password. The worst
+      // moment in the product to ask someone to authenticate again.
+      await persistUnlockedSession(address, rootKey)
+
       router.replace('/')
       router.refresh()
     } catch (caught) {

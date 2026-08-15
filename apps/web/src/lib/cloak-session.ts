@@ -286,17 +286,36 @@ export async function rootKeyFromPassword(email: string, password: string): Prom
   return unwrapWithPassword(password, email, wrap.kdf ?? CURRENT_KDF_PARAMS, wrap)
 }
 
+/**
+ * Persist an ALREADY-OPENED root key as this browser's unlocked session.
+ *
+ * Exists because opening the key and unlocking the browser are two different things, and a
+ * caller that has just done the first almost always wants the second. The recovery reset
+ * path proved that the hard way: it opened the key with the phrase, re-wrapped to the new
+ * password, and navigated home WITHOUT ever persisting a session — so someone who had just
+ * typed 24 words and chosen a password landed on the unlock panel and was asked to
+ * authenticate again, at the single worst moment in the product to hit a dead end. The
+ * comment there asserted the opposite of what the code did.
+ *
+ * Takes a RootKey rather than a credential on purpose: every route that opens the key —
+ * password, phrase, and passkey — ends here, so none of them can forget this step in its
+ * own way.
+ */
+export async function persistUnlockedSession(
+  email: string,
+  rootKey: RootKey,
+): Promise<CloakSession> {
+  const { data, error } = await supabaseBrowser().auth.getUser()
+  if (error !== null) throw error
+  return finishUnlock(data.user.id, email, rootKey)
+}
+
 /** Recovery path: the phrase opens the key, then the user sets a new password. */
 export async function unlockWithRecoveryPhrase(
   email: string,
   phrase: string,
 ): Promise<CloakSession> {
-  const supabase = supabaseBrowser()
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError !== null) throw userError
-
-  const rootKey = await rootKeyFromRecoveryPhrase(phrase)
-  return finishUnlock(userData.user.id, email, rootKey)
+  return persistUnlockedSession(email, await rootKeyFromRecoveryPhrase(phrase))
 }
 
 /**

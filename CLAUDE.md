@@ -265,9 +265,14 @@ client that writes v2 and still reads v1 — that work is next phase, behind an 
 with: padding sealed fields to length buckets (ciphertext length currently leaks content
 length), binding the plaintext times into the AES-GCM AAD so the server can see times but
 not forge them (Proton's model), and the per-calendar key layer for sharing. The KDF is
-Argon2id at exactly the OWASP floor (m=19456, t=2, p=1) with `assertKdfParams` refusing
-any server-supplied weakening; at-the-floor is fine today, above-the-floor is worth
-considering since the wrapped root key is servable to an offline attacker. **One real gap:
+Argon2id at m=65536, t=3, p=1 — 3.4x the OWASP memory floor, not at it. The floor
+(m=19456, t=2, p=1) is `KDF_FLOOR` in `packages/crypto/src/kdf.ts`, the value
+`assertKdfParams` refuses to go BELOW; `CURRENT_KDF_PARAMS` beside it is what is actually
+used. This note said "at exactly the floor" for months, which understates a security
+parameter and is the kind of wrong that invites someone to "correct" the code downward to
+match the docs. `assertKdfParams` refuses any server-supplied weakening, and being above
+the floor is the right posture here rather than a nicety: the wrapped root key is servable
+to an offline attacker, so the cost of a guess is the only thing making one expensive. **One real gap:
 there is NO Content-Security-Policy anywhere** — no headers in next.config.ts, none in
 middleware. For a browser-E2EE app XSS is total compromise, so a per-response-nonce CSP
 (ASVS V3.4.3 at L3) is the single highest-value security change on the board. Next phase,

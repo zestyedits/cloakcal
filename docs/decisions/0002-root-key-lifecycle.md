@@ -32,7 +32,7 @@ The server stores wrapped copies only, and only ones it cannot unwrap — see be
 |---|---|---|
 | Web / PWA | Non-extractable `CryptoKey` in IndexedDB | Wrapping keys are imported with `extractable = false`, so JavaScript cannot read the raw bytes back out. |
 | Future iOS / native | Keychain, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | Never synced to iCloud Keychain: that would move key material to a third party. |
-| Server | **Wrapped copies only** | `devices.wrapped_root_key`. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
+| Server | **Wrapped copies only** | `root_key_wraps`, one row per wrap kind. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
 | Backups / logs / telemetry | **Never** | Asserted by the leakage suite. |
 
 ## The three wraps (M3 — built)
@@ -118,7 +118,7 @@ it is why option 5.3(c) was declined at planning.
 
 - **Password change** rewraps the URK under a new Argon2id-derived KEK. Content is
   untouched — no re-encryption, because content keys derive from the URK, not the password.
-- **Device revocation** deletes that device's `wrapped_root_key` row and its access
+- **Device revocation** deletes that device's `root_key_wraps` row and its access
   envelopes. The URK itself is not rotated: a revoked device that retained a copy already
   had it, so rotation would be theatre unless content is also re-encrypted.
 - **True URK rotation** (after suspected compromise) requires re-encrypting every Cloaked
