@@ -260,6 +260,18 @@ test('the passkeys card is offered, and says why it cannot act in the demo', asy
   await expect(page.getByText('Demo. Sign in to add a passkey.')).toBeVisible()
 })
 
+test('the security page never scrolls sideways', async ({ page }) => {
+  await page.goto('/settings/security')
+  // The guard that belongs on any page growing a nowrap or fixed-width element. The passkey
+  // list is exactly that shape — a date, a monospace id and a 44px button on one line — and
+  // nothing else here measures it: axe does not, the target sweep does not, and the existing
+  // sideways assertion runs against /settings rather than this route.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(overflow).toBeLessThanOrEqual(0)
+})
+
 test('the roadmap no longer claims the phrase is the only way back', async ({ page }) => {
   await page.goto('/settings/security')
   // The empty devices state used to read "until then your recovery phrase is the single

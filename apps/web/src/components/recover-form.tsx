@@ -1,7 +1,7 @@
 'use client'
 
 import { isPasskeySupported } from '@/lib/passkey'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -59,6 +59,21 @@ export function RecoverForm() {
    */
   const [proof, setProof] = useState<'phrase' | 'passkey'>('phrase')
   const [passkeyOffered, setPasskeyOffered] = useState(false)
+  /**
+   * Whether the passkey default has already been applied, and whether the user has since
+   * overruled it. Both are refs because they must survive a re-render without causing one.
+   *
+   * THE BUG THIS PREVENTS. `onAuthStateChange` fires on ordinary token refreshes AND on
+   * USER_UPDATED, which `rewrapPasswordWrap` itself emits when it changes the account
+   * password. Re-running the default there flipped `proof` back to 'passkey' MID-SUBMIT:
+   * someone who deliberately chose the phrase, typed all 24 words and pressed the button
+   * would watch the page change its story to "Confirm it on your device" while Argon2id was
+   * still running and nothing was asking them to confirm anything. That is precisely the
+   * moment a worried person reloads, and the other side of that call has a real
+   * half-applied state.
+   */
+  const proofDefaulted = useRef(false)
+  const proofTouched = useRef(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -103,15 +118,19 @@ export function RecoverForm() {
      */
     const offerPasskey = () => {
       if (!isPasskeySupported()) return
+      // One shot. Every later auth event finds this already true and leaves the user's
+      // choice alone.
+      if (proofDefaulted.current) return
+      proofDefaulted.current = true
       void hasPasskey()
         .then((has) => {
-          if (!cancelled && has) {
-            setPasskeyOffered(true)
-            // Defaulted to, not merely offered. Someone who has a passkey and is standing on
-            // this page has forgotten something; the route that needs no memory should be
-            // the one already selected.
-            setProof('passkey')
-          }
+          if (cancelled || !has) return
+          setPasskeyOffered(true)
+          // Defaulted to, not merely offered. Someone who has a passkey and is standing on
+          // this page has forgotten something; the route that needs no memory should be
+          // the one already selected. Only if they have not already said otherwise — the
+          // read is async, so a fast user can beat it.
+          if (!proofTouched.current) setProof('passkey')
         })
         .catch(() => {
           // Not offering it is a complete answer. The phrase still works.
@@ -287,7 +306,10 @@ export function RecoverForm() {
                   value="passkey"
                   checked={proof === 'passkey'}
                   disabled={busy}
-                  onChange={() => setProof('passkey')}
+                  onChange={() => {
+                    proofTouched.current = true
+                    setProof('passkey')
+                  }}
                 />
                 My passkey
               </label>
@@ -298,7 +320,10 @@ export function RecoverForm() {
                   value="phrase"
                   checked={proof === 'phrase'}
                   disabled={busy}
-                  onChange={() => setProof('phrase')}
+                  onChange={() => {
+                    proofTouched.current = true
+                    setProof('phrase')
+                  }}
                 />
                 My 24-word recovery phrase
               </label>

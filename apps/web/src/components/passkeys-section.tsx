@@ -19,6 +19,7 @@ import {
   PasskeyUnsupportedError,
   isPasskeySupported,
 } from '@/lib/passkey'
+import { ProofFieldset, type Proof } from './proof-fieldset'
 import { InlineError } from './ui/inline-error'
 import { Button } from './ui/button'
 import styles from './auth.module.css'
@@ -41,8 +42,6 @@ import styles from './auth.module.css'
  * siblings rather than starting a third shape.
  */
 
-type Proof = 'password' | 'phrase'
-
 export function PasskeysSection({ email, demo }: { email: string; demo: boolean }) {
   /**
    * null means "not known yet", and the control renders DISABLED rather than absent while
@@ -63,6 +62,8 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmingRemoval, setConfirmingRemoval] = useState<string | null>(null)
+  /** Which row is being removed, so three registered passkeys do not all grey out at once. */
+  const [removing, setRemoving] = useState<string | null>(null)
 
   useEffect(() => {
     setSupported(isPasskeySupported())
@@ -99,6 +100,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
     event.preventDefault()
     setError(null)
     setNotice(null)
+    let registered = false
 
     try {
       setWorking('Opening your calendar')
@@ -118,7 +120,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
       setPassword('')
       setPhrase('')
       setNotice('That passkey can now open your calendar.')
-      setPasskeys(await listPasskeys())
+      registered = true
     } catch (caught) {
       // Cancelling a prompt is a normal outcome, not a failure. It goes to the neutral
       // notice rather than to InlineError, which is role="alert" and styled as danger.
@@ -127,20 +129,33 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
     } finally {
       setWorking(null)
     }
+
+    // OUTSIDE the try, deliberately. A transient failure refreshing the list is not a failed
+    // registration, and reporting it as one next to "that passkey can now open your calendar"
+    // invites someone to register a second credential they did not want.
+    if (registered) await refresh()
+  }
+
+  const refresh = async () => {
+    try {
+      setPasskeys(await listPasskeys())
+    } catch {
+      // Leave the previous list on screen rather than blanking it; it is stale, not wrong.
+    }
   }
 
   const remove = async (wrapId: string) => {
     setError(null)
     setNotice(null)
+    setRemoving(wrapId)
     try {
-      setWorking('Removing that passkey')
       await removePasskeyWrap(wrapId)
       setConfirmingRemoval(null)
-      setPasskeys(await listPasskeys())
+      await refresh()
     } catch (caught) {
       setError(messageFor(caught))
     } finally {
-      setWorking(null)
+      setRemoving(null)
     }
   }
 
@@ -176,9 +191,9 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
       )}
 
       {passkeys !== null && passkeys.length > 0 && (
-        <ul className={styles.phraseGrid} aria-label="Your passkeys">
+        <ul className={styles.keyList} aria-label="Your passkeys">
           {passkeys.map((passkey) => (
-            <li key={passkey.id} className={styles.choiceRow}>
+            <li key={passkey.id} className={styles.keyRow}>
               {/* The short credential id is what the SERVER files this passkey under, the
                   same convention the People register uses for contacts. There is no label
                   column, and inventing a friendly name the server would then store is a
@@ -190,7 +205,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={busy}
+                    disabled={removing !== null}
                     onClick={() => setConfirmingRemoval(null)}
                   >
                     Keep
@@ -198,7 +213,8 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
                   <Button
                     variant="danger"
                     size="sm"
-                    busy={busy}
+                    busy={removing === passkey.id}
+                    disabled={removing !== null}
                     onClick={() => void remove(passkey.id)}
                   >
                     Remove
@@ -208,7 +224,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={busy}
+                  disabled={removing !== null}
                   onClick={() => setConfirmingRemoval(passkey.id)}
                 >
                   Remove
@@ -228,63 +244,17 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
       )}
 
       <div className={styles.form}>
-        <fieldset className={styles.choice}>
-          <legend className={styles.label}>Confirm it is you with</legend>
-          <label className={styles.choiceRow}>
-            <input
-              type="radio"
-              name="passkey-proof"
-              value="password"
-              checked={proof === 'password'}
-              disabled={disabled}
-              onChange={() => setProof('password')}
-            />
-            My password
-          </label>
-          <label className={styles.choiceRow}>
-            <input
-              type="radio"
-              name="passkey-proof"
-              value="phrase"
-              checked={proof === 'phrase'}
-              disabled={disabled}
-              onChange={() => setProof('phrase')}
-            />
-            My recovery phrase
-          </label>
-        </fieldset>
-
-        {proof === 'password' ? (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="passkey-password">
-              Password
-            </label>
-            <input
-              id="passkey-password"
-              className={styles.input}
-              type="password"
-              autoComplete="current-password"
-              disabled={disabled}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-        ) : (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="passkey-phrase">
-              Recovery phrase (24 words)
-            </label>
-            <textarea
-              id="passkey-phrase"
-              className={styles.textarea}
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={disabled}
-              value={phrase}
-              onChange={(event) => setPhrase(event.target.value)}
-            />
-          </div>
-        )}
+        <ProofFieldset
+          idPrefix="passkey"
+          proof={proof}
+          onChange={setProof}
+          disabled={disabled}
+          passwordLabel="Password"
+          password={password}
+          onPassword={setPassword}
+          phrase={phrase}
+          onPhrase={setPhrase}
+        />
 
         {busy ? (
           <p className={styles.working} aria-live="polite">

@@ -120,10 +120,22 @@ export async function registerPasskey({
   userId,
   email,
   label,
+  existingCredentialIds = [],
 }: {
   userId: string
   email: string
   label: string
+  /**
+   * Credential ids this account already has a wrap for.
+   *
+   * Without these, registering a second passkey on the SAME platform authenticator — same
+   * rp, same user.id — replaces the resident credential instead of adding one. The first
+   * wrap row survives, still lists in Settings, and never answers an assertion again. That
+   * lands squarely on the last-wrap guard, which counts rows rather than working keys, so
+   * "that is the only way left in" could be satisfied by a wrap that opens nothing.
+   * Passing them lets the authenticator say "you already have one for this account".
+   */
+  existingCredentialIds?: readonly Uint8Array[]
 }): Promise<RegisteredPasskey> {
   if (!isPasskeySupported()) throw new PasskeyUnsupportedError()
 
@@ -153,6 +165,10 @@ export async function registerPasskey({
           userVerification: 'required',
           residentKey: 'preferred',
         },
+        excludeCredentials: existingCredentialIds.map((id) => ({
+          type: 'public-key' as const,
+          id: id as BufferSource,
+        })),
         timeout: CEREMONY_TIMEOUT_MS,
         extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
       },

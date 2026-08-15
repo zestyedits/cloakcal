@@ -362,9 +362,7 @@ export function SettingsScreen({
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Device pairing</span>
               <span className={styles.soon}>Coming soon</span>
-              Approve a new sign-in from a device you already trust. A passkey is the way in
-              that does not need the phrase now, so this is a convenience rather than the
-              fix it was once going to be.
+              Approve a new sign-in from a device you already trust.
             </p>
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Booking</span>

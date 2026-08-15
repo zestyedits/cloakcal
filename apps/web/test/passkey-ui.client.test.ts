@@ -53,7 +53,7 @@ describe('registering a passkey', () => {
   it('writes nothing before the PRF output exists', () => {
     // The insert lives inside registerPasskeyWrap, after evaluatePrf. A credential with no
     // wrap is a passkey sitting in someone's password manager opening nothing.
-    const prfAt = CLOAK_SESSION.indexOf('await registerPasskey({ userId, email, label })')
+    const prfAt = CLOAK_SESSION.indexOf('await registerPasskey({')
     const insertAt = CLOAK_SESSION.indexOf("from('root_key_wraps').insert({")
     expect(prfAt).toBeGreaterThan(-1)
     expect(prfAt).toBeLessThan(insertAt)
@@ -89,20 +89,22 @@ describe('the unlock panel', () => {
   })
 
   it('carries a working LABEL rather than a boolean', () => {
-    // The old hardcoded "Deriving your key" is false on the passkey path, where nothing is
-    // derived and the wait is the operating system's.
-    expect(UNLOCK_PANEL).toContain('useState<string | null>(null)')
+    // Named, not just typed: `useState<string | null>(null)` alone also matches `error` and
+    // `notice`, so reverting `working` to a boolean would have left this green.
+    expect(UNLOCK_PANEL).toMatch(/const \[working, setWorking\] = useState<string \| null>/u)
     expect(UNLOCK_PANEL).toContain("setWorking('Waiting for your passkey')")
   })
 
   it('does not wipe a typed password when a passkey attempt is cancelled', () => {
     // The submit path clears both fields in its finally. The passkey path must not, or
     // cancelling a prompt discards what the user was halfway through typing.
-    const passkeyFinally = UNLOCK_PANEL.slice(
-      UNLOCK_PANEL.indexOf('const runPasskey'),
-      UNLOCK_PANEL.indexOf('const submit'),
-    )
-    expect(passkeyFinally).not.toContain("setPassword('')")
+    const from = UNLOCK_PANEL.indexOf('const runPasskey')
+    const to = UNLOCK_PANEL.indexOf('const submit')
+    // Both markers must exist AND be in this order, or the slice is empty and `not.toContain`
+    // passes while checking nothing.
+    expect(from).toBeGreaterThan(-1)
+    expect(to).toBeGreaterThan(from)
+    expect(UNLOCK_PANEL.slice(from, to)).not.toContain("setPassword('')")
   })
 
   it('maps errors instead of surfacing raw messages', () => {
@@ -138,16 +140,14 @@ describe('/recover', () => {
     expect(rewrapAt).toBeLessThan(unlockAt)
   })
 
-  it('only offers a passkey once a session exists', () => {
-    // Reading a wrap needs a session, which the emailed link creates. Offering it on the
-    // request screen would raise a prompt whose read RLS then refuses.
-    expect(RECOVER_FORM).toContain('offerPasskey')
-    const requestScreen = RECOVER_FORM.indexOf("setScreen('request')")
-    const offerCalls = [...RECOVER_FORM.matchAll(/offerPasskey\(\)/gu)].map((m) => m.index ?? -1)
-    // Every CALL sits in a branch that has already established a session; none of them is
-    // adjacent to the request screen's own transition.
-    expect(offerCalls.length).toBeGreaterThan(0)
-    expect(offerCalls.every((at) => at !== requestScreen)).toBe(true)
+  it('applies the passkey default ONCE, so it cannot stomp a choice mid-submit', () => {
+    // onAuthStateChange fires on token refresh AND on USER_UPDATED, which rewrapPasswordWrap
+    // itself emits. Re-running the default there flipped `proof` back to 'passkey' while the
+    // user's chosen phrase was still being processed, swapping the page's story out from
+    // under them at the exact moment they might reload.
+    expect(RECOVER_FORM).toContain('if (proofDefaulted.current) return')
+    // And an explicit choice always wins over the async default, which can land later.
+    expect(RECOVER_FORM).toContain('if (!proofTouched.current) setProof')
   })
 
   it('does not tell a passkey user their wait is a slow derivation', () => {
@@ -162,10 +162,13 @@ describe('the demo branch', () => {
     // /settings/security is scanned by axe and swept for 44px targets, and BOTH only ever
     // see the demo branch, because Playwright has no session. A control rendered only for
     // signed-in users is a control no test has ever measured.
-    const demoBranch = SECURITY_SCREEN.slice(
-      SECURITY_SCREEN.indexOf('{demo ? ('),
-      SECURITY_SCREEN.indexOf("email === '' ?"),
-    )
-    expect(demoBranch).toContain('<PasskeysSection')
+    const from = SECURITY_SCREEN.indexOf('{demo ? (')
+    const to = SECURITY_SCREEN.indexOf("email === '' ?")
+    // Without these, a renamed marker gives indexOf -1, slice(a, -1) returns the rest of the
+    // file — which contains the SIGNED-IN PasskeysSection — and the test passes vacuously
+    // while the demo branch has nothing in it.
+    expect(from).toBeGreaterThan(-1)
+    expect(to).toBeGreaterThan(from)
+    expect(SECURITY_SCREEN.slice(from, to)).toContain('<PasskeysSection')
   })
 })

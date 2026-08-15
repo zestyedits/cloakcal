@@ -616,8 +616,10 @@ ID, Touch ID or a device PIN is the whole ceremony. The phrase is the last resor
 always meant to be rather than the only way in.
 
 **The security argument is user verification, and it is why this does not weaken anything.**
-The PRF output only exists after the authenticator verifies a human, so someone sitting at
-an unlocked laptop still cannot rotate a password or mint a new way in. No key material
+The PRF output only exists after the authenticator verifies a human, so the passkey route
+cannot be walked by someone sitting at an unlocked laptop. That is a property of THAT route,
+not of the account: a live session plus a known password still changes a password, as it
+always could. No key material
 lands in storage. That is the opposite trade from making the vault readable, which was
 considered and rejected — see the rewrite of ADR 0006 for what that would have cost.
 

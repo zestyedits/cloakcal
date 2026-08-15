@@ -714,7 +714,15 @@ export async function registerPasskeyWrap(
   if (userError !== null) throw userError
   const userId = userData.user.id
 
-  const { credentialId, prfSalt, prfOutput } = await registerPasskey({ userId, email, label })
+  // Existing credentials are excluded so a second registration on the same authenticator
+  // ADDS a passkey rather than silently replacing the one already wrapped here.
+  const existing = await loadPasskeyWraps()
+  const { credentialId, prfSalt, prfOutput } = await registerPasskey({
+    userId,
+    email,
+    label,
+    existingCredentialIds: existing.map((wrap) => fromPgBytea(wrap.credential_id)),
+  })
   const wrapped = await wrapRootKey(rootKey, await derivePasskeyWrapKey(prfOutput), 'passkey')
 
   const { error } = await supabase.from('root_key_wraps').insert({
