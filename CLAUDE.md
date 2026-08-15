@@ -148,8 +148,12 @@ that cannot distinguish "missing" from "not yours", an offline banner); and `/se
 appearance, time & region, calendars (recolour live while locked, rename not — the privacy
 model made visible), people, visibility defaults, security, honest coming-soon rows.
 
-**Migrations 0018–0020 are applied to production** (prefs incl. timezone + week_start,
-`update_calendar`, the four group RPCs 0017 never had), anon sweep clean. Two real defects
+**Migrations 0018–0022 are applied to production** (prefs incl. timezone + week_start,
+`update_calendar`, the four group RPCs 0017 never had, `create_calendar`, and
+`default_view` + `keyboard_shortcuts`), anon sweep clean. **Keep this line current.** It
+said "0018–0020" for two migrations longer than it was true, and the cost was real: the
+default-view feature read as unbuilt when it was shipped and deployed, so it got looked for
+in the code rather than in the UI where it was merely hidden. Two real defects
 found and fixed on the way: contact-name ciphertext was never INGESTED into the CloakStore
 (View As showed `Contact 4f2a…` forever on real accounts — invisible to e2e because fixture
 audiences carry no nameField; `CloakProvider` now takes `extraFields`), and real accounts
@@ -305,6 +309,42 @@ switch and Today (client), and the hotkeys all call it. Today-from-Week landing 
 agenda was two builders disagreeing about when `view` is carried; one module plus
 `calendar-links.client.test.ts` is how that class of bug stays fixed.
 
+**The 2026-08-15 pass: one audience picker, a findable default view, and Settings.**
+Three things, all of them about a feature that existed and could not be found or used.
+
+- **The Cloak sheet and View As overlapped**, and not subtly: the sheet rendered the
+  sidebar's `ViewAsBar` component itself, so on a phone with the sheet open there were two
+  live "Viewing as" selects bound to the same state, plus two copies of the audience-name
+  fallback. The split is now by what each surface CAN do — the sidebar bar owns the MODE
+  (the accent border and hidden-events count, which a dismissed dialog cannot show), the
+  sheet owns the MAP and each of its rows is the door into previewing as that person, plus
+  "Back to my own view" since owner is filtered out of the rows. `audienceHref` and
+  `useAudienceNames` are the one URL builder and the one label function.
+- **`default_view` (0022) was invisible three ways over**: labelled "Opens on", third
+  inside a collapsed card called Time & region, and in the fixture the control was DISABLED
+  and the calendar skipped `loadWorkspacePrefs()` entirely. It is "Default view" under
+  Appearance now, plus a "Make Month my default view" control in the calendar sidebar,
+  owner-only. Both write through `lib/save-prefs.ts` rather than each carrying its own copy
+  of "demo writes a cookie, an account writes the RPC".
+- **The demo has real preferences**, in a COOKIE (`lib/demo-prefs.ts`), because the view is
+  resolved server-side before anything renders and a browser-only store could not reach that
+  decision without a flash of the wrong view. This retired the `?? fixtureMode` special case
+  on the keyboard opt-in — one preference had an escape hatch that no other preference got.
+- **Settings was restructured, not just repainted.** Seven cards to five: two of the seven
+  held no settings at all, and Security was an entire auth page pasted into a `<details>`,
+  bringing its own lockup and its own `<h1>` so the page rendered two. It is
+  `/settings/security` now, which is also where the device list moved from the bottom of the
+  roadmap card. Five row shapes became one, the selects are drawn rather than left to the OS,
+  and the stylesheet finally speaks the file room that People has spoken since the Dial pass.
+
+**One live bug fixed on the way, caused by 0022 and invisible until now.** All three nav
+builders in `lib/calendar-links.ts` omitted `view` when the target was agenda, because the
+server's fallback WAS agenda. Once a workspace could store a different default, an agenda
+link with no view param resolved to that default instead: with a month default, clicking
+Agenda left you on Month, and so did Today and the `t` hotkey. Agenda and week hid it
+between them, since that pair is a client toggle that never consults the URL. Every builder
+names its view now, unconditionally.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
@@ -365,6 +405,21 @@ and re-add.
   colours are shape colours only; `--privacy-hidden` is 1.32:1 on dark raised BY DESIGN, so
   nothing may render a raw privacy colour as ink or rely on it being seen.
 
+- **`pnpm typecheck` does NOT see typedRoutes, so a green typecheck is not evidence a
+  computed href compiles.** The route union is generated during `next build`, so
+  `router.push(someFunction(...))` typechecks fine and then fails the build with "Argument
+  of type 'string' is not assignable to parameter of type 'RouteImpl<string>'". Inlined
+  template literals happen to satisfy it, which is why moving an href behind a function is
+  what surfaces it. `lib/audiences.ts` holds the one `as Route` cast; `WeekLink`'s UrlObject
+  form exists for the same reason.
+- **A grid item defaults to content-based `min-width`, and `min-width: 0` on the CONTAINER
+  does nothing about it.** Telling the settings summary titles not to wrap sized each
+  `<details>` card to title-plus-state and pushed /settings into horizontal overflow at
+  390px, ignoring the `text-overflow: ellipsis` sitting right there. Nothing else here can
+  see that: axe does not measure it, the 44px sweep does not measure it, and visual
+  baselines are per-project so none of them compares a page against its own viewport.
+  `never scrolls sideways` in `e2e/settings.spec.ts` is the guard, and it belongs on any
+  page that grows a nowrap element.
 - **`next` is a root devDependency purely for Vercel's framework detection.** It is never
   executed from there. See `docs/deploy.md`.
 - **Visual baselines are per-platform, and until 2026-08-11 the suite had never run
