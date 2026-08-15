@@ -52,18 +52,21 @@
   flex: 1;
 }
 
-.body {
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-4) var(--space-16);
+ /* The rail-and-cards grid. The page's measure, masthead and top bar are the shared
+    PageShell's job now — three pages had three arrangements of the same four things, and
+    that drift is a fair part of why they read as thrown together. */
+.layout {
   display: grid;
   gap: var(--space-6);
 }
 
-@media (min-width: 768px) {
-  .body {
-    grid-template-columns: 11rem 1fr;
+@media (min-width: 860px) {
+  .layout {
+    /* 13rem, up from 11: "People & sharing" wrapped in the old rail, and a navigation
+       whose longest item wraps reads as an accident. */
+    grid-template-columns: 13rem 1fr;
     align-items: start;
+    gap: var(--space-10);
   }
 }
 
@@ -99,13 +102,14 @@
   padding-bottom: var(--space-2);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 860px) {
   .nav {
     position: sticky;
-    top: calc(var(--touch-min) + var(--space-4));
+    top: calc(var(--touch-min) + var(--space-6));
     flex-direction: column;
     overflow: visible;
     padding-bottom: 0;
+    gap: var(--space-1);
   }
 }
 
@@ -137,7 +141,7 @@
 
 .sections {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-width: 0;
   /* The page eases in rather than popping — the settings-shaped skeleton hands off to
      this. `backwards` holds the from-state so there is no flash before the animation. */
@@ -158,14 +162,25 @@
   box-shadow: var(--shadow-sm), var(--edge-highlight);
   /* Anchor navigation should land the heading below the sticky header, not under it. */
   scroll-margin-top: calc(var(--touch-min) + var(--space-6));
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+/* An OPEN card outranks the closed ones. Every card looked identical whether it held four
+   live controls or nothing, so the page had exactly one visual weight and the eye had
+   nowhere to start. */
+.section[open] {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-md), var(--edge-highlight);
 }
 
 .summary {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-height: var(--touch-min);
-  padding: var(--space-3) var(--space-4);
+  /* Roomier than the old 12/16: a settings row is a place you land, not a list item, and
+     the cramped padding was most of what made these read as strips. */
+  padding: var(--space-4) var(--space-5);
   cursor: pointer;
   border-radius: var(--radius-lg);
   /* The platform triangle is replaced by our chevron, which can rotate. */
@@ -180,11 +195,28 @@
   background: var(--surface-overlay);
 }
 
-.summaryState {
-  /* Flexible AND shrinkable: `min-width: 0` is what actually lets a flex child ellipsis
-     rather than forcing the row wider than the card. Without it, the nowrap title beside
-     it pushed the whole page into horizontal overflow at 390px. */
+/* Name over purpose — the two left-hand levels of the row's three. It takes the slack, so
+   the state string keeps its natural width instead of ellipsing at a comfortable viewport
+   ("Password & recovery phra…" was the tell that both were fighting to grow). */
+.summaryText {
   flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sectionDescription {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  line-height: var(--leading-normal);
+}
+
+.summaryState {
+  /* Shrinkable but not greedy: `min-width: 0` is what actually lets a flex child ellipsis
+     rather than forcing the row wider than the card (without it the nowrap title beside it
+     pushed the page into horizontal overflow at 390px), and `flex-grow: 0` keeps it from
+     competing with the title block for slack it does not need. */
+  flex: 0 1 auto;
   min-width: 0;
   margin-left: auto;
   /* The value a row reports, in the register's own hand. It is the same job the contact
@@ -210,14 +242,20 @@
 }
 
 .section[open] .summary {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--engrave-hairline);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Open, the description has done its job — the controls beneath say it better. Keeping it
+   would push every control down by a line for no information. */
+.section[open] .sectionDescription {
+  display: none;
 }
 
 .sectionBody {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-5) var(--space-6);
 }
 
 .sectionTitle {
@@ -439,11 +477,9 @@
    shared VisibilityControl; this file keeps only what the settings cards still render. */
 
 /* The single-column body /settings/security uses: no rail, because a page with three
-   sections does not need a table of contents. */
+   sections does not need a table of contents. Narrower than the shell's measure on
+   purpose — these are forms, and a form field stretched to 64rem is a worse form. */
 .narrowBody {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-4) var(--space-16);
   display: grid;
   gap: var(--space-4);
 }
@@ -525,7 +561,9 @@
   border-top: 1px solid var(--engrave-hairline);
 }
 
-@media (min-width: 768px) {
+/* 860, matching .layout's own breakpoint. It said 768 while the grid switched at 860, so
+   between those two widths the footer was placed in a column-2 that did not exist. */
+@media (min-width: 860px) {
   .whatsNext {
     grid-column: 2;
   }

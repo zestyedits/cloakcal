@@ -2,62 +2,16 @@
    The look is the restrained file room — raised panels, hairline rules, monospace accents
    for the ids the server actually files people under. No leather, no page turns. */
 
-.shell {
-  min-height: 100dvh;
-  background: var(--surface-base);
-}
+/* The page's chrome, measure and masthead are PageShell's job now — this page put the
+   lockup hard left and the way back hard right with a quarter screen of nothing between
+   them, while Settings centred the lockup, which is drift rather than variety.
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--touch-min);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  text-decoration: none;
-}
-
-.backLink:hover {
-  background: var(--surface-overlay);
-  color: var(--text-primary);
-}
-
-.backLink:active {
-  transform: translateY(1px);
-}
-
+   The register itself is narrower than the shell's measure: these are lists of names, and
+   a name stretched across 64rem with its chip a screen away is a worse list. */
 .main {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-12);
   /* The settings page's entrance, for the same reason: People is a server navigation and
      used to hard-cut in. Reduced motion collapses it via the tokens. */
   animation: rise var(--duration-base) var(--ease-decelerate) backwards;
-}
-
-/* Engraved, one weight — the display face carries the register room's nameplate. */
-.title {
-  margin: var(--space-4) 0 var(--space-2);
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
-}
-
-.lede {
-  margin: 0 0 var(--space-6);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  max-width: 40rem;
 }
 
 /* One register panel: Contacts or Groups. Raised, hairline-bordered, tab-headed by its
@@ -68,7 +22,7 @@
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   box-shadow: var(--shadow-sm), var(--edge-highlight);
-  padding: var(--space-4);
+  padding: var(--space-5);
 }
 
 .panelHead {
@@ -106,12 +60,15 @@
   flex-direction: column;
 }
 
+/* A register entry, not a line of text. Monogram, then name over id, then what this
+   person currently sees, then the way in. The old row was name / id / "Open file ›" on one
+   baseline at 44px, which is a table row wearing a card's clothes. */
 .personRow {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  min-height: var(--touch-min);
-  padding: var(--space-2) var(--space-2);
+  gap: var(--space-4);
+  min-height: 4rem;
+  padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
   color: var(--text-primary);
@@ -125,9 +82,39 @@
   transform: translateY(1px);
 }
 
-.personName {
+/* A monogram, not an avatar: there is no photo and never will be, and a column of names
+   with nothing at the left edge reads as a text list rather than a register. Drawn from
+   the DECRYPTED name, so before unlock it is a dash — see the component. */
+.monogram {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-engraved);
+  color: var(--text-secondary);
+}
+
+/* Groups are a different KIND of entry, and the shape says so rather than a colour: a
+   square-cornered tile for the many, a soft one for the one. */
+.monogram[data-group] {
+  border-radius: var(--radius-sm);
+}
+
+.personText {
   flex: 1;
-  min-width: 8rem;
+  min-width: 6rem;
+  display: grid;
+  gap: 1px;
+}
+
+.personName {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   overflow: hidden;
@@ -135,27 +122,33 @@
   white-space: nowrap;
 }
 
-/* The server's half of the row: the id it files this person under, in the mono accent. */
+/* The server's half of the row: the id it files this person under, in the mono accent.
+   Under the name now rather than beside it, because it is a subtitle — the name is what
+   you scan for and the id is what the server sees. */
 .personId {
-  flex: none;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--text-secondary);
+  color: var(--numeral-ink);
 }
 
 .personAction {
   flex: none;
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--text-tertiary);
+}
+
+.personRow:hover .personAction {
+  color: var(--text-primary);
 }
 
 .groupRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
-  min-height: var(--touch-min);
-  padding: var(--space-2) var(--space-2);
+  gap: var(--space-4);
+  min-height: 4rem;
+  padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--text-sm);
   color: var(--text-primary);

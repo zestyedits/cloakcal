@@ -1,9 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import type { SettingsDevice } from '@/server/settings'
-import { CloakHomeLink } from '../cloak-logo'
-import { ThemeToggle } from '../theme-toggle'
+import { PageMasthead, PageShell } from '../page-shell'
 import { ChangePassword } from '../change-password'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
 import { SignOutButton } from '../sign-out-button'
@@ -39,24 +37,13 @@ export function SecurityScreen({
   devices: readonly SettingsDevice[]
 }) {
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <Link className={styles.back} href="/settings">
-          ‹ Settings
-        </Link>
-        <div className={styles.headerSpace} />
-        <CloakHomeLink size="sm" />
-        <div className={styles.headerSpace} />
-        <ThemeToggle />
-      </header>
+    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+      <PageMasthead
+        title="Security"
+        lede="Your password and your recovery phrase both open the same key. Changing either one re-wraps that key; neither one touches an event."
+      />
 
       <div className={styles.narrowBody}>
-        <h1 className={styles.title}>Security</h1>
-        <p className={styles.pageLede}>
-          Your password and your recovery phrase both open the same key. Changing either one
-          re-wraps that key; neither one touches an event.
-        </p>
-
         <main id="main" className={styles.sections}>
           {demo ? (
             <p className={styles.lockedNote}>
@@ -118,6 +105,6 @@ export function SecurityScreen({
           )}
         </main>
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -83,6 +83,11 @@ test('the audience survives day and month steppers', async ({ page }) => {
 /**
  * The default view, from the calendar rather than from Settings.
  *
+ * The control has two presentations and only one is ever on screen: a bookmark inside the
+ * desktop header's view track, and a labelled row in the phone's sidebar strip. Both are in
+ * the DOM (CSS hides the other), so every locator here filters to the VISIBLE one — the
+ * same shape as the Cloak button, which has had two mounts since the bottom bar existed.
+ *
  * These run against the demo's cookie-backed preferences, which is the only reason they
  * can run at all: before that the fixture had no prefs and this control had nowhere to
  * write. They cover the round trip that matters — set it here, and `/` with no query
@@ -94,10 +99,16 @@ test('a view can be made the default from the calendar, and the calendar opens o
   page,
 }) => {
   await page.goto('/?view=month')
-  await page.getByRole('button', { name: 'Make Month my default view' }).click()
+  await page
+    .getByRole('button', { name: 'Make Month my default view' })
+    .filter({ visible: true })
+    .click()
 
-  // The button becomes a statement rather than a disabled control.
-  await expect(page.getByText('Month is your default view')).toBeVisible()
+  // The control becomes a statement rather than a disabled control. Asserted on the
+  // ACCESSIBLE NAME, which both presentations share — the bookmark carries no text.
+  await expect(
+    page.getByRole('button', { name: 'Month is your default view' }).filter({ visible: true }),
+  ).toBeVisible()
 
   // `/` with no query is the actual claim being made.
   await page.goto('/')
@@ -106,8 +117,13 @@ test('a view can be made the default from the calendar, and the calendar opens o
 
 test('agenda is still reachable once another view is the default', async ({ page }) => {
   await page.goto('/?view=month')
-  await page.getByRole('button', { name: 'Make Month my default view' }).click()
-  await expect(page.getByText('Month is your default view')).toBeVisible()
+  await page
+    .getByRole('button', { name: 'Make Month my default view' })
+    .filter({ visible: true })
+    .click()
+  await expect(
+    page.getByRole('button', { name: 'Month is your default view' }).filter({ visible: true }),
+  ).toBeVisible()
 
   // From month, Agenda is a real navigation, and its link must NAME agenda. While the
   // builders omitted the param for agenda, the server resolved the absence back to the

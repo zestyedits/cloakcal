@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { CloakHomeLink } from '@/components/cloak-logo'
+import { PageShell } from '@/components/page-shell'
 import peopleStyles from '@/components/people-screen.module.css'
 import styles from './loading.module.css'
 
@@ -12,13 +11,7 @@ import styles from './loading.module.css'
  */
 export default function PeopleLoading() {
   return (
-    <div className={peopleStyles.shell}>
-      <header className={peopleStyles.header}>
-        <CloakHomeLink size="sm" />
-        <Link className={peopleStyles.backLink} href={{ pathname: '/' }}>
-          Back to calendar
-        </Link>
-      </header>
+    <PageShell back={{ href: '/', label: 'Calendar' }} measure="narrow">
       <main className={peopleStyles.main} aria-busy="true" aria-label="Loading people">
         <div className={`${styles.titleBar} ${styles.pulse}`} />
         <div className={`${styles.ledeBar} ${styles.pulse}`} />
@@ -29,6 +22,6 @@ export default function PeopleLoading() {
           </div>
         ))}
       </main>
-    </div>
+    </PageShell>
   )
 }

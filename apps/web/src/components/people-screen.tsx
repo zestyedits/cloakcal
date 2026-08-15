@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
+import { decisionToLevel, type VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
 import { supabaseBrowser } from '@/lib/supabase/client'
@@ -10,7 +12,9 @@ import { rpcErrorMessage } from '@/lib/rpc-error'
 import { sealFields } from '@/lib/cloaked-fields'
 import { CloakProvider, useCloakStore, type ExtraSealedField } from './cloak-provider'
 import { useCloakedLabels } from './use-cloaked-labels'
-import { CloakHomeLink } from './cloak-logo'
+import { PageMasthead, PageShell } from './page-shell'
+import { workspaceDecisionFor } from './visibility-control'
+import { PrivacyChip } from './ui/privacy-chip'
 import { Button } from './ui/button'
 import { InlineError } from './ui/inline-error'
 import styles from './people-screen.module.css'
@@ -47,19 +51,20 @@ export const audienceNamesOf = (
         ],
   )
 
-export function PeopleShell({ children }: { children: React.ReactNode }) {
+export function PeopleShell({
+  children,
+  back = { href: '/', label: 'Calendar' },
+}: {
+  children: React.ReactNode
+  /** Where "up" goes. A contact's file goes back to the register, not past it. */
+  back?: { href: Route; label: string }
+}) {
   return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <CloakHomeLink size="sm" />
-        <Link className={styles.backLink} href={{ pathname: '/' }}>
-          Back to calendar
-        </Link>
-      </header>
+    <PageShell back={back} measure="narrow">
       <main id="main" className={styles.main}>
         {children}
       </main>
-    </div>
+    </PageShell>
   )
 }
 
@@ -72,12 +77,19 @@ export function PeopleList({
   audiences,
   fixtureMode,
   workspaceId,
+  workspaceRules,
+  groupsByContact,
+  now,
 }: {
   page: RedactedPage
   email: string
   audiences: readonly AudienceOption[]
   fixtureMode: boolean
   workspaceId: string | null
+  /** Workspace defaults, so a register row can say what this person currently gets. */
+  workspaceRules: readonly VisibilityRule[]
+  groupsByContact: Readonly<Record<string, readonly string[]>>
+  now: string
 }) {
   const extraFields = useMemo(() => audienceNamesOf(audiences), [audiences])
 
@@ -88,6 +100,9 @@ export function PeopleList({
           audiences={audiences}
           fixtureMode={fixtureMode}
           workspaceId={workspaceId}
+          workspaceRules={workspaceRules}
+          groupsByContact={groupsByContact}
+          now={now}
         />
       </PeopleShell>
     </CloakProvider>
@@ -98,10 +113,16 @@ function PeopleListBody({
   audiences,
   fixtureMode,
   workspaceId,
+  workspaceRules,
+  groupsByContact,
+  now,
 }: {
   audiences: readonly AudienceOption[]
   fixtureMode: boolean
   workspaceId: string | null
+  workspaceRules: readonly VisibilityRule[]
+  groupsByContact: Readonly<Record<string, readonly string[]>>
+  now: string
 }) {
   const router = useRouter()
   const store = useCloakStore()
@@ -214,11 +235,10 @@ function PeopleListBody({
 
   return (
     <>
-      <h1 className={styles.title}>People</h1>
-      <p className={styles.lede}>
-        Everyone you can show a different amount of your calendar to. Each person has a
-        file: open it to see your week exactly as they would, and to decide what they get.
-      </p>
+      <PageMasthead
+        title="People"
+        lede="Everyone you can show a different amount of your calendar to. Each person has a file: open it to see your week exactly as they would, and to decide what they get."
+      />
 
       <InlineError>{error}</InlineError>
 
@@ -236,22 +256,43 @@ function PeopleListBody({
           </p>
         ) : (
           <ul className={styles.list}>
-            {contacts.map((contact) => (
-              <li key={contact.id}>
-                <Link className={styles.personRow} href={{ pathname: `/people/${contact.id}` }}>
-                  <span className={styles.personName}>
-                    {contactNames[contact.id] ?? `Contact ${contact.id.slice(0, 8)}…`}
-                  </span>
-                  {/* The id the server files this person under — all it can ever read. */}
-                  <span className={styles.personId} aria-hidden="true">
-                    {contact.id.slice(0, 8)}
-                  </span>
-                  <span className={styles.personAction} aria-hidden="true">
-                    Open file ›
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {contacts.map((contact) => {
+              const name = contactNames[contact.id]
+              const level = decisionToLevel(
+                workspaceDecisionFor(contact, workspaceId, workspaceRules, groupsByContact, now),
+              )
+              return (
+                <li key={contact.id}>
+                  <Link className={styles.personRow} href={{ pathname: `/people/${contact.id}` }}>
+                    {/* A monogram, not an avatar: there is no photo to show and never will
+                        be, but a row of names with nothing at the left edge is a list of
+                        text. The letter comes from the DECRYPTED name, so before unlock it
+                        is a neutral dot rather than the "C" of "Contact 4f2a…", which
+                        would be a letter the server chose dressed as one the user did.
+                        A DOT and not a dash: em dashes are banned in user-facing text here
+                        and pinned by a DOM assertion, which is what caught this. */}
+                    <span className={styles.monogram} aria-hidden="true">
+                      {name === undefined ? '·' : name.trim().slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className={styles.personText}>
+                      <span className={styles.personName}>
+                        {name ?? `Contact ${contact.id.slice(0, 8)}…`}
+                      </span>
+                      {/* The id the server files this person under — all it can ever read. */}
+                      <span className={styles.personId}>{contact.id.slice(0, 8)}</span>
+                    </span>
+                    {/* What they get today, on the register itself. The whole point of the
+                        book is who sees what, and the list used to make you open a file to
+                        find out — so the one fact worth scanning for was the one fact it
+                        withheld. Engine-derived, never restated (rule 3). */}
+                    <PrivacyChip level={level} />
+                    <span className={styles.personAction} aria-hidden="true">
+                      ›
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         )}
 
@@ -274,12 +315,22 @@ function PeopleListBody({
                 and each member's file shows it. Membership is decided on the files too. */}
             {groups.map((group) => (
               <li key={group.id} className={styles.groupRow}>
-                <span className={styles.personName}>
-                  {groupNames[group.id] ?? `Group ${group.id.slice(0, 8)}…`}
+                <span className={styles.monogram} data-group aria-hidden="true">
+                  {groupNames[group.id] === undefined
+                    ? '·'
+                    : groupNames[group.id]!.trim().slice(0, 1).toUpperCase()}
                 </span>
-                <span className={styles.personId} aria-hidden="true">
-                  {group.id.slice(0, 8)}
+                <span className={styles.personText}>
+                  <span className={styles.personName}>
+                    {groupNames[group.id] ?? `Group ${group.id.slice(0, 8)}…`}
+                  </span>
+                  <span className={styles.personId}>{group.id.slice(0, 8)}</span>
                 </span>
+                <PrivacyChip
+                  level={decisionToLevel(
+                    workspaceDecisionFor(group, workspaceId, workspaceRules, groupsByContact, now),
+                  )}
+                />
                 {confirmingGroup === group.id ? (
                   <>
                     <Button
