@@ -21,6 +21,18 @@
   }
 }
 
+/* TRAILING ROOM, so the LAST band can reach the top like every other one.
+
+   Without it the page simply is not tall enough to scroll Security's head to the same place
+   Calendars lands at, so clicking the last rail item pinned the page to its maximum and
+   filled the screen with the roadmap footer — the exact "drops to the bottom" symptom, for
+   a section that had no other way to behave. Space below the footer costs nothing: it is
+   only reachable by deliberately scrolling past everything. Scoped to /settings, since it
+   is the only page whose rail scrolls between sections. */
+.scrollRoom {
+  padding-bottom: 45vh;
+}
+
 /* The demo banner, above the rail and spanning both columns: one statement of what this
    page can and cannot do without an account. */
 .demoBanner {

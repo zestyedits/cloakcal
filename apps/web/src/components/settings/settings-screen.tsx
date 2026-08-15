@@ -218,35 +218,64 @@ export function SettingsScreen({
     setPinnedSection(id)
 
     /**
-     * WAIT FOR THE DISCLOSURE TO FINISH, then put the clicked band's head at the top.
+     * WAIT FOR THE PAGE TO STOP MOVING, then put the clicked band's head at the top.
      *
-     * Three rounds landed at the foot of the page, and the last two are the instructive
-     * ones:
+     * Four rounds landed at the foot of the page. The last one is the lesson:
      *
      *   1. `scrollIntoView` on the `<details>` fits the ELEMENT, and an open band is taller
-     *      than the viewport, so it pushed the page down until the bottom edge showed.
-     *   2. Two animation frames is not long enough. The band being CLOSED is still
-     *      mid-collapse, so the target measures hundreds of pixels below where it is about
-     *      to be — correct for a layout that no longer exists by the time it lands.
-     *   3. And the one that survived both fixes: closing a tall band SHRINKS the document,
-     *      so the browser clamps the scroll offset to the new maximum. A reader who had
-     *      scrolled at all was dumped at the end of the page by that clamp alone, before
-     *      any of our code ran. A conditional "only scroll if it is not already visible"
-     *      cannot help, because after the clamp the summary IS visible — sitting under the
-     *      sticky bar, with the roadmap footer filling the screen.
+     *      than the viewport, so it pushed down until the bottom edge showed.
+     *   2. Two animation frames is not long enough; the closing band is still mid-collapse.
+     *   3. Closing a tall band SHRINKS the document and the browser clamps the scroll to the
+     *      new maximum, before any of our code runs. "Only scroll if not already visible"
+     *      cannot help, because after the clamp the summary IS on screen, tucked under the
+     *      sticky bar with the footer filling the view.
+     *   4. And a fixed timeout is a GUESS. `settle + 40` was right on my machine and wrong
+     *      on Keith's, whose symptom named the cause exactly: he had to click twice, because
+     *      the second click ran against a layout that had finally stopped changing. Timing a
+     *      transition by hoping is not timing it.
      *
-     * So it is unconditional and boring now: the band you clicked puts its head at the top,
-     * every time, which is what an anchor has always done and what nobody has to think
-     * about. `scroll-margin-top` on the summary keeps it clear of the sticky bar.
+     * So this watches the document height until it holds still for three frames, with a
+     * hard ceiling so a page that never settles cannot hang the interaction. Then it scrolls
+     * unconditionally: the band you clicked puts its head at the top, which is what an anchor
+     * has always done and what nobody has to think about.
      */
-    const motion = getComputedStyle(document.documentElement).getPropertyValue('--duration-base')
-    const settle = Number.parseFloat(motion) || 220
-    window.setTimeout(() => {
-      document
-        .getElementById(id)
-        ?.querySelector('summary')
-        ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    }, settle + 40)
+    const scrollWhenSettled = () => {
+      const summary = document.getElementById(id)?.querySelector('summary')
+      if (summary === null || summary === undefined) return
+
+      let lastTop = Number.NaN
+      let steady = 0
+      let frames = 0
+      const tick = () => {
+        /**
+         * The TARGET's absolute offset, not the document height.
+         *
+         * Watching `scrollHeight` looked equivalent and was not: `--ease-decelerate` ends
+         * slowly, so the last stretch of the collapse moves by sub-pixel amounts that round
+         * to the same integer for several frames. The check called that "settled", scrolled
+         * to where the summary was at that moment, and then the remaining travel slid it
+         * further up — overshooting by about thirty pixels, off the top of the screen.
+         *
+         * Adding scrollY makes this a document coordinate, so it does not move merely
+         * because we are about to scroll.
+         */
+        const top = Math.round(summary.getBoundingClientRect().top + window.scrollY)
+        if (top === lastTop) steady += 1
+        else {
+          steady = 0
+          lastTop = top
+        }
+        frames += 1
+        // Five steady frames, or roughly a second, whichever comes first.
+        if (steady < 5 && frames < 60) {
+          requestAnimationFrame(tick)
+          return
+        }
+        summary.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      }
+      requestAnimationFrame(tick)
+    }
+    scrollWhenSettled()
   }
   /**
    * Where the reader IS, not where they were sent. A hash stops being the answer the moment
@@ -322,7 +351,7 @@ export function SettingsScreen({
           </div>
         </dl>
 
-        <div className={styles.layout}>
+        <div className={`${styles.layout} ${styles.scrollRoom}`}>
           {/* Said ONCE, at the top, rather than inside each card that happens to be
               writable. It was in two cards a moment ago and read as an app apologising
               twice for the same thing. */}
