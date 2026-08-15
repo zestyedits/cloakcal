@@ -20,7 +20,16 @@ import { CLOAK_ALG, encodeCanonical, subtle, type CloakAlg, type CloakBytes, typ
  * AES-GCM over the raw bytes is both simpler and stronger here.
  */
 
-export type WrapKind = 'password' | 'recovery' | 'device'
+/**
+ * The kinds of key that can open a root key wrap.
+ *
+ * `passkey` is the fourth (ADR 0005) and cost nothing to add here: `wrapAad` below is
+ * generic over this string, so every kind is automatically domain-separated from every
+ * other one and a wrap relabelled in the database will not open. That is the property
+ * `rewrap.test.ts` pins, and it is why adding a recovery route is a migration and a
+ * derivation rather than a change to this file's logic.
+ */
+export type WrapKind = 'password' | 'recovery' | 'device' | 'passkey'
 
 export interface WrappedRootKey {
   readonly kind: WrapKind
