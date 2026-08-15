@@ -32,24 +32,26 @@ The server stores wrapped copies only, and only ones it cannot unwrap — see be
 |---|---|---|
 | Web / PWA | Non-extractable `CryptoKey` in IndexedDB | Wrapping keys are imported with `extractable = false`, so JavaScript cannot read the raw bytes back out. |
 | Future iOS / native | Keychain, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | Never synced to iCloud Keychain: that would move key material to a third party. |
-| Server | **Wrapped copies only** | `devices.wrapped_root_key`. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
+| Server | **Wrapped copies only** | `root_key_wraps`, one row per wrap kind. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
 | Backups / logs / telemetry | **Never** | Asserted by the leakage suite. |
 
-## The three wraps (M3 — built)
+## The wraps (four kinds; see amendment 4)
 
-The URK is wrapped independently three ways. Any one recovers it; losing all three is
-unrecoverable, by design.
+The URK is wrapped independently. Any one recovers it; losing them all is unrecoverable,
+by design.
 
 | Wrap | Key derivation | Purpose |
 |---|---|---|
 | Password | Argon2id → HKDF split (see amendment 1), salt derived from the account email | Everyday unlock |
 | Recovery phrase | 24 words (BIP-39 English), 256 bits + checksum, shown once and confirmed | Password loss |
 | Device | Per-device ECDH P-256 keypair (amendment 2), private half non-extractable | New device, or phrase loss |
+| Passkey | HKDF over the WebAuthn PRF output (ADR 0005, migration 0023) | Everyday unlock, and password loss without the phrase |
 
-All three produce the same shape — AES-256-GCM over the 32 URK bytes, with the **wrap kind
+All of them produce the same shape — AES-256-GCM over the 32 URK bytes, with the **wrap kind
 bound into the AAD**. Without that binding a wrap made for one slot would open in another,
 so anyone able to write a row could file a device wrap as the password wrap and unlock the
-account with a key they already held.
+account with a key they already held. That binding is generic over the kind string, which
+is why adding a fourth kind needed no change to it.
 
 ---
 
@@ -118,7 +120,7 @@ it is why option 5.3(c) was declined at planning.
 
 - **Password change** rewraps the URK under a new Argon2id-derived KEK. Content is
   untouched — no re-encryption, because content keys derive from the URK, not the password.
-- **Device revocation** deletes that device's `wrapped_root_key` row and its access
+- **Device revocation** deletes that device's `root_key_wraps` row and its access
   envelopes. The URK itself is not rotated: a revoked device that retained a copy already
   had it, so rotation would be theatre unless content is also re-encrypted.
 - **True URK rotation** (after suspected compromise) requires re-encrypting every Cloaked

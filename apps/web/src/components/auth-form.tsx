@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CloakSetupRequiredError,
+  WrapEmailMismatchError,
   initializeCloak,
   signInAndUnlock,
   signUp,
@@ -310,6 +311,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
  * about *its* length would be nonsense to the user.
  */
 function messageFor(caught: unknown): string {
+  // Named BEFORE the regex ladder below. Those patterns match on message text, which is
+  // fine for Supabase's strings and wrong for ours: a typed error that already says the
+  // right thing should never be at the mercy of a substring match it did not anticipate.
+  if (caught instanceof WrapEmailMismatchError) return caught.message
+
   const message = caught instanceof Error ? caught.message : String(caught)
 
   if (/invalid login credentials/iu.test(message)) {

@@ -16,7 +16,7 @@ export default function SecurityLoading() {
     <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
       <PageMasthead
         title="Security"
-        lede="Your password and your recovery phrase both open the same key. Changing either one re-wraps that key; neither one touches an event."
+        lede="Your password, your passkeys and your recovery phrase all open the same key. Changing any one of them re-wraps that key; none of them touches an event."
       />
 
       <div className={settingsStyles.narrowBody}>

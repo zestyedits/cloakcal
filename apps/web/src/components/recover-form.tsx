@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { isPasskeySupported } from '@/lib/passkey'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   RewrapHalfAppliedError,
   WrongRecoveryPhraseError,
   rewrapPasswordWrap,
+  persistUnlockedSession,
+  hasPasskey,
+  rootKeyFromPasskey,
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
 import { supabaseBrowser } from '@/lib/supabase/client'
@@ -49,6 +53,27 @@ export function RecoverForm() {
   const [working, setWorking] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [phrase, setPhrase] = useState('')
+  /**
+   * Which proof opens the key on the reset screen. Offered only when the account has a
+   * passkey — see the mount effect, where the check runs at the moment a session appears.
+   */
+  const [proof, setProof] = useState<'phrase' | 'passkey'>('phrase')
+  const [passkeyOffered, setPasskeyOffered] = useState(false)
+  /**
+   * Whether the passkey default has already been applied, and whether the user has since
+   * overruled it. Both are refs because they must survive a re-render without causing one.
+   *
+   * THE BUG THIS PREVENTS. `onAuthStateChange` fires on ordinary token refreshes AND on
+   * USER_UPDATED, which `rewrapPasswordWrap` itself emits when it changes the account
+   * password. Re-running the default there flipped `proof` back to 'passkey' MID-SUBMIT:
+   * someone who deliberately chose the phrase, typed all 24 words and pressed the button
+   * would watch the page change its story to "Confirm it on your device" while Argon2id was
+   * still running and nothing was asking them to confirm anything. That is precisely the
+   * moment a worried person reloads, and the other side of that call has a real
+   * half-applied state.
+   */
+  const proofDefaulted = useRef(false)
+  const proofTouched = useRef(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -86,10 +111,37 @@ export function RecoverForm() {
     const hash = new URLSearchParams(url.hash.replace(/^#/, ''))
     const linkError = hash.get('error_description') ?? hash.get('error')
 
+    /**
+     * Reading a wrap needs a session, so this can only run once one exists — which is
+     * exactly what the emailed link creates. It cannot be offered on the request screen,
+     * where RLS would refuse the read.
+     */
+    const offerPasskey = () => {
+      if (!isPasskeySupported()) return
+      // One shot. Every later auth event finds this already true and leaves the user's
+      // choice alone.
+      if (proofDefaulted.current) return
+      proofDefaulted.current = true
+      void hasPasskey()
+        .then((has) => {
+          if (cancelled || !has) return
+          setPasskeyOffered(true)
+          // Defaulted to, not merely offered. Someone who has a passkey and is standing on
+          // this page has forgotten something; the route that needs no memory should be
+          // the one already selected. Only if they have not already said otherwise — the
+          // read is async, so a fast user can beat it.
+          if (!proofTouched.current) setProof('passkey')
+        })
+        .catch(() => {
+          // Not offering it is a complete answer. The phrase still works.
+        })
+    }
+
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return
       if (data.session !== null) {
         setScreen('reset')
+        offerPasskey()
         return
       }
       if (linkError !== null) {
@@ -114,6 +166,7 @@ export function RecoverForm() {
       // because a token refreshed would discard a phrase the user just typed.
       setScreen('reset')
       setError(null)
+      offerPasskey()
     })
 
     return () => {
@@ -153,8 +206,13 @@ export function RecoverForm() {
     }
 
     try {
-      setWorking('Opening your calendar')
-      const rootKey = await rootKeyFromRecoveryPhrase(phrase)
+      setWorking(
+        proof === 'passkey' ? 'Waiting for your passkey' : 'Opening your calendar',
+      )
+      // THE SEAM. Both return the same RootKey, so everything downstream — the re-wrap, the
+      // unlock, the redirect — is identical and neither branch is a special case.
+      const rootKey =
+        proof === 'passkey' ? await rootKeyFromPasskey() : await rootKeyFromRecoveryPhrase(phrase)
 
       const { data } = await supabaseBrowser().auth.getUser()
       const address = data.user?.email ?? email.trim()
@@ -162,8 +220,14 @@ export function RecoverForm() {
       setWorking('Re-locking it to your new password')
       await rewrapPasswordWrap(rootKey, address, password)
 
-      // Straight to the calendar: the session is valid and the key is already open, so
-      // bouncing through sign-in would only ask for the password just chosen.
+      // UNLOCK BEFORE NAVIGATING. This step was missing, and the comment that stood here
+      // claimed the opposite — "the key is already open" — which it was not:
+      // rootKeyFromRecoveryPhrase only unwraps, and nothing on this path had ever written
+      // the session to the vault. So the user finished recovery and was dropped straight
+      // onto the unlock panel, having just typed 24 words and chosen a password. The worst
+      // moment in the product to ask someone to authenticate again.
+      await persistUnlockedSession(address, rootKey)
+
       router.replace('/')
       router.refresh()
     } catch (caught) {
@@ -179,7 +243,12 @@ export function RecoverForm() {
       <CloakHomeLink />
 
       <h1 className={styles.title}>{screen === 'sent' ? 'Check your email' : 'Get back in'}</h1>
-      <p className={styles.lede}>{LEDE[screen]}</p>
+      {/* The reset lede names the proof, because "your recovery phrase opens your key" is
+          simply untrue when a passkey is selected, and this is the sentence a worried
+          person reads most carefully. */}
+      <p className={styles.lede}>
+        {screen === 'reset' && proof === 'passkey' ? PASSKEY_RESET_LEDE : LEDE[screen]}
+      </p>
 
       <InlineError>{error}</InlineError>
 
@@ -225,14 +294,52 @@ export function RecoverForm() {
 
       {screen === 'reset' && (
         <div className={styles.form}>
-          <div className={styles.field}>
-            <RecoveryPhraseInput
-              label="Your 24-word recovery phrase"
-              value={phrase}
-              disabled={busy}
-              onChange={setPhrase}
-            />
-          </div>
+          {/* Only rendered when there is a choice to make. A fieldset offering one option
+              is a decision the user cannot influence dressed up as one they can. */}
+          {passkeyOffered && (
+            <fieldset className={styles.choice}>
+              <legend className={styles.label}>Open your calendar with</legend>
+              <label className={styles.choiceRow}>
+                <input
+                  type="radio"
+                  name="recover-proof"
+                  value="passkey"
+                  checked={proof === 'passkey'}
+                  disabled={busy}
+                  onChange={() => {
+                    proofTouched.current = true
+                    setProof('passkey')
+                  }}
+                />
+                My passkey
+              </label>
+              <label className={styles.choiceRow}>
+                <input
+                  type="radio"
+                  name="recover-proof"
+                  value="phrase"
+                  checked={proof === 'phrase'}
+                  disabled={busy}
+                  onChange={() => {
+                    proofTouched.current = true
+                    setProof('phrase')
+                  }}
+                />
+                My 24-word recovery phrase
+              </label>
+            </fieldset>
+          )}
+
+          {proof === 'phrase' && (
+            <div className={styles.field}>
+              <RecoveryPhraseInput
+                label="Your 24-word recovery phrase"
+                value={phrase}
+                disabled={busy}
+                onChange={setPhrase}
+              />
+            </div>
+          )}
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="recover-password">
@@ -271,8 +378,12 @@ export function RecoverForm() {
           {busy ? (
             <p className={styles.working} aria-live="polite">
               <span className={styles.pulse} aria-hidden="true" />
-              {working}. This takes a moment on purpose. A slow derivation is what makes a
-              stolen database expensive to attack.
+              {/* The slow-derivation line is TRUE OF THE PHRASE AND FALSE OF A PASSKEY:
+                  on that branch nothing is being derived and the wait is your own
+                  authenticator. Explaining a delay that is not happening reads as a stall. */}
+              {proof === 'passkey'
+                ? `${working}. Confirm it on your device.`
+                : `${working}. This takes a moment on purpose. A slow derivation is what makes a stolen database expensive to attack.`}
             </p>
           ) : (
             <button type="submit" className={styles.submit}>
@@ -288,6 +399,10 @@ export function RecoverForm() {
     </form>
   )
 }
+
+const PASSKEY_RESET_LEDE =
+  'Your passkey opens your key here in the browser. Your events are not re-encrypted and ' +
+  'nothing about them changes. Only the password that unlocks them does.'
 
 const LEDE: Record<Screen, string> = {
   checking: 'One moment.',

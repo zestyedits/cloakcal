@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import {
   RewrapHalfAppliedError,
+  WrapEmailMismatchError,
   WrongPasswordError,
   WrongRecoveryPhraseError,
   rewrapPasswordWrap,
   rootKeyFromPassword,
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
+import { ProofFieldset, type Proof } from './proof-fieldset'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
@@ -27,8 +29,6 @@ import styles from './auth.module.css'
  * change or a dashboard-side password reset leaves behind. Without this second option that
  * state would be a dead end for a signed-in user.
  */
-
-type Proof = 'password' | 'phrase'
 
 export function ChangePassword({ email }: { email: string }) {
   const [proof, setProof] = useState<Proof>('password')
@@ -100,66 +100,17 @@ export function ChangePassword({ email }: { email: string }) {
       )}
 
       <div className={styles.form}>
-        <fieldset className={styles.choice}>
-          <legend className={styles.label}>Confirm it is you with</legend>
-          <label className={styles.choiceRow}>
-            <input
-              type="radio"
-              name="proof"
-              value="password"
-              checked={proof === 'password'}
-              disabled={busy}
-              onChange={() => setProof('password')}
-            />
-            My current password
-          </label>
-          <label className={styles.choiceRow}>
-            <input
-              type="radio"
-              name="proof"
-              value="phrase"
-              checked={proof === 'phrase'}
-              disabled={busy}
-              onChange={() => setProof('phrase')}
-            />
-            My recovery phrase
-          </label>
-        </fieldset>
-
-        {proof === 'password' ? (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="current-password">
-              Current password
-            </label>
-            <input
-              id="current-password"
-              className={styles.input}
-              type="password"
-              required
-              autoComplete="current-password"
-              disabled={busy}
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-            />
-          </div>
-        ) : (
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="current-phrase">
-              Your 24-word recovery phrase
-            </label>
-            <textarea
-              id="current-phrase"
-              className={styles.textarea}
-              required
-              rows={3}
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={busy}
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-            />
-          </div>
-        )}
+        <ProofFieldset
+          idPrefix="current"
+          proof={proof}
+          onChange={setProof}
+          disabled={busy}
+          passwordLabel="Current password"
+          password={current}
+          onPassword={setCurrent}
+          phrase={phrase}
+          onPhrase={setPhrase}
+        />
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="new-password">
@@ -217,7 +168,10 @@ function messageFor(caught: unknown): string {
     return 'That current password did not open your calendar. If it is the one you sign in with, use your recovery phrase instead.'
   }
   if (caught instanceof WrongRecoveryPhraseError) return caught.message
-  // Carries an instruction the user can act on; do not flatten it.
+  // Both carry an instruction the user can act on; do not flatten either into a generic
+  // failure. The mismatch one names the address the key was actually derived under, which
+  // is the only thing that makes an unopenable wrap explicable rather than maddening.
+  if (caught instanceof WrapEmailMismatchError) return caught.message
   if (caught instanceof RewrapHalfAppliedError) return caught.message
   return caught instanceof Error ? caught.message : String(caught)
 }

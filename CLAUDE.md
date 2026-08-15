@@ -265,9 +265,14 @@ client that writes v2 and still reads v1 — that work is next phase, behind an 
 with: padding sealed fields to length buckets (ciphertext length currently leaks content
 length), binding the plaintext times into the AES-GCM AAD so the server can see times but
 not forge them (Proton's model), and the per-calendar key layer for sharing. The KDF is
-Argon2id at exactly the OWASP floor (m=19456, t=2, p=1) with `assertKdfParams` refusing
-any server-supplied weakening; at-the-floor is fine today, above-the-floor is worth
-considering since the wrapped root key is servable to an offline attacker. **One real gap:
+Argon2id at m=65536, t=3, p=1 — 3.4x the OWASP memory floor, not at it. The floor
+(m=19456, t=2, p=1) is `KDF_FLOOR` in `packages/crypto/src/kdf.ts`, the value
+`assertKdfParams` refuses to go BELOW; `CURRENT_KDF_PARAMS` beside it is what is actually
+used. This note said "at exactly the floor" for months, which understates a security
+parameter and is the kind of wrong that invites someone to "correct" the code downward to
+match the docs. `assertKdfParams` refuses any server-supplied weakening, and being above
+the floor is the right posture here rather than a nicety: the wrapped root key is servable
+to an offline attacker, so the cost of a guess is the only thing making one expensive. **One real gap:
 there is NO Content-Security-Policy anywhere** — no headers in next.config.ts, none in
 middleware. For a browser-E2EE app XSS is total compromise, so a per-response-nonce CSP
 (ASVS V3.4.3 at L3) is the single highest-value security change on the board. Next phase,
@@ -350,7 +355,8 @@ names its view now, unconditionally.
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
-2. Device pairing UI. The crypto and schema are done and tested; there is no flow.
+2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
+   by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
 4. A Settings toggle for keyboard shortcuts, per WCAG 2.1.4 above.
 5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
@@ -603,12 +609,42 @@ is that somebody saw the words. `packages/crypto/src/rewrap.test.ts` pins that, 
 the wrap's `kind` is authenticated — so a rotated recovery wrap cannot be relabelled into the
 password slot by anyone who can write to the table.
 
-**Still only one recovery route.** Spec §Recovery names three — recovery key, trusted-device,
-optional secure setup — and only the first exists. Device pairing is the next milestone and
-the real fix: the crypto (`packages/crypto/src/device.ts`, ECDH P-256) and the schema
-(`root_key_wraps.kind = 'device'`) are done and tested, and there is no UI. With it, a
-forgotten password becomes "approve on your phone" and the phrase goes back to being the
-last resort rather than the only one.
+**There are two recovery routes now, and the second one needs no memory.** A passkey wraps
+the same root key everything else opens (ADR 0005, migration 0023): register one under
+Settings, Security; unlock with it; and use it on `/recover` instead of the 24 words. Face
+ID, Touch ID or a device PIN is the whole ceremony. The phrase is the last resort it was
+always meant to be rather than the only way in.
+
+**The security argument is user verification, and it is why this does not weaken anything.**
+The PRF output only exists after the authenticator verifies a human, so the passkey route
+cannot be walked by someone sitting at an unlocked laptop. That is a property of THAT route,
+not of the account: a live session plus a known password still changes a password, as it
+always could. No key material
+lands in storage. That is the opposite trade from making the vault readable, which was
+considered and rejected — see the rewrite of ADR 0006 for what that would have cost.
+
+**Two prompts, and the copy has to say so.** PRF output is not reliably returned from
+`create()` (Safari hands back `enabled: true` and no results), so registering creates the
+credential and immediately asserts against it. The user sees two biometric prompts back to
+back, which reads as the first having failed unless told otherwise. Nothing is written if
+the second yields no PRF output: a credential with no wrap is a passkey that opens nothing.
+
+**Removing a passkey refuses when it is the last way in.** 0006's header claimed the
+single-table design made "you must always have at least one wrap" a one-query invariant. It
+did, and nobody had written the query, because until passkeys nothing in the product could
+delete a wrap at all. It matters most for OAuth accounts, which have no password wrap, so
+their passkeys may be all they have.
+
+**None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
+authenticator only proves the API was called as intended. Safari's PRF behaviour and the
+two-prompt flow are unverified until someone runs the throwaway-account recipe in a browser.
+**Migration 0023 is also not applied to production yet.**
+
+**Device pairing is demoted, not deleted.** Spec §Recovery names three routes; passkeys are
+the second. The pairing crypto (`packages/crypto/src/device.ts`, ECDH P-256) and schema
+(`root_key_wraps.kind = 'device'`) stay done, tested and unused. It would still be a
+convenience, but it is no longer the fix for the phrase being the only route, and the
+roadmap copy says so.
 
 ## Email, and the two things that surprised us
 

@@ -9,6 +9,7 @@ import {
   deriveRecoveryWrapKey,
   deriveWrapKey,
   generateRecoveryPhrase,
+  derivePasskeyWrapKey,
   normalizeAccountEmail,
   unwrapRootKey,
   wrapRootKey,
@@ -19,6 +20,7 @@ import {
 import { forgetAllSessionKeys, recallSessionKey, rememberSessionKey } from '@cloakcal/cloak-store'
 import type { SessionKey } from '@cloakcal/crypto'
 import { supabaseBrowser } from './supabase/client'
+import { evaluatePrfForAny, registerPasskey } from './passkey'
 import { fromPgBytea, toPgBytea } from './pg-bytes'
 
 /**
@@ -54,6 +56,56 @@ export class WrongPasswordError extends Error {
   constructor() {
     super('That password did not open your calendar.')
     this.name = 'WrongPasswordError'
+  }
+}
+
+/**
+ * The wrap was derived under a DIFFERENT email address than the one signing in.
+ *
+ * The account email is the KDF salt, so a changed address derives a different wrap key and
+ * the existing wrap stops opening — with nothing in the failure to say why, because a
+ * failed GCM tag looks identical whatever caused it. `initializeCloak` and
+ * `rewrapPasswordWrap` record the address each wrap was derived under, in the `kdf` blob,
+ * and until now nothing read it back: the one clue we deliberately kept was never shown to
+ * the person who needed it, who got "that password did not open your calendar" instead and
+ * quite reasonably concluded they had mistyped.
+ *
+ * This is the honest remainder of ADR 0006, which proposed removing the email from the salt
+ * entirely and was rejected because it cannot be built (the salt is needed before a session
+ * exists). We cannot stop the hazard, so we name it.
+ */
+export class WrapEmailMismatchError extends Error {
+  constructor(readonly wrappedUnder: string) {
+    super(
+      `Your calendar was set up under ${wrappedUnder}. Your key is derived from that ` +
+        'address, so a different one cannot open it. Sign in with the original address, ' +
+        'or use your recovery phrase to set it up again under this one.',
+    )
+    this.name = 'WrapEmailMismatchError'
+  }
+}
+
+/** Asked to open with a passkey when the account has none registered. */
+export class NoPasskeyError extends Error {
+  constructor() {
+    super('There is no passkey on this account yet. Add one from Settings, Security.')
+    this.name = 'NoPasskeyError'
+  }
+}
+
+/**
+ * Refused to delete the only remaining way into the account.
+ *
+ * Not a security control — it is a guard against the user's own mistake, and it is the
+ * first time one has been reachable, because until passkeys nothing could delete a wrap.
+ */
+export class LastWrapError extends Error {
+  constructor() {
+    super(
+      'That is the only way left into your calendar, so it cannot be removed. Add another ' +
+        'passkey, or set a password, and then remove this one.',
+    )
+    this.name = 'LastWrapError'
   }
 }
 
@@ -180,12 +232,32 @@ async function unwrapWithPassword(
       wrapKey,
     )
   } catch {
-    // Authentication already succeeded, so the password was right for the account. Reaching
-    // here means the wrap does not match it — a rewrap that half-completed, or a restored
-    // backup. Saying "wrong password" is the truthful summary for the user; the distinction
-    // matters to us, not to them.
+    // Authentication already succeeded, so the password was right for the ACCOUNT. Reaching
+    // here means the wrap does not match it, and there is one cause we can actually name.
+    //
+    // The email is the KDF salt, so a wrap derived under a different address cannot open
+    // however correct the password is. `kdf.saltEmail` records which address that was;
+    // reading it back turns an inexplicable "wrong password" into a sentence that tells the
+    // user what happened and what to do. Only a RECORDED mismatch is claimed — wraps
+    // written before that field existed carry no saltEmail, and inferring one would be
+    // guessing.
+    //
+    // Any other cause (a half-completed rewrap, a restored backup) still reads as "wrong
+    // password", which remains the truthful summary: that distinction matters to us, not to
+    // them.
+    const wrappedUnder = saltEmailOf(wrap.kdf)
+    if (wrappedUnder !== null && wrappedUnder !== normalizeAccountEmail(email)) {
+      throw new WrapEmailMismatchError(wrappedUnder)
+    }
     throw new WrongPasswordError()
   }
+}
+
+/** The address a wrap was derived under, when it recorded one. Untrusted jsonb, so typed. */
+function saltEmailOf(kdf: unknown): string | null {
+  if (typeof kdf !== 'object' || kdf === null) return null
+  const value = (kdf as Record<string, unknown>)['saltEmail']
+  return typeof value === 'string' && value !== '' ? value : null
 }
 
 /**
@@ -286,17 +358,36 @@ export async function rootKeyFromPassword(email: string, password: string): Prom
   return unwrapWithPassword(password, email, wrap.kdf ?? CURRENT_KDF_PARAMS, wrap)
 }
 
+/**
+ * Persist an ALREADY-OPENED root key as this browser's unlocked session.
+ *
+ * Exists because opening the key and unlocking the browser are two different things, and a
+ * caller that has just done the first almost always wants the second. The recovery reset
+ * path proved that the hard way: it opened the key with the phrase, re-wrapped to the new
+ * password, and navigated home WITHOUT ever persisting a session — so someone who had just
+ * typed 24 words and chosen a password landed on the unlock panel and was asked to
+ * authenticate again, at the single worst moment in the product to hit a dead end. The
+ * comment there asserted the opposite of what the code did.
+ *
+ * Takes a RootKey rather than a credential on purpose: every route that opens the key —
+ * password, phrase, and passkey — ends here, so none of them can forget this step in its
+ * own way.
+ */
+export async function persistUnlockedSession(
+  email: string,
+  rootKey: RootKey,
+): Promise<CloakSession> {
+  const { data, error } = await supabaseBrowser().auth.getUser()
+  if (error !== null) throw error
+  return finishUnlock(data.user.id, email, rootKey)
+}
+
 /** Recovery path: the phrase opens the key, then the user sets a new password. */
 export async function unlockWithRecoveryPhrase(
   email: string,
   phrase: string,
 ): Promise<CloakSession> {
-  const supabase = supabaseBrowser()
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError !== null) throw userError
-
-  const rootKey = await rootKeyFromRecoveryPhrase(phrase)
-  return finishUnlock(userData.user.id, email, rootKey)
+  return persistUnlockedSession(email, await rootKeyFromRecoveryPhrase(phrase))
 }
 
 /**
@@ -549,4 +640,181 @@ export function cloakedRow(
     alg: payload.alg,
     key_version: payload.keyVersion,
   }
+}
+
+/* ------------------------------------------------------------------------------------- *
+ * Passkey wraps (ADR 0005, migration 0023)
+ *
+ * The point of these is the "I forgot my password" story. Password and recovery are the
+ * only two routes today, so forgetting one leaves twenty-four words as the single way back
+ * in — which people reach for on a bad day, having written them down once, months ago. A
+ * passkey is a third route that needs no memory at all, and because the PRF output is only
+ * available after user verification, it is a route an attacker at an unlocked laptop still
+ * cannot walk.
+ * ------------------------------------------------------------------------------------- */
+
+interface StoredPasskeyWrap {
+  id: string
+  credential_id: string
+  prf_salt: string
+  wrapped: string
+  nonce: string
+  alg: string
+  created_at: string
+}
+
+/** One registered passkey, as the settings list needs it. */
+export interface PasskeySummary {
+  readonly id: string
+  /** First bytes of the credential id, hex — the same "what the server files you under"
+      convention the People register uses for contacts. */
+  readonly shortId: string
+  readonly createdAt: string
+}
+
+async function loadPasskeyWraps(): Promise<StoredPasskeyWrap[]> {
+  const { data, error } = await supabaseBrowser()
+    .from('root_key_wraps')
+    .select('id, credential_id, prf_salt, wrapped, nonce, alg, created_at')
+    .eq('kind', 'passkey')
+    .order('created_at', { ascending: true })
+  if (error !== null) throw error
+  return (data ?? []) as StoredPasskeyWrap[]
+}
+
+export async function listPasskeys(): Promise<PasskeySummary[]> {
+  const wraps = await loadPasskeyWraps()
+  return wraps.map((wrap) => ({
+    id: wrap.id,
+    shortId: [...fromPgBytea(wrap.credential_id).slice(0, 4)]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join(''),
+    createdAt: wrap.created_at,
+  }))
+}
+
+/**
+ * Register a passkey and file a wrap for it.
+ *
+ * Takes a RootKey rather than working from the session, for the same reason every other
+ * wrap-writing function here does: the key persisted at unlock is non-extractable and
+ * wrapping needs raw bytes. So the caller has already proved they can open the account,
+ * which is the right bar before minting a new permanent way in.
+ *
+ * The ceremony runs BEFORE the insert and nothing is written if it fails, so a cancelled
+ * prompt leaves no half-registered passkey behind.
+ */
+export async function registerPasskeyWrap(
+  rootKey: RootKey,
+  email: string,
+  label: string,
+): Promise<void> {
+  const supabase = supabaseBrowser()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError !== null) throw userError
+  const userId = userData.user.id
+
+  // Existing credentials are excluded so a second registration on the same authenticator
+  // ADDS a passkey rather than silently replacing the one already wrapped here.
+  const existing = await loadPasskeyWraps()
+  const { credentialId, prfSalt, prfOutput } = await registerPasskey({
+    userId,
+    email,
+    label,
+    existingCredentialIds: existing.map((wrap) => fromPgBytea(wrap.credential_id)),
+  })
+  const wrapped = await wrapRootKey(rootKey, await derivePasskeyWrapKey(prfOutput), 'passkey')
+
+  const { error } = await supabase.from('root_key_wraps').insert({
+    user_id: userId,
+    kind: 'passkey',
+    credential_id: toPgBytea(credentialId),
+    prf_salt: toPgBytea(prfSalt),
+    wrapped: toPgBytea(wrapped.wrapped),
+    nonce: toPgBytea(wrapped.nonce),
+    alg: wrapped.alg,
+  })
+  if (error !== null) throw error
+}
+
+/** Does this account have any passkey at all? Decides whether to OFFER the route. */
+export async function hasPasskey(): Promise<boolean> {
+  const { count, error } = await supabaseBrowser()
+    .from('root_key_wraps')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', 'passkey')
+  if (error !== null) throw error
+  return (count ?? 0) > 0
+}
+
+/**
+ * Open the root key with a passkey. Does not unlock a session on its own.
+ *
+ * Every stored passkey is offered, and the one that ANSWERS decides which wrap to open —
+ * see evaluatePrfForAny for why a single salt across credentials would silently derive the
+ * wrong key for all but the first.
+ */
+export async function rootKeyFromPasskey(): Promise<RootKey> {
+  const wraps = await loadPasskeyWraps()
+  if (wraps.length === 0) throw new NoPasskeyError()
+
+  const candidates = wraps.map((wrap) => ({
+    credentialId: fromPgBytea(wrap.credential_id),
+    prfSalt: fromPgBytea(wrap.prf_salt),
+  }))
+
+  const { credentialId, prfOutput } = await evaluatePrfForAny(candidates)
+
+  const index = candidates.findIndex(
+    (candidate) =>
+      candidate.credentialId.length === credentialId.length &&
+      candidate.credentialId.every((byte, at) => byte === credentialId[at]),
+  )
+  const wrap = wraps[index]
+  if (wrap === undefined) throw new NoPasskeyError()
+
+  return unwrapRootKey(
+    {
+      kind: 'passkey',
+      wrapped: fromPgBytea(wrap.wrapped),
+      nonce: fromPgBytea(wrap.nonce),
+      alg: 'aes-256-gcm-v1',
+    },
+    await derivePasskeyWrapKey(prfOutput),
+  )
+}
+
+/** Open with a passkey AND persist the unlocked session, which is what a user means. */
+export async function unlockWithPasskey(email: string): Promise<CloakSession> {
+  return persistUnlockedSession(email, await rootKeyFromPasskey())
+}
+
+/**
+ * Remove a passkey wrap, REFUSING to remove the last way into the account.
+ *
+ * The schema does not enforce this and 0006's header claims the single-table design makes
+ * the invariant "one query" — which it does, and nobody had written the query, because
+ * until now nothing could delete a wrap at all. This is the first delete-a-wrap path the
+ * product has ever had, so it is the first time the gap is reachable.
+ *
+ * It matters most for exactly the accounts this feature is FOR: an account created through
+ * Google or Apple has no password wrap (ADR 0005), so its passkeys may be most of what it
+ * has. Counting kinds rather than assuming password-and-recovery-always-exist is the
+ * difference between a guard and a comforting story.
+ *
+ * Checked client-side, which is honest about what it is: a guard against the user's own
+ * mistake, not a security boundary. Someone determined to brick their account can still
+ * talk to PostgREST directly, and that is their key to destroy.
+ */
+export async function removePasskeyWrap(wrapId: string): Promise<void> {
+  const supabase = supabaseBrowser()
+
+  const { count, error: countError } = await supabase
+    .from('root_key_wraps')
+    .select('id', { count: 'exact', head: true })
+  if (countError !== null) throw countError
+  if ((count ?? 0) <= 1) throw new LastWrapError()
+
+  const { error } = await supabase.from('root_key_wraps').delete().eq('id', wrapId).eq('kind', 'passkey')
+  if (error !== null) throw error
 }

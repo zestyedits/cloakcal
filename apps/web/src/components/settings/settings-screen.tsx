@@ -324,8 +324,9 @@ export function SettingsScreen({
               state="Password & recovery phrase"
             >
               <p className={styles.sectionLede}>
-                Your password and your recovery phrase both open the same key. Changing
-                either one re-wraps that key; neither one touches an event.
+                Your password, your passkeys and your recovery phrase all open the same
+                key. Changing any one of them re-wraps that key; none of them touches an
+                event.
               </p>
               {/* fixtureMode, not `email === ''`. The two are the same thing here today
                   and are not the same FACT — a signed-in account with no email would have
@@ -361,8 +362,7 @@ export function SettingsScreen({
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Device pairing</span>
               <span className={styles.soon}>Coming soon</span>
-              Approve sign-ins from another device, so the recovery phrase becomes a last
-              resort instead of the only route back in.
+              Approve a new sign-in from a device you already trust.
             </p>
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Booking</span>
