@@ -267,7 +267,7 @@ function PeopleListBody({
     <>
       <InlineError>{error}</InlineError>
 
-      <section className={styles.panel}>
+      <section className={styles.band}>
         <header className={styles.panelHead}>
           <h2 className={styles.panelTitle}>Contacts</h2>
           <span className={styles.panelCount}>{registerCount(contacts.length)}</span>
@@ -324,7 +324,7 @@ function PeopleListBody({
         {addRowFor('contact')}
       </section>
 
-      <section className={styles.panel}>
+      <section className={styles.band}>
         <header className={styles.panelHead}>
           <h2 className={styles.panelTitle}>Groups</h2>
           <span className={styles.panelCount}>{registerCount(groups.length)}</span>

@@ -34,12 +34,21 @@
   line-height: var(--leading-relaxed);
 }
 
-/* The section nav: chips that scroll horizontally on mobile, a sticky rail from 768px. */
+/* THE RAIL, as an instrument rather than a list of links.
+
+   A SUNKEN TRACK holding raised segments — the same assembly as the calendar header's view
+   control, deliberately. Those are the two places in this app that say "you are here", and
+   until now they looked nothing alike. `position: relative` is load-bearing: the travelling
+   marker is absolutely positioned against this box. */
 .nav {
+  position: relative;
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-1);
   overflow-x: auto;
-  padding-bottom: var(--space-2);
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
 }
 
 @media (min-width: 860px) {
@@ -48,21 +57,74 @@
     top: calc(var(--touch-min) + var(--space-6));
     flex-direction: column;
     overflow: visible;
-    padding-bottom: 0;
-    gap: var(--space-1);
+    /* Sticky and relative at once: `sticky` establishes a containing block for the
+       absolutely positioned marker just as `relative` does, so the measurement stays in
+       this box's coordinates on both axes. */
+  }
+}
+
+/* The marker that TRAVELS. One element, moved with a transform, never five backgrounds
+   toggling — the difference between an object repositioning and a highlight teleporting is
+   the whole reason this exists.
+
+   It sits UNDER the labels (z-index 0 against their 1) so it never covers text mid-flight,
+   and it carries the raised-segment look the calendar header already pins, which is why it
+   needs no new contrast pair of its own. */
+.navMarker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  transition:
+    transform var(--duration-base) var(--ease-decelerate),
+    width var(--duration-base) var(--ease-decelerate),
+    height var(--duration-base) var(--ease-decelerate);
+  will-change: transform;
+}
+
+/* Reduced motion keeps the marker and drops the travel: the POSITION is information, the
+   journey is decoration. Collapsing it to nothing would leave a user who asked for less
+   motion with no indication of where they are. */
+@media (prefers-reduced-motion: reduce) {
+  .navMarker {
+    transition: none;
   }
 }
 
 .navLink {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   text-decoration: none;
   font-size: var(--text-sm);
   white-space: nowrap;
+  /* A rail item is a flex child in a scroller; without this its content width wins and the
+     track pushes the page sideways at 390px. */
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .navLink {
+    flex: 1;
+  }
+}
+
+/* The figure that ties the rail to the plate: the same index heads its band. Champagne
+   mono, so the rail carries a value rather than only a word. */
+.navIndex {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--numeral-ink);
+  opacity: 0.7;
 }
 
 .navLink:hover {
@@ -70,47 +132,55 @@
   background: var(--surface-overlay);
 }
 
-/* The rail had no active state at all: identical chips, none of which said where you were
-   or where a deep link had just sent you. Accent as a SHAPE (a left rule and a tinted
-   ground), never as ink — the pair CONTRAST_PAIRS pins at 3:1 in both themes. */
+/* The active item's own ground is gone: the travelling marker IS the ground now. All this
+   carries is the ink change, which is also what makes the state survive a reduced-motion
+   run and the frame before the marker has measured itself. */
 .navLink[aria-current] {
   color: var(--text-primary);
-  background: var(--accent-quiet);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 
+.navLink[aria-current] .navIndex {
+  opacity: 1;
+}
+
+ /* THE PLATE. One machined surface with the sections milled into it, rather than five
+    cards floating on a field.
+
+    The old page's heaviest object carried --shadow-sm while the calendar's carried
+    --shadow-lg, which is most of why one looked designed and the other looked like a
+    wireframe. This is the landing demo card's own recipe at page scale. */
 .sections {
   display: grid;
-  gap: var(--space-4);
   min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg), var(--edge-highlight);
+  /* Bands run edge to edge and are divided by their own rules, so the plate must clip them
+     to its corners. */
+  overflow: hidden;
   /* The page eases in rather than popping — the settings-shaped skeleton hands off to
      this. `backwards` holds the from-state so there is no flash before the animation. */
   animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
-/* A collapsible card. Closed, the page is a calm table of contents: title + current
-   state per row. Open, the controls appear below the same summary row. */
+/* A BAND in the plate, not a card on a field. No border, no radius, no shadow and no gap:
+   the plate owns all of those, and a band is separated from its neighbour by one engraved
+   rule. Five thin panels become one thick one. */
 .section {
   /* A GRID ITEM defaults to min-width: auto, which is content-based — so the nowrap title
      and the state string beside it sized this card to their sum and pushed the page into
      horizontal overflow at 390px, even though the state was set to ellipsis. min-width on
      the container does nothing; it has to be on the item for the track to shrink. */
   min-width: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm), var(--edge-highlight);
   /* Anchor navigation should land the heading below the sticky header, not under it. */
   scroll-margin-top: calc(var(--touch-min) + var(--space-6));
-  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
-/* An OPEN card outranks the closed ones. Every card looked identical whether it held four
-   live controls or nothing, so the page had exactly one visual weight and the eye had
-   nowhere to start. */
-.section[open] {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-md), var(--edge-highlight);
+.section + .section,
+.section + .band,
+.band + .section {
+  border-top: 1px solid var(--engrave-hairline);
 }
 
 .summary {
@@ -122,7 +192,6 @@
      the cramped padding was most of what made these read as strips. */
   padding: var(--space-4) var(--space-5);
   cursor: pointer;
-  border-radius: var(--radius-lg);
   /* The platform triangle is replaced by our chevron, which can rotate. */
   list-style: none;
 }
@@ -164,7 +233,10 @@
      rather than as a list of unopened boxes. */
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  /* Champagne, not grey. The closed plate now has a warm column of VALUES down its right
+     edge, which is the second thing on this page with any weight — the serif title was the
+     only one, and a page with a single accent reads as unfinished however tidy it is. */
+  color: var(--numeral-ink);
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -183,7 +255,6 @@
 
 .section[open] .summary {
   border-bottom: 1px solid var(--engrave-hairline);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 /* Open, the description has done its job — the controls beneath say it better. Keeping it
@@ -192,10 +263,18 @@
   display: none;
 }
 
+/* AN OPEN BAND RECESSES INTO THE PLATE, rather than lifting off it. That is the inversion
+   this pass turns on: on a dark ground a milled recess reads as "you opened this" far
+   harder than a slightly larger shadow ever did, and the plate stays one object instead of
+   growing a second raised thing on top of itself.
+
+   The inset rule at the top is the cut edge. */
 .sectionBody {
   display: grid;
   gap: var(--space-6);
   padding: var(--space-5) var(--space-5) var(--space-6);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1px 0 var(--engrave-hairline);
 }
 
 .sectionTitle {
@@ -505,4 +584,64 @@
   padding: var(--space-3);
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
+}
+
+/* THE READING PLATE — the page's own figures, before any of its controls.
+
+   The top of /settings was a serif word, a grey sentence and then boxes. This is the only
+   element here whose first job is to show the reader their own data rather than name a
+   category, and it is where the champagne numerals finally do work at a size worth seeing.
+
+   `dl`, with the value BEFORE its label in source order and reversed visually: a figure
+   reads first and its caption second, but a definition list must give the term before the
+   description for the markup to mean anything. `flex-direction: column-reverse` on each
+   pair keeps both true at once. */
+.readout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md), var(--edge-highlight);
+}
+
+@media (min-width: 640px) {
+  .readout {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.reading {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.readingValue {
+  margin: 0;
+  font-family: var(--font-numeral);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  color: var(--numeral-ink);
+  /* A default view is a word, not a figure, and "Agenda" at 32px would break the grid at
+     390px. It rides the same baseline at a size that fits. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readingLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.band {
+  composes: band from '../panel.module.css';
 }

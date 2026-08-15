@@ -161,7 +161,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
   }
 
   return (
-    <form className={panel.panel} onSubmit={add}>
+    <form className={panel.band} onSubmit={add}>
       <h2 className={panel.panelTitle}>Passkeys</h2>
       <p className={panel.panelLede}>
         A passkey lets your face, fingerprint or device PIN open your calendar, and reset

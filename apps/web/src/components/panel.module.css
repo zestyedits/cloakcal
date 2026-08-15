@@ -61,3 +61,21 @@
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
 }
+
+/* A BAND: the panel's content shape without its box, for the plate to hold.
+
+   An explicit class rather than a `.plate > *` override, deliberately. That selector and
+   `.panel` have identical specificity, so which one won would come down to CSS-module
+   import order — the exact trap this project already documented when a Button's own
+   `display` beat a same-specificity rule. Naming the band leaves nothing to chance. */
+.band {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+/* One engraved rule between neighbours, and none at the plate's edges. */
+.band + .band {
+  border-top: 1px solid var(--engrave-hairline);
+}

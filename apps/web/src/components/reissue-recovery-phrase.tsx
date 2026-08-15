@@ -95,7 +95,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
   // checkbox measures nothing, and this phrase matters exactly as much as the original.
   if (issued !== null) {
     return (
-      <div className={panel.panel}>
+      <div className={panel.band}>
         <RecoveryPhrase
           phrase={issued}
           onConfirmed={() => {
@@ -109,7 +109,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
 
   if (!open) {
     return (
-      <div className={panel.panel}>
+      <div className={panel.band}>
         <h2 className={panel.panelTitle}>Recovery phrase</h2>
         <p className={panel.panelLede}>
           Lost the 24 words, or think someone else has seen them? Get a new set. The old ones
@@ -123,7 +123,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
   }
 
   return (
-    <form className={panel.panel} onSubmit={submit}>
+    <form className={panel.band} onSubmit={submit}>
       <h2 className={panel.panelTitle}>Get a new recovery phrase</h2>
       <p className={panel.panelLede}>
         Your events are not touched and your password does not change. The{' '}
