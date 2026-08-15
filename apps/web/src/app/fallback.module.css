@@ -27,11 +27,14 @@
   box-shadow: var(--shadow-lg), var(--edge-highlight);
 }
 
+/* The engraved heading survives even here: identity is cheapest exactly where the
+   session is at its worst. One face, one weight, tracked. */
 .title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.02em;
 }
 
 .lede {

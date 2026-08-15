@@ -87,19 +87,24 @@
    not a label, and accent-text on the base surface is a pinned contrast pair. */
 .eyebrow {
   margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent-text);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
+/* The headline is the facade engraving: Marcellus at display size, one weight, and the
+   negative tracking gone — an engraved Roman is already tight-set by its own geometry,
+   and squeezing it reads as a crushed inscription rather than confidence. */
 .headline {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(2.5rem, 5vw + 1.25rem, var(--text-4xl));
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: var(--weight-bold);
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+  font-weight: var(--weight-regular);
 }
 
 .headline em {
@@ -172,7 +177,9 @@
   color: var(--accent-text);
 }
 
-/* The only card on the page. */
+/* The only card on the page — and it is the product's machined plate at hero scale:
+   sharp radius matching the agenda rows it demos, the two-edge chamfer over the deep
+   shadow. The card IS the watch; the page around it stays the room. */
 .demoCard {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -181,15 +188,19 @@
   padding: var(--space-5);
   min-height: 8.5rem;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--surface-raised);
   box-shadow: var(--shadow-lg), var(--edge-highlight);
 }
 
+/* The demo's time is the applied numeral the whole identity hangs from: DM Mono medium
+   in the index ink, tracked like the agenda's. 9.88:1 on the raised card (pinned). */
 .demoTime {
+  font-family: var(--font-numeral);
   font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--numeral-ink);
 }
 
 .demoFields {
@@ -271,11 +282,12 @@
 
 .kicker {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-tertiary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
 /* Editorial rows, not cards: an oversized numeral, a heading, one paragraph at a
@@ -287,12 +299,14 @@
   align-items: baseline;
 }
 
+/* The oversized step numerals in the index ink: DM Mono at dial-marker scale — the
+   closest the page comes to a chronograph's applied indices. 11.04:1 on base. */
 .stepNumber {
+  font-family: var(--font-numeral);
   font-size: clamp(2.5rem, 4vw, 3.5rem);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-regular);
   line-height: 1;
-  color: var(--text-tertiary);
+  color: var(--numeral-ink);
 }
 
 .stepBody {
@@ -344,9 +358,10 @@
 
 .honestyTitle {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-2xl);
-  letter-spacing: -0.02em;
-  font-weight: var(--weight-bold);
+  letter-spacing: 0.01em;
+  font-weight: var(--weight-regular);
 }
 
 .honestyGrid {
@@ -362,11 +377,12 @@
 
 .honestyLabel {
   margin: 0 0 var(--space-4);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-tertiary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
 .honestyList {
@@ -420,9 +436,10 @@
 
 .closingTitle {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, var(--text-3xl));
-  letter-spacing: -0.02em;
-  font-weight: var(--weight-bold);
+  letter-spacing: 0.01em;
+  font-weight: var(--weight-regular);
 }
 
 /* Where the closing CTA used to be. Secondary ink, because it is an answer rather than an

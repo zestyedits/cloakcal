@@ -27,11 +27,14 @@
 }
 
 
+/* The engraved nameplate over the trust decision: Marcellus regular, positive tracking.
+   Its single weight is the identity — no synthesised bold. */
 .title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.02em;
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.02em;
   line-height: var(--leading-tight);
 }
 

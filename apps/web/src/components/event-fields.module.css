@@ -40,6 +40,15 @@
   opacity: 0.55;
 }
 
+/* Temporal values render in the numeral face even while being edited — the one place a
+   time appears before it is jewelry. Page ink, not the index champagne: a value under
+   the cursor is content being worked on, not an engraved index. */
+.input[type='date'],
+.input[type='time'],
+.input[type='number'] {
+  font-family: var(--font-numeral);
+}
+
 .textarea {
   composes: input;
   min-height: 6rem;

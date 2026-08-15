@@ -4,10 +4,13 @@
   margin-bottom: var(--space-6);
 }
 
+/* The month name, engraved: Marcellus regular with its emphasis in the tracking. */
 .title {
   margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.08em;
 }
 
 .grid {
@@ -17,7 +20,9 @@
 
 .dayName {
   text-align: center;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
+  letter-spacing: 0.1em;
   color: var(--text-tertiary);
   padding-bottom: var(--space-1);
 }
@@ -32,8 +37,10 @@
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-secondary);
+  /* The numeral face at 12px is where "numerals as jewelry" either holds or was never
+     true. Page ink, not the index champagne: dates are the page, times are the jewels. */
+  font-family: var(--font-numeral);
   font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Navigation acknowledgment: the hover wash held while this day's server navigation is
@@ -64,11 +71,12 @@
   border-radius: var(--radius-full);
 }
 
-/* Today: the filled accent disc the board draws. A circle, not a pill — it is a date
-   marker, not a button shape. */
+/* Today's bezel in miniature: ring, not fill, page ink inside. A circle, not a pill —
+   it is a date marker, not a button shape — and accent-on-surface is the pinned 3:1
+   shape pair in both themes. */
 .day[data-today='true'] .disc {
-  background: var(--accent);
-  color: var(--brand-white);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--text-primary);
 }
 
 /* The visible week gets a quiet ring so the mini month answers "where am I". */

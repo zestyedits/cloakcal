@@ -155,11 +155,26 @@
 }
 
 
+/* The range heading is the dial's engraving: Marcellus, letterspaced, promoted to
+   primary ink. The one weight the face has is the point — engraving has no bold.
+
+   NO min-width ON PHONES, and that is load-bearing: the old `min-width: 11ch` floor was
+   tuned in Inter at 14px (~77px) and a ch is a FONT METRIC — Marcellus digits run about
+   0.74em, so the same 11ch at --text-lg is ~160px. That pushed the phone header's
+   min-content to 480px and the layout viewport expanded to fit it (412 became 479,
+   measured), which un-anchors every fixed element and made the whole mobile e2e suite
+   miss its clicks. Same family as the max-width feedback loop: mobile overflow widens
+   the page instead of squeezing anything. So the floor is desktop chrome, restored at
+   640px where the header has slack; on phones the date wraps between its steppers,
+   which is the degradation that cannot expand anything. */
 .range {
   margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  min-width: 11ch;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.04em;
+  min-width: 0;
   text-align: center;
   /* NO white-space: nowrap here, and that is load-bearing: nowrap makes the full date
      string this element's min-content, which propagates up through the flex chain into
@@ -212,6 +227,13 @@
   .today {
     display: inline-flex;
   }
+
+  /* The engraving at full size, with its stability floor back: from here the header has
+     the slack the 11ch-in-Marcellus floor actually costs (see .range above). */
+  .range {
+    font-size: var(--text-lg);
+    min-width: 11ch;
+  }
 }
 
 /* Compose button and mini month are desktop chrome: on a phone the FAB composes and the
@@ -257,13 +279,19 @@
   margin-top: var(--space-8);
 }
 
+/* Engraved section label: the display face over one champagne hairline — the rule under
+   a caseback inscription. Secondary ink, up from tertiary, because Marcellus at 14px
+   caps earns its quiet from the letterspacing rather than from fading. */
 .dayHeading {
   margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-caps);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--engrave-hairline);
 }
 
 /* Anchor targets for the week strip: land the day heading clear of the sticky chrome.
@@ -286,9 +314,12 @@
   gap: var(--space-3);
   min-height: var(--touch-min);
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  /* A machined plate, not a card: the sharp radius plus the two-edge chamfer
+     (--edge-highlight), layered with a true shadow per the tokens.css rule. */
+  border-radius: var(--radius-sm);
   background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
   /* The calendar colour reads as a spine, not a fill: colour supports the grouping, it
      never carries meaning on its own. */
   border-left: 3px solid var(--event-color, var(--accent));
@@ -330,10 +361,14 @@
   --event-color: var(--brand-rose);
 }
 
+/* The time is the row's applied numeral: DM Mono medium in the index ink, spaced like
+   jewelry. 9.88:1 on the raised plate — the pair CONTRAST_PAIRS pins. */
 .time {
+  font-family: var(--font-numeral);
   font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--numeral-ink);
 }
 
 .eventBody {
@@ -549,10 +584,14 @@
   color: var(--text-tertiary);
 }
 
+/* Engraved, like every caps label in the chrome: the display face carries the register,
+   the wide tracking carries the emphasis its single weight cannot. */
 .sidebarHeading {
   margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
@@ -637,8 +676,10 @@
 
 .viewAsLabel {
   display: block;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);

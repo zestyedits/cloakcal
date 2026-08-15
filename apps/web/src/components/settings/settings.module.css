@@ -61,11 +61,14 @@
   }
 }
 
+/* Engraved: the display face has one weight, so the h1 earns presence from size and a
+   touch of positive tracking rather than a synthesised bold. */
 .title {
   margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.02em;
   grid-column: 1 / -1;
 }
 
@@ -179,8 +182,10 @@
 
 .sectionTitle {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.02em;
 }
 
 .sectionLede {
