@@ -29,8 +29,13 @@ import { unwrapRootKey, wrapRootKey, type WrappedRootKey } from './wrap.js'
  * authenticator.
  */
 
-/** PRF outputs are 32 bytes. Anything else did not come from the extension we asked for. */
-const PRF_OUTPUT_BYTES = 32
+/**
+ * PRF outputs are 32 bytes. Anything else did not come from the extension we asked for.
+ *
+ * Exported so the app layer validates against the OUTPUT length rather than reusing the
+ * salt length, which happens to be the same number today and is a different fact.
+ */
+export const PRF_OUTPUT_BYTES = 32
 
 /** The salt we hand the authenticator, and store beside the wrap. Not a secret. */
 export const PRF_SALT_BYTES = 32
