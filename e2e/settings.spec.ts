@@ -203,6 +203,14 @@ test('security is a page of its own, reachable from the settings card', async ({
   // mark mid-scroll. Exactly one h1, wherever these flows are rendered.
   await expect(page.locator('h1')).toHaveCount(1)
 
+  // The demo state is signalled by an explicit flag, not by an empty email string. That
+  // sentinel had quietly become load-bearing for this whole route: a signed-in user whose
+  // Supabase email is null — phone auth, or an OAuth identity that returns none — would
+  // have been told "Demo. Sign in to manage your password" while signed in. The fixture
+  // cannot reach that branch, so this asserts the demo half and the source-level test
+  // below covers the mechanism.
+  await expect(page.getByText(/Demo\. Sign in to manage your password/)).toBeVisible()
+
   await page.getByRole('link', { name: '‹ Settings' }).click()
   await expect(page).toHaveURL(/\/settings$/)
 })

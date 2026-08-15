@@ -21,9 +21,20 @@ import styles from './settings.module.css'
  * your calendar is a security fact, and it was filed under the roadmap.
  */
 export function SecurityScreen({
+  demo,
   email,
   devices,
 }: {
+  /**
+   * The dev fixture, said OUT LOUD rather than inferred from an empty email.
+   *
+   * This branched on `email === ''` until it was pointed out that the sentinel had quietly
+   * become load-bearing for a whole route: a signed-in user whose Supabase `email` is null
+   * — phone auth, or an OAuth identity that returns none — would have been shown "Demo.
+   * Sign in to manage your password" while signed in, with no way to tell that the page had
+   * simply misread them. Two different facts were sharing one test.
+   */
+  demo: boolean
   email: string
   devices: readonly SettingsDevice[]
 }) {
@@ -47,9 +58,20 @@ export function SecurityScreen({
         </p>
 
         <main id="main" className={styles.sections}>
-          {email === '' ? (
+          {demo ? (
             <p className={styles.lockedNote}>
               Demo. Sign in to manage your password and recovery phrase.
+            </p>
+          ) : email === '' ? (
+            /* Signed in, but the account carries no email address. Not a demo and not a
+               bug in this page: the email IS the KDF salt (see /account in CLAUDE.md), so
+               there is genuinely nothing to derive a wrap key from, and both flows below
+               would fail in a way that looks like a wrong password. Saying so is the only
+               honest option until an account can be created without one. */
+            <p className={styles.lockedNote}>
+              This account has no email address on it. Your password and recovery phrase are
+              both derived from it, so neither can be changed here. Get in touch and we will
+              sort it out.
             </p>
           ) : (
             <>
