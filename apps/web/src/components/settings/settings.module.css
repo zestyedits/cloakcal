@@ -1,8 +1,14 @@
 /*
- * The settings shell: header, section nav, and the section card grammar every section
- * shares. Section-specific styles live with their sections; what is here is the visual
- * hierarchy — one h1, a nav of anchors, h2 sections in raised cards, quiet coming-soon
- * rows that must never outrank working controls.
+ * The settings shell, in the same restrained file room as People: raised panels, engraved
+ * hairlines, caps display labels, monospace for the values a row reports. Settings was the
+ * one screen the design pass never reached — it touched the display face twice and DM Mono
+ * never, so it sat next to the contact book reading as generic dark-mode SaaS.
+ *
+ * What is here is the hierarchy and the shared row grammar: one h1, a rail of anchors, h2
+ * sections in cards, ONE field shape, ONE row shape, and a deferred list that is quieter
+ * than everything that works. There used to be five unrelated row shapes on this page —
+ * theme cards, a wrapping select grid, hairline rows, baseline-aligned deferred prose, and
+ * whole auth-page cards — and nothing rhymed with anything.
  */
 
 .page {
@@ -72,6 +78,19 @@
   grid-column: 1 / -1;
 }
 
+/* The demo banner, above the rail and spanning both columns: one statement of what this
+   page can and cannot do without an account. */
+.demoBanner {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
 /* The section nav: chips that scroll horizontally on mobile, a sticky rail from 768px. */
 .nav {
   display: flex;
@@ -107,6 +126,15 @@
   background: var(--surface-overlay);
 }
 
+/* The rail had no active state at all: identical chips, none of which said where you were
+   or where a deep link had just sent you. Accent as a SHAPE (a left rule and a tinted
+   ground), never as ink — the pair CONTRAST_PAIRS pins at 3:1 in both themes. */
+.navLink[aria-current] {
+  color: var(--text-primary);
+  background: var(--accent-quiet);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
 .sections {
   display: grid;
   gap: var(--space-3);
@@ -119,6 +147,11 @@
 /* A collapsible card. Closed, the page is a calm table of contents: title + current
    state per row. Open, the controls appear below the same summary row. */
 .section {
+  /* A GRID ITEM defaults to min-width: auto, which is content-based — so the nowrap title
+     and the state string beside it sized this card to their sum and pushed the page into
+     horizontal overflow at 390px, even though the state was set to ellipsis. min-width on
+     the container does nothing; it has to be on the item for the track to shrink. */
+  min-width: 0;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
@@ -148,8 +181,17 @@
 }
 
 .summaryState {
+  /* Flexible AND shrinkable: `min-width: 0` is what actually lets a flex child ellipsis
+     rather than forcing the row wider than the card. Without it, the nowrap title beside
+     it pushed the whole page into horizontal overflow at 390px. */
+  flex: 1 1 auto;
+  min-width: 0;
   margin-left: auto;
-  font-size: var(--text-sm);
+  /* The value a row reports, in the register's own hand. It is the same job the contact
+     book's .panelCount does, and it is what makes a closed page read as a card index
+     rather than as a list of unopened boxes. */
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   text-align: right;
   overflow: hidden;
@@ -160,8 +202,6 @@
 .summaryChevron {
   flex: none;
   color: var(--text-tertiary);
-  font-size: var(--text-lg);
-  line-height: 1;
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
@@ -182,17 +222,29 @@
 
 .sectionTitle {
   margin: 0;
+  /* Never wraps, and never shrinks. At 390px "Time & region" broke across two lines and
+     pushed the row to double height while its neighbours stayed single, so the closed page
+     looked ragged. The state string beside it is the part that may truncate; a card's name
+     is not. */
+  flex: none;
+  white-space: nowrap;
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
   font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
+  letter-spacing: var(--tracking-engraved-caps);
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 
+ /* No negative margin any more. It used to be `margin-top: calc(-1 * var(--space-3))` to
+    cancel the body's grid gap, which only worked while the lede was the first child and
+    silently mis-spaced the moment anything preceded it. The body owns the spacing. */
 .sectionLede {
-  margin: calc(-1 * var(--space-3)) 0 0;
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
+  max-width: 42rem;
 }
 
 /* One row of a list within a section: name/label on the left, controls on the right. */
@@ -225,14 +277,44 @@
   color: var(--text-tertiary);
 }
 
-/* Form grammar shared by the sections. */
+/* ONE field shape for every control on the page: label, control, optional note. The page
+   previously had a wrapping two-up select grid in one card and full-width rows in the
+   next, so the same kind of control changed size depending on which box it was in. */
+.field {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 28rem;
+}
+
+.fieldHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .fieldLabel {
   display: block;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Where a preference is kept, said in place. Storage used to be implied by which card a
+   control sat in, which is a fact no reader can see. */
+.scopeTag {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
-  margin-bottom: var(--space-1);
+}
+
+.fieldNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
 }
 
 .select,
@@ -248,21 +330,36 @@
   font-size: var(--text-sm);
 }
 
+/* The selects were left to the platform, so a 420-entry timezone list rendered with
+   whatever arrow the OS draws and the four dropdowns on this page looked like four
+   different controls depending on the machine. One drawn chevron, inline so it needs no
+   network (and would survive the CSP this app still owes itself). `padding-right` clears
+   it; the arrow is decorative and the select keeps its own semantics. */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--space-8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 L6 8 L9.5 4.5' fill='none' stroke='%23888f9e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 12px 12px;
+}
+
 .input:disabled,
 .select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.controls {
+.choices {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
 
-.controls > * {
+.choices > * {
   flex: 1;
-  min-width: 10rem;
+  min-width: 9rem;
 }
 
 /* Theme choice: two labelled radio cards. Selection never rides on colour alone — the
@@ -341,6 +438,99 @@
 /* The preset picker and checkbox rows moved to visibility-control.module.css with the
    shared VisibilityControl; this file keeps only what the settings cards still render. */
 
+/* The single-column body /settings/security uses: no rail, because a page with three
+   sections does not need a table of contents. */
+.narrowBody {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-16);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.pageLede {
+  margin: 0;
+  max-width: 40rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* A plain panel, for content that is not a collapsible setting — the devices list, the
+   sharing card's Defaults block. Same raised ground and hairline the contact book uses. */
+.panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  /* The engraved rule, same hairline as the agenda's day headings and the register's
+     panel tabs. Decorative like them. */
+  border-bottom: 1px solid var(--engrave-hairline);
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.panelCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--numeral-ink);
+}
+
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* What a row reports about itself — a date, a state. Monospace for the same reason the
+   register's ids are: these are filed values, not prose. */
+.rowMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* A block within a card, headed by its own tab rule. */
+.subSection {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* NOT a card. Four things that do not exist had the same box, chevron and weight as four
+   that do, and a third of the page was furniture dressed as controls. */
+.whatsNext {
+  grid-column: 1 / -1;
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--engrave-hairline);
+}
+
+@media (min-width: 768px) {
+  .whatsNext {
+    grid-column: 2;
+  }
+}
+
 /* Coming-soon rows: visually quieter than anything live, on purpose. */
 .deferredRow {
   display: flex;
@@ -363,6 +553,7 @@
 }
 
 .soon {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;

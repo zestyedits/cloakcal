@@ -66,9 +66,14 @@ test('the Cloak sheet opens, says who sees what, and passes axe', async ({ page 
   await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Cloak' })).toBeVisible()
-  await expect(dialog.getByText('Viewing as')).toBeVisible()
   // The fixture's restricted audiences appear with engine copy, not restated prose.
   await expect(dialog.getByText(/They will/).first()).toBeVisible()
+
+  // NO audience picker in here. The sheet used to render the sidebar's ViewAsBar, so with
+  // the sheet open two live "Viewing as" selects sat in the DOM bound to the same state.
+  // The rows themselves are the way into a preview now.
+  await expect(dialog.getByRole('combobox', { name: /viewing as/i })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: /^View as / }).first()).toBeVisible()
 
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
   const results = await new AxeBuilder({ page })
@@ -97,10 +102,13 @@ test('Today keeps the week view instead of falling to the agenda', async ({
   await page.goto('/')
   await settle(page)
 
-  // On the agenda, Today stays minimal: no view param at all.
-  await expect(page.getByRole('link', { name: 'Today' })).not.toHaveAttribute(
+  // On the agenda, Today names the agenda. It used to omit the param entirely, on the
+  // reasoning that the server fell back to agenda anyway — which stopped being true when
+  // 0022 gave the workspace a stored default view, and made Agenda unreachable for anyone
+  // whose default was something else.
+  await expect(page.getByRole('link', { name: 'Today' })).toHaveAttribute(
     'href',
-    /view=/,
+    /view=agenda/,
   )
 
   // The regression this pins: `view` here is the CLIENT view, and the old builder

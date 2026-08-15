@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
+import { readDemoPrefs } from '@/server/demo-prefs'
 import { loadSettingsData } from '@/server/settings'
 import { SettingsScreen, type SettingsProps } from '@/components/settings/settings-screen'
 
@@ -41,21 +42,29 @@ export default async function SettingsPage() {
     email = data.user.email ?? ''
   }
 
-  // The fixture has no workspace and no session; the screen renders every section with
-  // controls disabled and honest copy, so structure and a11y are still testable.
+  // The fixture has no workspace and no session, so everything that needs a row to write
+  // to stays disabled with honest copy. The four DISPLAY preferences are the exception:
+  // they come from a cookie instead (see lib/demo-prefs.ts), which is what stops this page
+  // from being a wall of grey controls when nobody is signed in.
   const data =
     dataPromise === null
       ? { prefs: null, calendars: [], visibility: null, devices: [] }
       : await dataPromise
+
+  const prefs = fixtureMode ? await readDemoPrefs() : data.prefs
 
   // Maps do not cross the RSC boundary; the membership indexes flatten to plain records
   // here, on the server, where they are still only ids about ids.
   const props: SettingsProps = {
     email,
     fixtureMode,
-    prefs: data.prefs,
+    prefs,
+    // Kept apart from the prefs themselves: a demo has no row, and code that needs an id
+    // to write with must not be handed a plausible-looking fake one.
+    workspaceId: data.prefs?.workspaceId ?? null,
     calendars: data.calendars,
-    devices: data.devices,
+    // Devices moved to /settings/security, where they are a security fact rather than a
+    // footnote under a list of features that do not exist yet.
     audiences: data.visibility?.audiences ?? [],
     workspaceRules: data.visibility?.workspaceRules ?? [],
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),

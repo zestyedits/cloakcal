@@ -21,6 +21,25 @@ export const VIEW_LABELS: Record<CalendarView, string> = {
   month: 'Month',
 }
 
+/**
+ * THE allowlist, for every place a view name arrives from outside the program.
+ *
+ * There were four of these for a while, all identical and all independently maintained:
+ * what `?view=` accepts, what the demo cookie parser accepts, what `loadWorkspacePrefs`
+ * clamps to, and what the settings select offers. Four allowlists for one enum means the
+ * select can offer a value a parser rejects, and the symptom of that is "I picked it,
+ * refreshed, and it went back" — silent, and exactly the class of bug this pass existed to
+ * fix. Every validator reads this array now.
+ *
+ * Order is the canonical one: broadest span to narrowest is not the point, matching the
+ * settings select and the header control is.
+ */
+export const CALENDAR_VIEWS = ['agenda', 'week', 'day', 'month'] as const satisfies readonly CalendarView[]
+
+/** Is this arbitrary string one of ours? */
+export const isCalendarView = (value: unknown): value is CalendarView =>
+  typeof value === 'string' && (CALENDAR_VIEWS as readonly string[]).includes(value)
+
 /** The desktop header's segmented control, left to right. */
 export const HEADER_VIEWS = ['agenda', 'week', 'day', 'month'] as const satisfies readonly CalendarView[]
 

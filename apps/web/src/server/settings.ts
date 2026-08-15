@@ -1,5 +1,7 @@
 import 'server-only'
 import { supabaseServer } from '@/lib/supabase/server'
+import { isCalendarView } from '@/lib/calendar-views'
+import type { CalendarView } from '@/components/calendar-screen'
 import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
 import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
@@ -15,19 +17,29 @@ import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
  * framed in another's timezone.
  */
 
-export type CalendarViewPref = 'agenda' | 'week' | 'day' | 'month'
 
-export interface WorkspacePrefs {
-  readonly workspaceId: string
+/**
+ * The four preferences that frame a calendar render, WITHOUT saying where they came from.
+ *
+ * Split out from WorkspacePrefs so the demo's cookie-backed prefs (lib/demo-prefs.ts) can
+ * satisfy the same shape: `app/page.tsx` then reads one object and does not branch on
+ * whether there is an account behind it. The workspace id is the part that genuinely
+ * differs, and it stays below — a demo has no row to write to, and code that needs an id
+ * should not be handed a plausible-looking fake one.
+ */
+export interface CalendarPrefs {
   readonly timezone: string
   readonly weekStart: WeekStart
   /** The view `/` opens on when the URL names none. `?view=` always wins. */
-  readonly defaultView: CalendarViewPref
+  readonly defaultView: CalendarView
   /** Single-key shortcuts are opt-in (WCAG 2.1.4 route one): off until turned on. */
   readonly keyboardShortcuts: boolean
 }
 
-const VIEW_PREFS: readonly CalendarViewPref[] = ['agenda', 'week', 'day', 'month']
+export interface WorkspacePrefs extends CalendarPrefs {
+  readonly workspaceId: string
+}
+
 
 export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
   const supabase = await supabaseServer()
@@ -56,10 +68,9 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
     timezone: data.timezone,
     weekStart,
     // The check constraint makes anything else unrepresentable; the fallback is for the
-    // same reason week_start has one — a clamp beats trusting a cast.
-    defaultView: VIEW_PREFS.includes(data.default_view as CalendarViewPref)
-      ? (data.default_view as CalendarViewPref)
-      : 'agenda',
+    // same reason week_start has one — a clamp beats trusting a cast. The allowlist is
+    // THE one in lib/calendar-views.ts, not a local copy: this used to be one of four.
+    defaultView: isCalendarView(data.default_view) ? data.default_view : 'agenda',
     keyboardShortcuts: data.keyboard_shortcuts,
   }
 }
@@ -86,33 +97,25 @@ export interface SettingsDevice {
   readonly revokedAt: string | null
 }
 
+/**
+ * NO `devices` here. They moved to /settings/security with the flows that care about them,
+ * and this kept fetching them for a screen that no longer renders one — a query nobody
+ * read, awaited inside the Promise.all, on the page this pass exists to make feel quick.
+ * `loadDevices()` below is the one caller's one query.
+ */
 export interface SettingsData {
   readonly prefs: WorkspacePrefs | null
   readonly calendars: readonly SettingsCalendar[]
   readonly visibility: WorkspaceVisibility | null
-  readonly devices: readonly SettingsDevice[]
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
-  // Prefs and devices start together — devices are user-scoped, not workspace-scoped, so
-  // neither needs the other, and this page is the first thing a settings click waits on.
-  const prefsPromise = loadWorkspacePrefs()
+  const prefs = await loadWorkspacePrefs()
   const supabase = await supabaseServer()
 
-  const devicesPromise = supabase
-    .from('devices')
-    .select('id, label, last_seen_at, revoked_at')
-    .order('created_at', { ascending: true })
+  if (prefs === null) return { prefs: null, calendars: [], visibility: null }
 
-  const prefs = await prefsPromise
-
-  if (prefs === null) {
-    const devices = await devicesPromise
-    if (devices.error !== null) throw devices.error
-    return { prefs: null, calendars: [], visibility: null, devices: toDevices(devices.data) }
-  }
-
-  const [calendarResult, nameResult, visibility, deviceResult] = await Promise.all([
+  const [calendarResult, nameResult, visibility] = await Promise.all([
     supabase
       .from('calendars')
       .select('id, color_token, is_default')
@@ -125,12 +128,10 @@ export async function loadSettingsData(): Promise<SettingsData> {
       .eq('workspace_id', prefs.workspaceId)
       .eq('subject_type', 'calendar'),
     loadWorkspaceVisibility(prefs.workspaceId),
-    devicesPromise,
   ])
 
   if (calendarResult.error !== null) throw calendarResult.error
   if (nameResult.error !== null) throw nameResult.error
-  if (deviceResult.error !== null) throw deviceResult.error
 
   const fieldsByCalendar = new Map<string, CiphertextField[]>()
   for (const row of (nameResult.data ?? []) as Array<{
@@ -163,7 +164,18 @@ export async function loadSettingsData(): Promise<SettingsData> {
     fields: fieldsByCalendar.get(row.id) ?? [],
   }))
 
-  return { prefs, calendars, visibility, devices: toDevices(deviceResult.data) }
+  return { prefs, calendars, visibility }
+}
+
+/** Devices, for /settings/security — the only screen that renders them. */
+export async function loadDevices(): Promise<readonly SettingsDevice[]> {
+  const supabase = await supabaseServer()
+  const { data, error } = await supabase
+    .from('devices')
+    .select('id, label, last_seen_at, revoked_at')
+    .order('created_at', { ascending: true })
+  if (error !== null) throw error
+  return toDevices(data)
 }
 
 const toDevices = (rows: unknown): SettingsDevice[] =>

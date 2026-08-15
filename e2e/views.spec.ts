@@ -79,3 +79,50 @@ test('the audience survives day and month steppers', async ({ page }) => {
   await page.getByRole('link', { name: 'Next day' }).click()
   await expect(page).toHaveURL(/as=contact/)
 })
+
+/**
+ * The default view, from the calendar rather than from Settings.
+ *
+ * These run against the demo's cookie-backed preferences, which is the only reason they
+ * can run at all: before that the fixture had no prefs and this control had nowhere to
+ * write. They cover the round trip that matters — set it here, and `/` with no query
+ * opens on it — plus the regression that made the feature unusable, where a link built
+ * for the agenda omitted its own view and the server read the omission as "month".
+ */
+
+test('a view can be made the default from the calendar, and the calendar opens on it', async ({
+  page,
+}) => {
+  await page.goto('/?view=month')
+  await page.getByRole('button', { name: 'Make Month my default view' }).click()
+
+  // The button becomes a statement rather than a disabled control.
+  await expect(page.getByText('Month is your default view')).toBeVisible()
+
+  // `/` with no query is the actual claim being made.
+  await page.goto('/')
+  await expect(page.getByLabel('Change month')).toBeVisible()
+})
+
+test('agenda is still reachable once another view is the default', async ({ page }) => {
+  await page.goto('/?view=month')
+  await page.getByRole('button', { name: 'Make Month my default view' }).click()
+  await expect(page.getByText('Month is your default view')).toBeVisible()
+
+  // From month, Agenda is a real navigation, and its link must NAME agenda. While the
+  // builders omitted the param for agenda, the server resolved the absence back to the
+  // stored default and this click left the user exactly where they were.
+  await page
+    .getByRole('navigation', { name: 'Calendar views' })
+    .first()
+    .getByRole('link', { name: 'Agenda', exact: true })
+    .click()
+  await expect(page).toHaveURL(/view=agenda/)
+  await expect(page.getByLabel('Change week')).toBeVisible()
+})
+
+test('previewing as someone else offers no default-view control', async ({ page }) => {
+  // It is not the viewer's calendar and not their preference to set.
+  await page.goto('/?view=month&as=contact:alex')
+  await expect(page.getByRole('button', { name: /my default view/ })).toHaveCount(0)
+})

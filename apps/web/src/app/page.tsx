@@ -13,8 +13,10 @@ import {
   safeTimezone,
   weekRange,
 } from '@/server/range'
-import { loadWorkspacePrefs } from '@/server/settings'
+import { loadWorkspacePrefs, type CalendarPrefs } from '@/server/settings'
+import { readDemoPrefs } from '@/server/demo-prefs'
 import { stepQuery } from '@/lib/calendar-links'
+import { isCalendarView } from '@/lib/calendar-views'
 import { supabaseServer } from '@/lib/supabase/server'
 import { DEMO_WEEK, isDevFixtureEnabled } from '@/server/dev-fixture'
 import { CalendarScreen, type CalendarView, type WeekLink } from '@/components/calendar-screen'
@@ -23,8 +25,8 @@ import { Landing } from '@/components/landing'
 /**
  * The view/URL contract, in one place:
  *
- *   ?view=  agenda | week | day | month     absent or unknown -> the workspace's stored
- *                                           default_view (agenda in the fixture)
+ *   ?view=  agenda | week | day | month     absent or unknown -> the stored default_view,
+ *                                           from the workspace row or the demo cookie
  *   ?date=  YYYY-MM-DD anchor               absent -> today in the workspace zone
  *   ?week=  accepted as a spelling of date  (old bookmarks; no new link emits it)
  *   ?as=    audience, orthogonal, carried on every link
@@ -35,10 +37,8 @@ import { Landing } from '@/components/landing'
  * with PlainDate arithmetic (day ±1 day, week ±7 days, month ±1 month pinned to day 1 so
  * repeated steps cannot drift through short months), then re-range.
  */
-const VIEWS: readonly CalendarView[] = ['agenda', 'week', 'day', 'month']
-
 const parseView = (view: string | undefined, fallback: CalendarView = 'agenda'): CalendarView =>
-  VIEWS.includes(view as CalendarView) ? (view as CalendarView) : fallback
+  isCalendarView(view) ? view : fallback
 
 /**
  * Server Component. Reads Tier A metadata plus ciphertext from Postgres as the signed-in
@@ -84,16 +84,22 @@ export default async function Page({
   }
 
 
-  // Workspace prefs frame everything below: the timezone decides which instant range a
-  // week spans, week_start decides where it begins. `safeTimezone` degrades a stored zone
-  // this runtime cannot use to the default rather than 500ing the calendar.
-  const prefs = fixtureMode ? null : await loadWorkspacePrefs()
+  // Prefs frame everything below: the timezone decides which instant range a week spans,
+  // week_start decides where it begins. `safeTimezone` degrades a stored zone this runtime
+  // cannot use to the default rather than 500ing the calendar.
+  //
+  // Two sources, one shape. A real account reads its `workspaces` row; the demo reads a
+  // cookie (see lib/demo-prefs.ts), because otherwise the fixture had no prefs at all and
+  // every preference below silently collapsed to its fallback — which is exactly how
+  // "opens on the view I chose" came to look unbuilt when tried without signing in.
+  const workspacePrefs = fixtureMode ? null : await loadWorkspacePrefs()
+  const prefs: CalendarPrefs | null = fixtureMode ? await readDemoPrefs() : workspacePrefs
   const timezone = safeTimezone(prefs?.timezone)
   const weekStart = prefs?.weekStart ?? 0
 
   // The URL always wins so links stay shareable; the STORED default only fills the
   // absent-or-unknown case. Resolved here rather than at the top because the fallback is
-  // a preference the server has to read first — the fixture keeps the historical agenda.
+  // a preference the server has to read first.
   const view = parseView(viewParam, prefs?.defaultView ?? 'agenda')
 
   // The anchor date every view hangs off. The fixture clamps it: week/agenda stay pinned
@@ -150,7 +156,7 @@ export default async function Page({
   // grid margin. The fixture now composes too — as a demo that structurally cannot write
   // (NewEvent.demo skips the workspace lookup and refuses the submit) — because a compose
   // sheet no test could ever open is how the first sheet shipped without a focus trap.
-  // composeDemo is what keeps the actual WRITE doors (add calendar, seed samples) closed.
+  // demoMode is what keeps the actual WRITE doors (add calendar, seed samples) closed.
   const composeDate = dateParam(anchor)
 
   return (
@@ -177,12 +183,18 @@ export default async function Page({
       groupsByContact={Object.fromEntries(groupsByContact)}
       email={email}
       composeDate={composeDate}
-      composeDemo={fixtureMode}
-      // Real accounts: the stored opt-in, default off (WCAG 2.1.4 route one). The FIXTURE
-      // models a demo user who opted in, because the hotkey behaviour suite needs a live
-      // keyboard to test and the fixture has no settings write path to flip one. The OFF
-      // default itself is pinned where it lives: the 0022 column default and its db test.
-      hotkeysEnabled={prefs?.keyboardShortcuts ?? fixtureMode}
+      demoMode={fixtureMode}
+      // The stored opt-in, default off (WCAG 2.1.4 route one). This used to read
+      // `?? fixtureMode` — a special case for one preference that no other preference got,
+      // because the fixture had no write path to flip one. It has one now, so the demo
+      // models an opted-in user by DEFAULTING to on (DEMO_DEFAULT_PREFS) and the special
+      // case is gone. The OFF default itself is pinned where it lives: the 0022 column
+      // default and its db test.
+      hotkeysEnabled={prefs?.keyboardShortcuts ?? false}
+      defaultView={prefs?.defaultView ?? 'agenda'}
+      // Only a real workspace can take a preference write; the demo writes its cookie
+      // instead and needs no id, which is why these are two props and not one.
+      workspaceId={workspacePrefs?.workspaceId ?? null}
     />
   )
 }

@@ -14,6 +14,7 @@ import { withViewTransition } from '@/lib/view-transition'
 import { CloakProvider, type ExtraSealedField } from './cloak-provider'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
+import { DefaultViewControl } from './default-view-control'
 import { NewCalendarButton } from './new-calendar'
 import { WeekGrid } from './week-grid'
 import { NewEvent, NewEventButton } from './new-event'
@@ -102,8 +103,10 @@ export function CalendarScreen({
   groupsByContact = {},
   email,
   composeDate,
-  composeDemo = false,
+  demoMode = false,
   hotkeysEnabled = false,
+  defaultView = 'agenda',
+  workspaceId = null,
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
@@ -133,9 +136,13 @@ export function CalendarScreen({
    * this separately, because "you can open the form" and "you can change data" stopped
    * being the same fact when the demo gained a compose path.
    */
-  composeDemo?: boolean
+  demoMode?: boolean
   /** The stored keyboard opt-in. Off unmounts the layer entirely; no listener, no `?`. */
   hotkeysEnabled?: boolean
+  /** The stored default view, so the sidebar can say whether this one already is it. */
+  defaultView?: CalendarView
+  /** Where a preference write goes. Null with demoMode false means it cannot go anywhere. */
+  workspaceId?: string | null
 }) {
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
@@ -193,7 +200,10 @@ export function CalendarScreen({
 
   /**
    * One href builder for every view link: anchored where the user already is, carrying
-   * the audience, minimal for the agenda default.
+   * the audience, and always NAMING its view — including agenda. This used to say
+   * "minimal for the agenda default", which is the reasoning calendar-links.ts now spends
+   * its header refuting: once a workspace could store a default view, an agenda link with
+   * no view param resolved to whatever that default was.
    */
   const hrefFor = (target: CalendarView): WeekLink => ({
     pathname: '/',
@@ -417,6 +427,20 @@ export function CalendarScreen({
             />
           </Suspense>
 
+          {/* Owner only: previewing as someone else means looking at a calendar whose
+              default view is not yours to set. Beside the View As card rather than inside
+              it — that card is a trust surface and does not take lodgers — and AFTER it,
+              because on a phone the sidebar collapses to these two and the trust surface
+              should be the one that leads. This is also why the control lives here and
+              not beside the segmented view switch, which is desktop-only chrome. */}
+          {page.audience === 'owner' && (
+            <DefaultViewControl
+              current={view}
+              defaultView={defaultView}
+              target={{ demo: demoMode, workspaceId }}
+            />
+          )}
+
           {/* People sits between the audience tools above it and the calendars below: it
               IS the audience list, promoted from a settings card to a place. Owner only,
               same reasoning as View As — no other audience has people to manage. */}
@@ -436,7 +460,7 @@ export function CalendarScreen({
           )}
 
           {/* The add row is a WRITE door with no demo mode, so it needs a real session:
-              composeDemo excludes the fixture even now that composing itself is demoable.
+              demoMode excludes the fixture even now that composing itself is demoable.
               A restricted audience keeps seeing no section at all when it has no calendars
               to list. */}
           {(page.calendars.length > 0 || canCompose) && (
@@ -459,7 +483,7 @@ export function CalendarScreen({
                   </li>
                 ))}
               </ul>
-              {!composeDemo && canCompose && (
+              {!demoMode && canCompose && (
                 <span className={styles.calendarAdd}>
                   <NewCalendarButton />
                 </span>
@@ -532,7 +556,7 @@ export function CalendarScreen({
                   can come from is here, sealed in this browser with real keys. */}
               {page.audience === 'owner' &&
                 page.withheldCount === 0 &&
-                !composeDemo &&
+                !demoMode &&
                 composeDate !== undefined && (
                   <SeedSampleEvents from={page.from} timezone={timezone} />
                 )}
@@ -742,7 +766,7 @@ export function CalendarScreen({
                 timezone={timezone}
                 defaultDate={composeSlot?.date ?? composeDate}
                 defaultTime={composeSlot?.time ?? '09:00'}
-                demo={composeDemo}
+                demo={demoMode}
                 onClose={() => {
                   setComposeOpen(false)
                   // Forget the slot: the next plain-button compose should get the anchor
@@ -761,7 +785,7 @@ export function CalendarScreen({
             workspaceRules={workspaceRules}
             eventRules={rulesByEvent[visibilityFor] ?? []}
             groupsByContact={groupsByContact}
-            demo={composeDemo}
+            demo={demoMode}
             onClose={() => setVisibilityFor(null)}
           />
         )}
@@ -771,7 +795,6 @@ export function CalendarScreen({
             <CloakSheet
               audiences={audiences}
               currentAudience={page.audience}
-              withheldCount={page.withheldCount}
               workspaceRules={workspaceRules}
               groupsByContact={groupsByContact}
               onClose={() => setCloakOpen(false)}
