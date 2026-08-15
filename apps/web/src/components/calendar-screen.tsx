@@ -386,6 +386,20 @@ export function CalendarScreen({
               <nav className={styles.viewSwitch} aria-label="Calendar views">
                 {HEADER_VIEWS.map((target) => navControl(navItemFor(target), styles.viewSegment))}
               </nav>
+              {/* The bookmark belongs to the view control, so it sits INSIDE the track and
+                  before the divider that cuts the views from the Cloak door — a preference
+                  about which view you land on is part of the view assembly, not another box
+                  beside it. Outside the nav landmark for the same reason Cloak is: it does
+                  not navigate. Owner only; previewing as someone else is looking at a
+                  calendar whose default view is not yours to set. */}
+              {page.audience === 'owner' && (
+                <DefaultViewControl
+                  variant="segment"
+                  current={view}
+                  defaultView={defaultView}
+                  target={{ demo: demoMode, workspaceId }}
+                />
+              )}
               <span className={styles.controlDivider} aria-hidden="true" />
               <button
                 type="button"
@@ -427,14 +441,13 @@ export function CalendarScreen({
             />
           </Suspense>
 
-          {/* Owner only: previewing as someone else means looking at a calendar whose
-              default view is not yours to set. Beside the View As card rather than inside
-              it — that card is a trust surface and does not take lodgers — and AFTER it,
-              because on a phone the sidebar collapses to these two and the trust surface
-              should be the one that leads. This is also why the control lives here and
-              not beside the segmented view switch, which is desktop-only chrome. */}
+          {/* The PHONE's copy of the bookmark above, hidden from 900px by its own CSS.
+              The bottom bar has five fixed slots and no room for a sixth, and a preference
+              does not outrank a view, so on small screens it rides in the sidebar strip —
+              after the View As card, which is a trust surface and leads. */}
           {page.audience === 'owner' && (
             <DefaultViewControl
+              variant="row"
               current={view}
               defaultView={defaultView}
               target={{ demo: demoMode, workspaceId }}

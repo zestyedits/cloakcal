@@ -59,7 +59,7 @@ export function ContactFile({
 
   return (
     <CloakProvider page={page} email={email} extraFields={extraFields}>
-      <PeopleShell>
+      <PeopleShell back={{ href: '/people', label: 'People' }}>
         <ContactFileBody
           page={page}
           audiences={audiences}

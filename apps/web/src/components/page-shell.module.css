@@ -1,0 +1,110 @@
+/*
+ * THE shell every non-calendar page wears: /settings, /settings/security, /people.
+ *
+ * They had three different top bars — People put the lockup hard left and "Back to
+ * calendar" hard right with a quarter of a screen of nothing between them, Settings
+ * centred the lockup and carried a theme toggle, Security copied Settings. Three
+ * arrangements of the same four things is not variety, it is drift, and it is a large part
+ * of why these pages read as thrown together next to the calendar.
+ *
+ * The other half of the problem was the masthead: a title floating in black above a narrow
+ * ribbon of content, with nothing tying the two together. A title, one line saying what the
+ * page is for, and an engraved rule across the content width is what makes a page read as a
+ * document rather than as a stack of strips.
+ */
+
+.shell {
+  min-height: 100dvh;
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
+
+/* Sticky on every page now, not just Settings: these pages scroll, and the way back should
+   not require scrolling to reach it. */
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: color-mix(in srgb, var(--surface-base) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+
+.back:hover {
+  color: var(--text-primary);
+  background: var(--surface-overlay);
+}
+
+.back:active {
+  transform: translateY(1px);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/*
+ * The content measure. 64rem rather than the 44–52rem these pages used, because at a wide
+ * viewport a narrow column with a rail beside it reads as a leftover rather than as a
+ * choice — and the line length that matters is the one inside a card, which `.field` caps
+ * separately. Centred as ONE block, so the masthead, the rail and the cards share an edge.
+ */
+.body {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4) var(--space-16);
+}
+
+/* One column of forms or rows. At the wide measure these pages left a third of the block
+   empty on the right, which reads as content shoved to one side rather than as a choice. */
+.narrow {
+  max-width: 46rem;
+}
+
+/* The masthead: name, purpose, rule. The rule is the piece that was missing — without it
+   the title had nothing to belong to and floated above the content. */
+.masthead {
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--engrave-hairline);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+  line-height: var(--leading-tight);
+}
+
+.lede {
+  margin: var(--space-2) 0 0;
+  max-width: 46rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* Both pages ease in rather than hard-cutting: they are server navigations, and the
+   fallback hands off to this. Reduced motion collapses it through the tokens. */
+.content {
+  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
+}

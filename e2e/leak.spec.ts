@@ -210,7 +210,10 @@ test.describe('nothing leaves over the network', () => {
     await loadDecrypted(page)
     // Exercise the nav, since a client-side transition is where a careless implementation
     // would put state into a query string.
-    await page.getByRole('button', { name: 'Agenda' }).click()
+    // exact: the view bookmark beside the segments is named "Agenda is your default
+    // view", so a substring match now resolves to two controls. Tightening the locator,
+    // not loosening the test.
+    await page.getByRole('button', { name: 'Agenda', exact: true }).click()
     await page.waitForTimeout(300)
 
     expect(findCanaries(outbound.join('\n'))).toEqual([])

@@ -18,10 +18,37 @@
  * merged into the card that decides what people see; the deferred list became a footer that
  * is not a card; Security became a signpost to /settings/security.
  */
+/**
+ * Each card carries a DESCRIPTION as well as a name, and that is hierarchy rather than
+ * decoration. A closed page of five rows reading only "APPEARANCE · Month · shortcuts off"
+ * gives the eye one weight and no way in: every row looks like every other row, and the
+ * state string is the only thing that varies. Name, then what it is for, then its current
+ * value gives three levels to scan instead of one.
+ */
 export const SECTIONS = [
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'time-region', label: 'Time & region' },
-  { id: 'calendars', label: 'Calendars' },
-  { id: 'sharing', label: 'People & sharing' },
-  { id: 'security', label: 'Security' },
+  {
+    id: 'appearance',
+    label: 'Appearance',
+    description: 'Theme, the view your calendar opens on, and the keyboard.',
+  },
+  {
+    id: 'time-region',
+    label: 'Time & region',
+    description: 'Your timezone, and the day your week starts on.',
+  },
+  {
+    id: 'calendars',
+    label: 'Calendars',
+    description: 'Names and colours, and adding another one.',
+  },
+  {
+    id: 'sharing',
+    label: 'People & sharing',
+    description: 'Your contacts, and what the link and each group see by default.',
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    description: 'Password, recovery phrase, and the devices that can open your calendar.',
+  },
 ] as const

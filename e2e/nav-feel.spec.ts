@@ -77,7 +77,9 @@ test('returning to the calendar never drops the shell chrome', async ({ page }) 
     },
   )
 
-  await page.getByRole('link', { name: 'Back to calendar' }).click()
+  // "‹ Calendar" since People moved onto the shared PageShell: /settings, /people and
+  // /settings/security had three arrangements of the same top bar, and now have one.
+  await page.getByRole('link', { name: '‹ Calendar' }).click()
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 20_000 })
 
   expect(

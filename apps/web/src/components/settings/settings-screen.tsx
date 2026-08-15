@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import Link from 'next/link'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
 import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
@@ -9,8 +8,7 @@ import type { AudienceOption } from '@/lib/audiences'
 import { VIEW_LABELS } from '@/lib/calendar-views'
 import { SECTIONS } from '@/lib/settings-sections'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
-import { CloakHomeLink } from '../cloak-logo'
-import { ThemeToggle } from '../theme-toggle'
+import { PageMasthead, PageShell } from '../page-shell'
 import { SignOutButton } from '../sign-out-button'
 import { ButtonLink } from '../ui/button'
 import { AppearanceSection } from './appearance-section'
@@ -31,6 +29,10 @@ import styles from './settings.module.css'
  * is the one door into the store.
  */
 
+/** The card's middle line, from the one list that owns names and descriptions. */
+const describe = (id: string): string =>
+  SECTIONS.find((section) => section.id === id)?.description ?? ''
+
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 /**
@@ -45,12 +47,15 @@ const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', '
 function SettingsSection({
   id,
   title,
+  description,
   state,
   defaultOpen = false,
   children,
 }: {
   id: string
   title: string
+  /** What the card is FOR — the middle level of the closed row's three. */
+  description: string
   /** Plain-language current value shown while closed. */
   state: string
   defaultOpen?: boolean
@@ -59,7 +64,10 @@ function SettingsSection({
   return (
     <details id={id} className={styles.section} open={defaultOpen}>
       <summary className={styles.summary}>
-        <h2 className={styles.sectionTitle}>{title}</h2>
+        <span className={styles.summaryText}>
+          <h2 className={styles.sectionTitle}>{title}</h2>
+          <span className={styles.sectionDescription}>{description}</span>
+        </span>
         <span className={styles.summaryState}>{state}</span>
         {/* A drawn mark, not the literal "›" character this used to be: a glyph's size,
             weight and optical centre are whatever the font hands you, and the display face
@@ -196,20 +204,13 @@ export function SettingsScreen({
 
   return (
     <CloakProvider page={page} email={email} extraFields={nameFields}>
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <Link className={styles.back} href="/">
-            ‹ Calendar
-          </Link>
-          <div className={styles.headerSpace} />
-          <CloakHomeLink size="sm" />
-          <div className={styles.headerSpace} />
-          <ThemeToggle />
-        </header>
+      <PageShell back={{ href: '/', label: 'Calendar' }}>
+        <PageMasthead
+          title="Settings"
+          lede="How your calendar looks and behaves, who can see what, and how you get back in."
+        />
 
-        <div className={styles.body}>
-          <h1 className={styles.title}>Settings</h1>
-
+        <div className={styles.layout}>
           {/* Said ONCE, at the top, rather than inside each card that happens to be
               writable. It was in two cards a moment ago and read as an app apologising
               twice for the same thing. */}
@@ -226,6 +227,7 @@ export function SettingsScreen({
             <SettingsSection
               id="appearance"
               title="Appearance"
+              description={describe('appearance')}
               state={`${VIEW_LABELS[prefs?.defaultView ?? 'agenda']} · shortcuts ${
                 prefs?.keyboardShortcuts === true ? 'on' : 'off'
               }`}
@@ -242,6 +244,7 @@ export function SettingsScreen({
             <SettingsSection
               id="time-region"
               title="Time & region"
+              description={describe('time-region')}
               state={
                 prefs === null
                   ? 'Not set up yet'
@@ -259,6 +262,7 @@ export function SettingsScreen({
             <SettingsSection
               id="calendars"
               title="Calendars"
+              description={describe('calendars')}
               state={`${calendars.length} ${calendars.length === 1 ? 'calendar' : 'calendars'}`}
             >
               <CalendarsSection fixtureMode={fixtureMode} calendars={calendars} />
@@ -273,6 +277,7 @@ export function SettingsScreen({
             <SettingsSection
               id="sharing"
               title="People & sharing"
+              description={describe('sharing')}
               state={
                 contacts === 0 && groups === 0
                   ? 'Nobody yet'
@@ -312,7 +317,12 @@ export function SettingsScreen({
             {/* A signpost, like People. The password and recovery-phrase flows are a page
                 of their own now: they arrived here carrying their own lockup and their own
                 h1, so /settings rendered two h1s and a stray brand mark mid-scroll. */}
-            <SettingsSection id="security" title="Security" state="Password & recovery phrase">
+            <SettingsSection
+              id="security"
+              title="Security"
+              description={describe('security')}
+              state="Password & recovery phrase"
+            >
               <p className={styles.sectionLede}>
                 Your password and your recovery phrase both open the same key. Changing
                 either one re-wraps that key; neither one touches an event.
@@ -374,7 +384,7 @@ export function SettingsScreen({
             </p>
           </footer>
         </div>
-      </div>
+      </PageShell>
     </CloakProvider>
   )
 }

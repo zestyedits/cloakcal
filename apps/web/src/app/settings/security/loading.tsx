@@ -1,40 +1,25 @@
-import Link from 'next/link'
-import { CloakHomeLink } from '@/components/cloak-logo'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { PageMasthead, PageShell } from '@/components/page-shell'
 import settingsStyles from '@/components/settings/settings.module.css'
 import styles from '../loading.module.css'
 
 /**
  * Its own fallback, not the inherited /settings one.
  *
- * Without this file Next would use the parent segment's loading state, which wears the
- * word "Settings", a back link to the calendar and a rail of five section chips — so
+ * Without this file Next would use the parent segment's loading state, which says
+ * "Settings", points back at the calendar and draws a rail of five section chips — so
  * opening Security would flash a different page's chrome and then swap. That is the exact
  * freeze-then-teleport the settings fallback was written to stop; inheriting it here would
  * have reintroduced the problem while looking like reuse.
- *
- * Real chrome, from the real stylesheet. Only the panels shimmer.
  */
 export default function SecurityLoading() {
   return (
-    <div className={settingsStyles.page}>
-      <header className={settingsStyles.header}>
-        <Link className={settingsStyles.back} href="/settings">
-          ‹ Settings
-        </Link>
-        <div className={settingsStyles.headerSpace} />
-        <CloakHomeLink size="sm" />
-        <div className={settingsStyles.headerSpace} />
-        <ThemeToggle />
-      </header>
+    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+      <PageMasthead
+        title="Security"
+        lede="Your password and your recovery phrase both open the same key. Changing either one re-wraps that key; neither one touches an event."
+      />
 
       <div className={settingsStyles.narrowBody}>
-        <h1 className={settingsStyles.title}>Security</h1>
-        <p className={settingsStyles.pageLede}>
-          Your password and your recovery phrase both open the same key. Changing either
-          one re-wraps that key; neither one touches an event.
-        </p>
-
         <div
           className={settingsStyles.sections}
           aria-busy="true"
@@ -48,6 +33,6 @@ export default function SecurityLoading() {
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }

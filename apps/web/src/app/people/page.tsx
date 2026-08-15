@@ -23,6 +23,12 @@ export default async function PeoplePage() {
       // Null under the fixture so every write door stays structurally shut; the loader
       // decides that once (see PeopleData.workspaceId).
       workspaceId={data.workspaceId}
+      // So the register can state what each person currently gets, instead of making you
+      // open a file to find out the one fact the book exists to answer. The map is the one
+      // the engine redacted with, flattened for the RSC boundary — never re-derived.
+      workspaceRules={data.visibility.workspaceRules}
+      groupsByContact={Object.fromEntries(data.groupsByContact)}
+      now={data.previewedAt}
     />
   )
 }
