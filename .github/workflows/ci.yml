@@ -13,7 +13,12 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 was the budget when this suite was 91 specs, and it silently stopped being enough:
+    # four merges in a row were CANCELLED mid-E2E rather than failing, which reads like
+    # someone hit the button rather than like a gate that needs more room. The number is
+    # generous on purpose — a gate that times out teaches people to ignore it, and this one
+    # is meant to become a required check.
+    timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v4
