@@ -29,9 +29,10 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  background: color-mix(in srgb, var(--surface-base) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  /* SOLID, not a blur. A backdrop-filter on a sticky element over a scroller buys a
+     compositing layer and repaints it on every frame of the scroll, for an effect nobody
+     asked for. The hairline below is what separates the bar from the page. */
+  background: var(--surface-base);
   border-bottom: 1px solid var(--border-subtle);
 }
 

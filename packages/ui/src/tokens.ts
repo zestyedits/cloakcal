@@ -84,6 +84,10 @@ const DARK = {
    * never uses (app copy sits on raised/overlay surfaces). Composited by the same math. */
   textSecondaryOnBase: '#b3b5ba', // rgba(245,246,250,0.72) over #0b0d14
   textTertiaryOnBase: '#808287', // rgba(245,246,250,0.5) over #0b0d14
+  /* Ink on --surface-sunken (#070910), the sunken track. Composited, not the raw alpha. */
+  textPrimaryOnSunken: '#f5f6fa',
+  textSecondaryOnSunken: '#b2b4b8', // rgba(245,246,250,0.72) over #070910
+  surfaceSunken: '#070910',
   accent: '#6152e6',
   accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
@@ -124,6 +128,10 @@ const LIGHT = {
   surfaceRaised: '#ffffff',
   textPrimary: '#0b0d14',
   textSecondary: '#5a5d68', // rgba(11,13,20,0.68) composited on white
+  /* Ink on --surface-sunken (#e9ebf2). */
+  textPrimaryOnSunken: '#0b0d14',
+  textSecondaryOnSunken: '#52545b', // rgba(11,13,20,0.68) over #e9ebf2
+  surfaceSunken: '#e9ebf2',
   accent: '#5847e0',
   accentHover: '#4a3ac9',
   accentText: '#4a3ac9',
@@ -146,6 +154,19 @@ const LIGHT = {
 } as const
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
+  /*
+   * --surface-sunken, and this was a LIVE GAP rather than a new cost. The calendar
+   * header's segmented view control has put --text-secondary on the sunken track since
+   * the Dial pass and nothing here checked it; the settings rail now does the same. Both
+   * inks are alpha, so these are composited against the real ground hex by hex, the same
+   * way the privacy chips are.
+   */
+  { name: 'dark/body on sunken', foreground: DARK.textPrimaryOnSunken, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'dark/secondary on sunken', foreground: DARK.textSecondaryOnSunken, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'dark/numeral ink on sunken', foreground: DARK.numeralInk, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'light/body on sunken', foreground: LIGHT.textPrimaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
+  { name: 'light/secondary on sunken', foreground: LIGHT.textSecondaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
+  { name: 'light/numeral ink on sunken', foreground: LIGHT.numeralInk, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'dark/body on base', foreground: DARK.textPrimary, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/body on raised', foreground: DARK.textPrimary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },

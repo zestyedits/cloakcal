@@ -182,3 +182,7 @@
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
 }
+
+.band {
+  composes: band from './panel.module.css';
+}

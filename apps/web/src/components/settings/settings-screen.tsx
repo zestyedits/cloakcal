@@ -7,7 +7,7 @@ import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { VIEW_LABELS } from '@/lib/calendar-views'
 import { SECTIONS } from '@/lib/settings-sections'
-import { SettingsNav } from './settings-nav'
+import { SettingsNav, useVisibleSection } from './settings-nav'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { PageMasthead, PageShell } from '../page-shell'
 import { SignOutButton } from '../sign-out-button'
@@ -31,6 +31,9 @@ import styles from './settings.module.css'
  */
 
 /** The card's middle line, from the one list that owns names and descriptions. */
+/** Stable identity so the observer effect does not re-subscribe on every render. */
+const SECTION_IDS = SECTIONS.map((section) => section.id)
+
 const describe = (id: string): string =>
   SECTIONS.find((section) => section.id === id)?.description ?? ''
 
@@ -146,7 +149,13 @@ export function SettingsScreen({
   workspaceRules,
   groupsByContact,
 }: SettingsProps) {
-  const openSection = useOpenOnHash()
+  const hashSection = useOpenOnHash()
+  /**
+   * Where the reader IS, not where they were sent. A hash stops being the answer the moment
+   * someone scrolls, and a rail that keeps pointing at the last thing they clicked is a rail
+   * that is quietly wrong most of the time.
+   */
+  const openSection = useVisibleSection(SECTION_IDS, hashSection)
 
   // The provider's page: calendars carry their sealed names; occurrences are empty because
   // settings renders none. Withheld/audience fields are the owner's trivially.
@@ -192,6 +201,29 @@ export function SettingsScreen({
           title="Settings"
           lede="How your calendar looks and behaves, who can see what, and how you get back in."
         />
+
+        {/* THE READING PLATE. Your own figures, at display size, in the register's hand.
+            The top of this page was a serif word, a grey sentence and then boxes; this
+            makes the first thing you see your own data. Every figure is one the page
+            already computed for its section rows, so nothing new is derived here. */}
+        <dl className={styles.readout} aria-label="At a glance">
+          <div className={styles.reading}>
+            <dt className={styles.readingLabel}>Calendars</dt>
+            <dd className={styles.readingValue}>{String(calendars.length).padStart(2, '0')}</dd>
+          </div>
+          <div className={styles.reading}>
+            <dt className={styles.readingLabel}>People</dt>
+            <dd className={styles.readingValue}>{String(contacts).padStart(2, '0')}</dd>
+          </div>
+          <div className={styles.reading}>
+            <dt className={styles.readingLabel}>Rules</dt>
+            <dd className={styles.readingValue}>{String(workspaceRules.length).padStart(2, '0')}</dd>
+          </div>
+          <div className={styles.reading}>
+            <dt className={styles.readingLabel}>Opens on</dt>
+            <dd className={styles.readingValue}>{VIEW_LABELS[prefs?.defaultView ?? 'agenda']}</dd>
+          </div>
+        </dl>
 
         <div className={styles.layout}>
           {/* Said ONCE, at the top, rather than inside each card that happens to be

@@ -89,7 +89,7 @@ export function SecurityScreen({
                   passkey is a WAY IN, and devices are a list of what got in. */}
               <PasskeysSection email={email} demo={false} />
 
-              <section className={styles.panel}>
+              <section className={styles.band}>
                 <div className={styles.panelHead}>
                   <h2 className={styles.panelTitle}>Devices</h2>
                   <span className={styles.panelCount}>

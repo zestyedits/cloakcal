@@ -84,7 +84,7 @@ export function ChangePassword({ email }: { email: string }) {
        which was fine when it WAS a page (/account) and became two h1s and a stray brand
        mark mid-scroll the moment it was rendered inside something else. Its page is
        /settings/security now, and a page owns its own chrome. */
-    <form className={panel.panel} onSubmit={submit}>
+    <form className={panel.band} onSubmit={submit}>
       <h2 className={panel.panelTitle}>Change your password</h2>
       <p className={panel.panelLede}>
         Your events are not re-encrypted. Your password wraps the key that opens them, so only
