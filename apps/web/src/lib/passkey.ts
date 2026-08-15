@@ -200,3 +200,72 @@ export async function evaluatePrf(
 
   return prfOutputOf(assertion)
 }
+
+/** Credential ids travel as base64url in the PRF extension's per-credential map. */
+const toBase64Url = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
+
+const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((byte, index) => byte === b[index])
+
+export interface PasskeyCandidate {
+  readonly credentialId: Uint8Array
+  readonly prfSalt: Uint8Array
+}
+
+/**
+ * Ask for ANY of this account's passkeys, and get back which one answered.
+ *
+ * `evaluatePrf` above takes a single credential and is right for registration, where we
+ * know exactly which one we just made. Unlock is the other case: someone with a laptop
+ * passkey and a phone passkey should be offered both and use whichever is to hand.
+ *
+ * That needs `evalByCredential` rather than `eval`, because EACH WRAP HAS ITS OWN SALT and
+ * a single `eval` would apply one salt to whichever credential answered — deriving the
+ * wrong key for every passkey but the first, and failing as an unopenable wrap rather than
+ * as anything that points at the cause. The map is keyed by base64url credential id, which
+ * is the one place in this file where WebAuthn wants text instead of bytes.
+ *
+ * `allowCredentials` is populated rather than left empty so the browser offers exactly the
+ * credentials that can open THIS account, not every passkey the user owns for this site.
+ */
+export async function evaluatePrfForAny(
+  candidates: readonly PasskeyCandidate[],
+): Promise<{ credentialId: Uint8Array; prfOutput: Uint8Array }> {
+  if (!isPasskeySupported()) throw new PasskeyUnsupportedError()
+  if (candidates.length === 0) throw new PasskeyNoPrfError()
+
+  const evalByCredential: Record<string, { first: BufferSource }> = {}
+  for (const candidate of candidates) {
+    evalByCredential[toBase64Url(candidate.credentialId)] = {
+      first: candidate.prfSalt as BufferSource,
+    }
+  }
+
+  let assertion: PublicKeyCredential | null
+  try {
+    assertion = (await navigator.credentials.get({
+      publicKey: {
+        challenge: randomChallenge() as BufferSource,
+        allowCredentials: candidates.map((candidate) => ({
+          type: 'public-key' as const,
+          id: candidate.credentialId as BufferSource,
+        })),
+        userVerification: 'required',
+        timeout: CEREMONY_TIMEOUT_MS,
+        extensions: { prf: { evalByCredential } } as AuthenticationExtensionsClientInputs,
+      },
+    })) as PublicKeyCredential | null
+  } catch {
+    throw new PasskeyCancelledError()
+  }
+  if (assertion === null) throw new PasskeyCancelledError()
+
+  // Which one answered decides which wrap to open. Trusting the order of `candidates`
+  // instead would open the right key only when the user happened to pick the first.
+  const answered = toBytes(assertion.rawId)
+  const matched = candidates.find((candidate) => sameBytes(candidate.credentialId, answered))
+  if (matched === undefined) throw new PasskeyNoPrfError()
+
+  return { credentialId: matched.credentialId, prfOutput: prfOutputOf(assertion) }
+}
