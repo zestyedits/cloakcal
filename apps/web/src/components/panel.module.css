@@ -1,0 +1,63 @@
+/*
+ * THE panel: a raised block under a hairline-ruled caps heading.
+ *
+ * It existed three times — settings, the People register, the contact file — agreeing on
+ * border, radius, shadow and ground, and disagreeing on padding (16 vs 20px), tracking
+ * (0.18 vs 0.16em) and the count's ink (--numeral-ink vs --text-secondary). None of those
+ * differences meant anything; they were drift, and two near-copies of a thing is how it
+ * drifts again. One definition, composed by the three stylesheets that need it.
+ *
+ * The caps heading is now the ONLY section grammar in this part of the app. /settings/
+ * security used to carry two `h2` styles twenty pixels apart on one page: three unboxed
+ * auth cards whose titles rendered at the same 32px as the page's own h1, beside one
+ * boxed Devices panel at 12px uppercase. The page title is the large serif; everything
+ * under it is engraved caps.
+ */
+
+.panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  /* A grid item's default min-width is its CONTENT, so a long word or a nowrap row inside
+     a panel can push the whole layout sideways. This project has paid for that twice. */
+  min-width: 0;
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  /* The engraved rule, same hairline as the agenda's day headings and the register's
+     panel tabs. Decorative like them. */
+  border-bottom: 1px solid var(--engrave-hairline);
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.panelCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--numeral-ink);
+}
+
+/* The sentence under a panel head saying what the panel is for. */
+.panelLede {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}

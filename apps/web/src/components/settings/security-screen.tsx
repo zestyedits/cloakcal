@@ -2,6 +2,7 @@
 
 import type { SettingsDevice } from '@/server/settings'
 import { PageMasthead, PageShell } from '../page-shell'
+import { SettingsNav } from './settings-nav'
 import { ChangePassword } from '../change-password'
 import { PasskeysSection } from '../passkeys-section'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
@@ -38,13 +39,21 @@ export function SecurityScreen({
   devices: readonly SettingsDevice[]
 }) {
   return (
-    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+    /* WIDE, and with the rail, like /settings itself. This page used to be a 46rem column
+       with no navigation, so opening Security read as leaving Settings rather than moving
+       inside it: the measure jumped 18rem and the only way back was the chevron. Keeping
+       the rail and swapping the panel beside it is what makes a submenu part of its menu.
+       The measure is also forced — a 13rem rail inside 46rem leaves less content width
+       than a single form wants. */
+    <PageShell back={{ href: '/settings', label: 'Settings' }}>
       <PageMasthead
         title="Security"
         lede="Your password, your passkeys and your recovery phrase all open the same key. Changing any one of them re-wraps that key; none of them touches an event."
       />
 
-      <div className={styles.narrowBody}>
+      <div className={styles.layout}>
+        <SettingsNav current="security" scope="settings" />
+
         <main id="main" className={styles.sections}>
           {demo ? (
             /* The demo renders the Passkeys card too, disabled, and that is a TESTING

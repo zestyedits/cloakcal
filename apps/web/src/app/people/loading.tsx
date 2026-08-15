@@ -8,6 +8,10 @@ import styles from './loading.module.css'
  * reads as "People, loading its rows" rather than a freeze and a teleport. The body is
  * text-free shapes — this fallback serves both the list and a contact's file, and any
  * words here would be wrong for one of them.
+ *
+ * NO RAIL, deliberately, even though /people now has one. This same fallback serves a
+ * contact's file, which does not — drawing one here would be right half the time and a
+ * flash of the wrong chrome the other half, which is the failure this file exists to stop.
  */
 export default function PeopleLoading() {
   return (
