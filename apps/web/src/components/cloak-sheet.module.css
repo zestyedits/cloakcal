@@ -8,11 +8,13 @@
   gap: var(--space-3);
 }
 
+/* Engraved, matching the event sheet: one face, one weight, tracking for emphasis. */
 .title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
 }
 
 .close {

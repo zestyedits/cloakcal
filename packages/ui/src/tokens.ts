@@ -110,6 +110,13 @@ const DARK = {
   privacyBusyChip: '#3a3025', // rgba(245,165,36,0.16) over #161a25
   privacyHiddenInk: '#9aa0b5',
   privacyHiddenChip: '#1e2232', // rgba(42,47,69,0.4) over #161a25
+  /* The Dial's index ink (--numeral-ink): champagne, carrying every rendered time. It
+   * sits on the base surface (hour gutter), the raised plates (agenda rows, week
+   * blocks, the landing demo card) and the busy block's hidden wash, so all three
+   * grounds are pinned. --engrave-hairline and --minute-tick are cut from the same
+   * metal but are DECORATIVE shapes and deliberately absent here: nothing may render
+   * them as ink or rely on them being seen. */
+  numeralInk: '#cdc3a5',
 } as const
 
 const LIGHT = {
@@ -133,6 +140,9 @@ const LIGHT = {
   privacyBusyChip: '#f5ede0', // rgba(168,106,0,0.12) over #ffffff
   privacyHiddenInk: '#3f4459',
   privacyHiddenChip: '#e5e6e9', // rgba(42,47,69,0.12) over #ffffff
+  /* The light Dial's index ink: the champagne engraved as a dark bronze rather than
+   * applied as a gold — same hue family, dark enough to be text on paper. */
+  numeralInk: '#5c4d2a',
 } as const
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
@@ -148,6 +158,13 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'dark/secondary on base', foreground: DARK.textSecondaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/tertiary on base', foreground: DARK.textTertiaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/accent text on base', foreground: DARK.accentText, background: DARK.surfaceBase, minimum: 4.5 },
+  /*
+   * `accent as UI on base` carries more than buttons now: it is the ONLY thing holding
+   * today's bezel (--ring-today), where an unfilled 2px ring is the whole mark and the
+   * date inside renders in ordinary ink. That is also why --ring-today-ground pins the
+   * ring to --surface-base — on --surface-overlay the dark accent is 2.95:1. Do not
+   * relax this pair to 3 > x without moving the bezel first.
+   */
   { name: 'dark/accent as UI on base', foreground: DARK.accent, background: DARK.surfaceBase, minimum: 3 },
   /*
    * Text ON the accent — the filled-button case, and the gap that let a real AA failure
@@ -192,6 +209,15 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
    * hidden event should barely be there), which is exactly why nothing may render the raw
    * colour as the sole carrier — the chip always shows ink + icon + label.
    */
+  /*
+   * The numeral ink, on each ground a time actually renders over: the hour gutter sits
+   * on base, the agenda rows and week blocks on raised, and a busy week block puts its
+   * time over the hidden-quiet wash (the composited chip hex doubles as that ground).
+   * Held to 4.5 because times render at --text-xs in the week grid.
+   */
+  { name: 'dark/numeral ink on base', foreground: DARK.numeralInk, background: DARK.surfaceBase, minimum: 4.5 },
+  { name: 'dark/numeral ink on raised', foreground: DARK.numeralInk, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'dark/numeral ink on hidden wash', foreground: DARK.numeralInk, background: DARK.privacyHiddenChip, minimum: 4.5 },
   { name: 'dark/privacy full ink on chip', foreground: DARK.privacyFullInk, background: DARK.privacyFullChip, minimum: 4.5 },
   { name: 'dark/privacy limited ink on chip', foreground: DARK.privacyLimitedInk, background: DARK.privacyLimitedChip, minimum: 4.5 },
   { name: 'dark/privacy busy ink on chip', foreground: DARK.privacyBusyInk, background: DARK.privacyBusyChip, minimum: 4.5 },
@@ -209,6 +235,9 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/danger chip on raised', foreground: LIGHT.danger, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/label on solid danger', foreground: DARK.textPrimary, background: LIGHT.dangerSolid, minimum: 4.5 },
   { name: 'light/label on solid danger hover', foreground: DARK.textPrimary, background: LIGHT.dangerSolidHover, minimum: 4.5 },
+  { name: 'light/numeral ink on base', foreground: LIGHT.numeralInk, background: LIGHT.surfaceBase, minimum: 4.5 },
+  { name: 'light/numeral ink on raised', foreground: LIGHT.numeralInk, background: LIGHT.surfaceRaised, minimum: 4.5 },
+  { name: 'light/numeral ink on hidden wash', foreground: LIGHT.numeralInk, background: LIGHT.privacyHiddenChip, minimum: 4.5 },
   { name: 'light/privacy full ink on chip', foreground: LIGHT.privacyFullInk, background: LIGHT.privacyFullChip, minimum: 4.5 },
   { name: 'light/privacy limited ink on chip', foreground: LIGHT.privacyLimitedInk, background: LIGHT.privacyLimitedChip, minimum: 4.5 },
   { name: 'light/privacy busy ink on chip', foreground: LIGHT.privacyBusyInk, background: LIGHT.privacyBusyChip, minimum: 4.5 },

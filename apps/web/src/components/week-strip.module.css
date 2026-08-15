@@ -34,7 +34,12 @@
 }
 
 .name {
+  font-family: var(--font-display);
   font-size: var(--text-xs);
+  /* Stated, not inherited: the display face has one weight, so anything that lands here
+     above 400 is a synthesised bold rather than emphasis (see fonts.ts). */
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.1em;
   color: var(--text-tertiary);
 }
 
@@ -45,18 +50,23 @@
   width: 1.7rem;
   height: 1.7rem;
   border-radius: var(--radius-full);
+  font-family: var(--font-numeral);
   font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
 }
 
-/* links mode: the day being shown gets the quiet ring; today's filled disc wins when
-   they coincide (declared after, same specificity). */
+/* links mode: the day being shown gets the quiet ring; today's bezel wins when they
+   coincide (declared after, same specificity). */
 .day[aria-current='page'] .number {
   background: var(--accent-quiet);
   color: var(--accent-text);
 }
 
+/* The bezel ring, same as the mini month and the week grid's day head, from the same
+   token. The declared ground does double duty here: it beats the aria-current wash above
+   (which is why this used to say `background: none`) AND keeps the ring off the :hover
+   wash, where the dark accent falls under 3:1. See tokens.css --ring-today. */
 .day[data-today='true'] .number {
-  background: var(--accent);
-  color: var(--brand-white);
+  background: var(--ring-today-ground);
+  box-shadow: var(--ring-today);
+  color: var(--text-primary);
 }

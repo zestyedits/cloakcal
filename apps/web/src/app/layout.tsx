@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { inter } from './fonts'
+import { dmMono, inter, marcellus } from './fonts'
 import { THEME_BOOTSTRAP } from '@/lib/theme'
 import { OfflineBanner } from '@/components/ui/offline-banner'
 import './globals.css'
@@ -59,13 +59,19 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    /* The font variable goes on <html>, and that placement is load-bearing.
+    /* The font variables go on <html>, and that placement is load-bearing.
        `globals.css` styles `html, body { font-family: var(--font-sans) }`, and `--font-sans`
        is declared on `:root`. Putting the class on <body> instead would leave <html> unable
        to see `--font-inter`, so it would fall through to the literal family name 'Inter' —
        which names nothing, because next/font hashes it. The result is every screen rendering
-       in the system font while looking exactly like a font that failed to download. */
-    <html lang="en" data-theme="dark" className={inter.variable}>
+       in the system font while looking exactly like a font that failed to download. The Dial
+       faces ride the same class for the same reason: --font-display and --font-numeral
+       resolve on :root, so <html> must be able to see their variables. */
+    <html
+      lang="en"
+      data-theme="dark"
+      className={`${inter.variable} ${marcellus.variable} ${dmMono.variable}`}
+    >
       <head>
         {/* Applies the stored theme BEFORE first paint.
             The server cannot know which theme this visitor chose — the preference is in

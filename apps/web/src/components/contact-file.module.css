@@ -53,13 +53,15 @@
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--border-subtle);
   border-bottom: 0;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  /* Machined, not rounded: the tab is engraved into the caseback below it. */
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: var(--surface-raised);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
 .fileTabId {
@@ -69,11 +71,12 @@
   font-weight: var(--weight-regular);
 }
 
+/* The panel is a caseback: sharp corners, the two-edge chamfer, a real shadow. */
 .filePanel {
   border: 1px solid var(--border-subtle);
-  border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);
   background: var(--surface-raised);
-  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  box-shadow: var(--shadow-md), var(--edge-highlight);
   padding: var(--space-4) var(--space-4) var(--space-2);
 }
 
@@ -85,12 +88,15 @@
   padding-bottom: var(--space-3);
 }
 
+/* The name is the engraving on the case: one weight, tracked, no bold shouting. */
 .fileName {
   flex: 1;
   min-width: 10rem;
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -122,11 +128,12 @@
 
 .sectionTitle {
   margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
 .sectionLede {
@@ -161,7 +168,10 @@
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
-  color: var(--text-secondary);
+  /* The record date in the index ink: dates are the one thing the server genuinely
+     reads, and the file styles them as engraved record entries. Text-grade on the
+     raised panel (CONTRAST_PAIRS pins the pair). */
+  color: var(--numeral-ink);
   font-weight: var(--weight-regular);
 }
 
@@ -181,17 +191,18 @@
   min-height: var(--touch-min);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--surface-base);
+  box-shadow: var(--edge-highlight), var(--shadow-sm);
 }
 
 .eventTime {
   flex: none;
   width: 3.6rem;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeral);
+  font-weight: var(--weight-medium);
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  color: var(--numeral-ink);
 }
 
 .eventTitle {

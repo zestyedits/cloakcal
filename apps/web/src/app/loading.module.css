@@ -13,17 +13,26 @@
   pointer-events: none;
 }
 
-/* Where the date range sits. 11ch AT THE REAL .range's FONT SIZE, and the font-size is
-   load-bearing, not cosmetic: ch scales with it, and at the inherited 16px this shape
-   was 111px against the real range's 97px — enough to widen the whole shell grid past
-   the real page's width and drew every mobile row off the right edge. The shape must
-   occupy exactly the box the text it stands in for occupies, no more. */
+/* Where the date range sits. 11ch AT THE REAL .range's FONT AND SIZE, and both are
+   load-bearing, not cosmetic: ch scales with the font metrics, and at the inherited
+   16px Inter this shape was 111px against the real range — enough to widen the whole
+   shell grid past the real page's width and draw every mobile row off the right edge.
+   The real .range is Marcellus now — base size on phones, --text-lg from 640px — so the
+   shape tracks both, and `width` (never min-width) so a tight phone header can squeeze
+   it exactly as it squeezes the wrapping date it stands in for. */
 .rangeBar {
   height: 1rem;
-  font-size: var(--text-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
   width: 11ch;
   border-radius: var(--radius-sm);
   background: var(--surface-overlay);
+}
+
+@media (min-width: 640px) {
+  .rangeBar {
+    font-size: var(--text-lg);
+  }
 }
 
 /* The Today button's footprint (ButtonLink sm outline). */
@@ -87,7 +96,9 @@
   gap: var(--space-3);
   min-height: var(--touch-min);
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  /* The real rows are machined plates now (radius-sm); the stand-in matches so the
+     agenda settles into content without every corner visibly re-cutting itself. */
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--border-default);
   background: var(--surface-raised);

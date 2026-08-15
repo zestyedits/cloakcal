@@ -44,10 +44,13 @@
   animation: rise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
+/* Engraved, one weight — the display face carries the register room's nameplate. */
 .title {
   margin: var(--space-4) 0 var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
 }
 
 .lede {
@@ -74,16 +77,19 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
+  /* The engraved rule under the tab label — same hairline as the agenda's day headings,
+     decorative like them. */
+  border-bottom: 1px solid var(--engrave-hairline);
 }
 
 .panelTitle {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caps);
+  letter-spacing: var(--tracking-engraved-caps);
   text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-regular);
 }
 
 .panelCount {

@@ -92,6 +92,45 @@ San Francisco and it looks fine.
 dependency, and the generated class goes on `<html>` — see the comment in `layout.tsx` for why
 that placement is load-bearing rather than stylistic.
 
+### The Dial faces
+
+The production identity ("The Dial", chosen from the 2026-08-14 exploration) adds two faces
+under the same discipline — self-hosted latin subsets, committed, checksummed, both SIL OFL
+1.1 with no UI attribution required. `--font-display` and `--font-numeral` resolve them with
+the same `var(--font-x, 'Family')` indirection as Inter, and `--font-mono` now points at DM
+Mono too, so the record voice and the numerals are one instrument.
+
+| | Marcellus | DM Mono |
+|---|---|---|
+| Role | Engraved headings, file tabs, caps labels | Every rendered time and date; `--font-mono` |
+| Version | v14 (Google Fonts latin subset) | v16 (Google Fonts latin subset) |
+| Files | `Marcellus-Regular-latin.woff2` | `DMMono-Regular-latin.woff2`, `DMMono-Medium-latin.woff2` |
+| Size | 14,272 bytes | 8,688 + 8,724 bytes |
+| sha256 | `be9d4883e7f45ed729a83c255d68ea7329fa84fefe84ce44cf1668792a628c3a` | `fd7521f3531a5ccfc655b25c4f22e9871df3ec141ad79bb27fde20d0df347b6d`, `0e263db52797086e763679c54f84ded8cc1249879bc27dca2bd5dd446f6d9f36` |
+| Weights | 400 only — engraving has no bold | 400 and 500 |
+| Licence | `OFL-Marcellus.txt` | `OFL-DMMono.txt` |
+
+**Each vendored family carries its own licence file, and this is a condition, not filing.**
+OFL 1.1 §2 requires the copyright notice and the licence to travel with the Font Software,
+and a latin subset is a Modified Version under the OFL's own definition, so it applies to
+what we ship rather than only to what we downloaded. `OFL.txt` names Inter's authors and
+covers Inter alone — it did not stretch to cover the two new faces, and a fourth face will
+need a fourth file. The licence bodies are identical; only the copyright lines differ.
+
+**Marcellus has exactly one weight, and that constraint is the identity.** Any rule that sets
+`--font-display` must set `font-weight: var(--weight-regular)` and letterspace for emphasis;
+a leftover semibold makes the browser synthesise a fake bold and the letterforms turn to mud.
+**DM Mono has no bold either**, which is a new constraint on `--font-mono`: that variable used
+to resolve to the platform monospace, and every platform monospace has one. 500 is the ceiling.
+
+The engraved tracking is tokenised (`--tracking-engraved*`, `--tracking-numeral` in
+`tokens.css`) rather than typed per stylesheet: with a single-weight face, tracking IS the
+emphasis, so it is load-bearing. Inter's `--tracking-caps` still exists at 0.08em for the caps
+labels the Dial did not convert; the two are different questions, not an unfinished scale.
+
+The index ink pair (`--numeral-ink`: champagne `#CDC3A5` dark, dark bronze `#5C4D2A` light)
+lives in `tokens.css` with its grounds pinned in `CONTRAST_PAIRS`.
+
 ## Regenerating the assets
 
 ```bash

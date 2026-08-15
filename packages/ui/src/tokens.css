@@ -56,18 +56,37 @@
   --gradient-accent-deep-hover: linear-gradient(135deg, #5b21b6 0%, #5a4cd8 100%);
 
   /* ---------------------------------------------------------------------
-   * Typography — Inter, per the guide. Sizes use a 1.2 minor-third ramp;
-   * the guide fixes the family and weights, not the scale.
+   * Typography — Inter for the working surface, plus the Dial's two faces.
+   * Sizes use a 1.2 minor-third ramp; the guide fixes Inter's family and
+   * weights, not the scale.
+   *
+   * THE DIAL, picked from the 2026-08-14 identity exploration: chronograph
+   * dials and machined casebacks. The surfaces are stock — the identity is
+   * the watch, not the room — and it lives in type and material detail:
+   * Marcellus for engraved headings, DM Mono for every numeral, an index
+   * ink (champagne on dark, dark bronze on light), and a two-edge chamfer.
    * ------------------------------------------------------------------- */
   /* `--font-inter` is supplied by whoever loads the font — in apps/web that is
      `next/font/local`, which hashes the family name at build time and exposes it through a
      custom property. The indirection is what keeps THIS package free of any dependency on
      Next: the fallback chain lives here, the loading mechanism does not.
      Unset, this resolves to the literal 'Inter' and then to the platform UI font, which is
-     what every screen silently rendered in until the font was actually loaded. */
+     what every screen silently rendered in until the font was actually loaded.
+     --font-marcellus and --font-dm-mono below follow the same contract. */
   --font-sans: var(--font-inter, 'Inter'), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
     sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
+  /* The engraved display face. Marcellus has exactly ONE weight: anything that wants bold
+     in this face sets `font-weight: var(--weight-regular)` and letterspacing instead,
+     which is how engraving actually works. A rule that leaves a semibold in place gets a
+     synthesised fake bold — that is a defect, not emphasis. */
+  --font-display: var(--font-marcellus, 'Marcellus'), Georgia, 'Times New Roman', serif;
+  /* The numeral face, for everywhere a time or date renders. A monospace is tabular BY
+     CONSTRUCTION, so columns of times align without begging a subset for tnum. */
+  --font-numeral: var(--font-dm-mono, 'DM Mono'), ui-monospace, 'SF Mono', monospace;
+  /* The record voice — file ids, key words, kbd — joins the instrument: same face as the
+     numerals, so the server's plumbing and the dial's indices read as one machine. */
+  --font-mono: var(--font-dm-mono, 'DM Mono'), ui-monospace, 'SF Mono', 'Cascadia Mono',
+    monospace;
 
   --weight-regular: 400;
   --weight-medium: 500;
@@ -89,7 +108,25 @@
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --leading-relaxed: 1.65;
+  /* Inter's caps tracking. Still correct for every caps label the Dial did NOT convert
+     (form field labels, the recovery grid, the lockup) — those are Inter, and Inter set
+     in caps needs 0.08em, not the engraving's 0.16em. The two are different questions,
+     not a scale someone forgot to finish: read --tracking-engraved-caps below before
+     "unifying" them. */
   --tracking-caps: 0.08em;
+
+  /* The Dial's tracking, and the reason it is tokenised rather than typed per rule:
+     Marcellus has ONE weight, so tracking is the only emphasis the face has, which makes
+     these values load-bearing rather than cosmetic. They were written out literally in
+     fifteen stylesheets on the first pass — 0.02em nine times, 0.16em six, 0.18em four —
+     and a nine-way hand-copy of the thing that carries emphasis is how sibling labels
+     end up a hair apart with nobody able to say which one is right.
+     ALWAYS set one of these alongside var(--font-display) or var(--font-numeral). */
+  --tracking-engraved: 0.02em;           /* display face, sentence case: titles, headings */
+  --tracking-engraved-display: 0.01em;   /* the same at display sizes — big type needs less */
+  --tracking-engraved-caps: 0.16em;      /* display face, uppercase */
+  --tracking-engraved-caps-wide: 0.18em; /* uppercase in the chrome's smallest labels */
+  --tracking-numeral: 0.04em;            /* numeral face where a time is set as jewelry */
 
   /* ---------------------------------------------------------------------
    * Space — 4px base. Calendar grids depend on exact multiples, so the
@@ -198,6 +235,28 @@
   --accent-quiet: rgba(97, 82, 230, 0.16);
   --accent-text: var(--brand-lavender);
 
+  /* TODAY'S BEZEL, and the one place it lives. Four surfaces draw this mark — the week
+   * grid's day head, the mini month, a month cell, the mobile week strip — and it shipped
+   * as four hand-copied box-shadows, which is the shape that has already cost this repo
+   * two user-facing bugs (own-workspace, calendar-links). Both halves are declared here
+   * because both are theme-independent BY CONSTRUCTION: the var()s inside resolve against
+   * whichever theme the element using them sits in, so the light block need not restate
+   * them.
+   *
+   * THE GROUND IS PART OF THE CONTRACT, not decoration. The Dial opened the old filled
+   * disc into a ring, which means the ring is now the ENTIRE mark: the date inside renders
+   * in --text-primary, the same ink every other day uses, so if the ring goes the day is
+   * simply not marked. Left to inherit, a :hover or [data-nav-pending] wash puts
+   * --surface-overlay behind it and the dark ring measures 2.95:1 — under the 3:1
+   * graphical-object floor (WCAG 1.4.11), in the state a pointer is resting on it.
+   * Pinned to --surface-base it is 3.57:1 dark and 5.73:1 light, which is exactly the
+   * `accent as UI on base` pair CONTRAST_PAIRS already holds.
+   *
+   * Nothing automated can catch this if it drifts: a box-shadow is not ink, so axe does
+   * not measure it, and axe never scans a hover state anyway. The token is the check. */
+  --ring-today: inset 0 0 0 2px var(--accent);
+  --ring-today-ground: var(--surface-base);
+
   --focus-ring: var(--brand-lavender);
 
   --status-success: var(--brand-teal);
@@ -227,12 +286,24 @@
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.55);
   --glow-accent: 0 0 24px rgba(97, 82, 230, 0.28);
 
-  /* A 1px catch-light on the top edge of raised surfaces — layered as an EXTRA shadow
-   * (`box-shadow: var(--shadow-lg), var(--edge-highlight)`), never alone. On a dark ground
-   * this is what separates "machined panel" from "flat grey box"; it is the entire
-   * next-level-tech texture for the cost of one token, and it is deliberately the only
-   * such trick — more of them and it becomes noise. */
-  --edge-highlight: inset 0 1px 0 rgba(245, 246, 250, 0.06);
+  /* The machined edge — layered as an EXTRA shadow (`box-shadow: var(--shadow-lg),
+   * var(--edge-highlight)`), never alone. Upgraded from one catch-light to two for the
+   * Dial: light strikes the top of a chamfer and falls off the bottom, which is what
+   * separates "machined plate" from "flat grey box". Still deliberately the only such
+   * trick — more of them and it becomes noise. */
+  --edge-highlight: inset 0 1px 0 rgba(245, 246, 250, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.38);
+
+  /* The Dial's index ink: champagne, the colour of an applied gold marker. TEXT-GRADE
+   * everywhere a time renders — 11.04:1 on base, 9.88:1 on raised, 8.98:1 over the
+   * hidden wash — and pinned in CONTRAST_PAIRS. Date numbers in the grids keep the
+   * page's own ink and take only the numeral FACE; the champagne is for times. */
+  --numeral-ink: #cdc3a5;
+  /* Engraved hairline (the rule under a section label) and the minute track's ticks.
+   * Decorative shapes cut from the same metal as the numeral ink — never ink, and
+   * nothing may rely on them being seen. */
+  --engrave-hairline: rgba(205, 195, 165, 0.28);
+  --minute-tick: rgba(205, 195, 165, 0.42);
 }
 
 /* -----------------------------------------------------------------------
@@ -273,7 +344,17 @@
   --shadow-md: 0 4px 16px rgba(11, 13, 20, 0.1);
   --shadow-lg: 0 12px 40px rgba(11, 13, 20, 0.14);
   --glow-accent: 0 0 24px rgba(88, 71, 224, 0.18);
-  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  /* The same chamfer in steel: a white catch-light on top, a shadowed under-edge. */
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(11, 13, 20, 0.08);
+
+  /* The light Dial is the same watch with the champagne ENGRAVED rather than applied:
+   * a dark bronze cut into paper, not a gold laid on it — an index this light theme can
+   * actually read. Same material logic, hue kin to the dark champagne. 7.63:1 on base,
+   * 8.24:1 on white raised, 6.60:1 over the hidden wash; pinned in CONTRAST_PAIRS. */
+  --numeral-ink: #5c4d2a;
+  --engrave-hairline: rgba(92, 77, 42, 0.34);
+  --minute-tick: rgba(92, 77, 42, 0.5);
 }
 
 /* -----------------------------------------------------------------------
