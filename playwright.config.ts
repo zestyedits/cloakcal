@@ -63,7 +63,16 @@ export default defineConfig({
   retries: process.env['CI'] ? 1 : 0,
   // Conditional spread rather than `: undefined` — exactOptionalPropertyTypes treats an
   // explicit undefined as a distinct value from an absent key.
-  ...(process.env['CI'] ? { workers: 1 } : {}),
+  //
+  // TWO on CI, not one. `workers: 1` is Playwright's boilerplate default and was fine at
+  // the 91 specs this project started with; at 252 it ran the job past its 15-minute
+  // budget and every CI run on main was CANCELLED mid-E2E for four merges straight —
+  // green locally, never green here, which is the worst shape a gate can have. Serial
+  // execution was never the guarantee: every local run drives many workers against this
+  // same single dev server, so parallelism against it is the proven case, not the risky
+  // one. Two rather than many because the hosted runner has two cores and the dev server
+  // compiles routes on demand; `retries: 1` below absorbs the contention that leaves.
+  ...(process.env['CI'] ? { workers: 2 } : {}),
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : [['list']],
 
   use: {
