@@ -159,8 +159,10 @@
    primary ink. The one weight the face has is the point — engraving has no bold.
 
    NO min-width ON PHONES, and that is load-bearing: the old `min-width: 11ch` floor was
-   tuned in Inter at 14px (~77px) and a ch is a FONT METRIC — Marcellus digits run about
-   0.74em, so the same 11ch at --text-lg is ~160px. That pushed the phone header's
+   tuned in Inter at 14px (97px, measured — the same figure loading.module.css records
+   as 111px at 16px) and a ch is a FONT METRIC, not a length. Marcellus digits run 0.81em
+   against Inter's 0.63em, so the same 11ch is 142px at --text-base and 160px at
+   --text-lg — nearly double the floor anyone tuned. That pushed the phone header's
    min-content to 480px and the layout viewport expanded to fit it (412 became 479,
    measured), which un-anchors every fixed element and made the whole mobile e2e suite
    miss its clicks. Same family as the max-width feedback loop: mobile overflow widens
@@ -173,7 +175,7 @@
   font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-numeral);
   min-width: 0;
   text-align: center;
   /* NO white-space: nowrap here, and that is load-bearing: nowrap makes the full date
@@ -287,7 +289,7 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-engraved-caps);
   text-transform: uppercase;
   color: var(--text-secondary);
   padding-bottom: var(--space-2);
@@ -366,8 +368,8 @@
 .time {
   font-family: var(--font-numeral);
   font-size: var(--text-sm);
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-numeral);
   color: var(--numeral-ink);
 }
 
@@ -591,7 +593,7 @@
   font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.18em;
+  letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
@@ -679,7 +681,7 @@
   font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.18em;
+  letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);

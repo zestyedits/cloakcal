@@ -50,7 +50,7 @@
   font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--tracking-engraved);
 }
 
 .lede {
@@ -86,7 +86,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-engraved-caps);
   text-transform: uppercase;
   color: var(--text-secondary);
   font-weight: var(--weight-regular);

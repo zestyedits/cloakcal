@@ -108,7 +108,25 @@
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --leading-relaxed: 1.65;
+  /* Inter's caps tracking. Still correct for every caps label the Dial did NOT convert
+     (form field labels, the recovery grid, the lockup) — those are Inter, and Inter set
+     in caps needs 0.08em, not the engraving's 0.16em. The two are different questions,
+     not a scale someone forgot to finish: read --tracking-engraved-caps below before
+     "unifying" them. */
   --tracking-caps: 0.08em;
+
+  /* The Dial's tracking, and the reason it is tokenised rather than typed per rule:
+     Marcellus has ONE weight, so tracking is the only emphasis the face has, which makes
+     these values load-bearing rather than cosmetic. They were written out literally in
+     fifteen stylesheets on the first pass — 0.02em nine times, 0.16em six, 0.18em four —
+     and a nine-way hand-copy of the thing that carries emphasis is how sibling labels
+     end up a hair apart with nobody able to say which one is right.
+     ALWAYS set one of these alongside var(--font-display) or var(--font-numeral). */
+  --tracking-engraved: 0.02em;           /* display face, sentence case: titles, headings */
+  --tracking-engraved-display: 0.01em;   /* the same at display sizes — big type needs less */
+  --tracking-engraved-caps: 0.16em;      /* display face, uppercase */
+  --tracking-engraved-caps-wide: 0.18em; /* uppercase in the chrome's smallest labels */
+  --tracking-numeral: 0.04em;            /* numeral face where a time is set as jewelry */
 
   /* ---------------------------------------------------------------------
    * Space — 4px base. Calendar grids depend on exact multiples, so the
@@ -216,6 +234,28 @@
   --accent-hover: #5a4cd8;
   --accent-quiet: rgba(97, 82, 230, 0.16);
   --accent-text: var(--brand-lavender);
+
+  /* TODAY'S BEZEL, and the one place it lives. Four surfaces draw this mark — the week
+   * grid's day head, the mini month, a month cell, the mobile week strip — and it shipped
+   * as four hand-copied box-shadows, which is the shape that has already cost this repo
+   * two user-facing bugs (own-workspace, calendar-links). Both halves are declared here
+   * because both are theme-independent BY CONSTRUCTION: the var()s inside resolve against
+   * whichever theme the element using them sits in, so the light block need not restate
+   * them.
+   *
+   * THE GROUND IS PART OF THE CONTRACT, not decoration. The Dial opened the old filled
+   * disc into a ring, which means the ring is now the ENTIRE mark: the date inside renders
+   * in --text-primary, the same ink every other day uses, so if the ring goes the day is
+   * simply not marked. Left to inherit, a :hover or [data-nav-pending] wash puts
+   * --surface-overlay behind it and the dark ring measures 2.95:1 — under the 3:1
+   * graphical-object floor (WCAG 1.4.11), in the state a pointer is resting on it.
+   * Pinned to --surface-base it is 3.57:1 dark and 5.73:1 light, which is exactly the
+   * `accent as UI on base` pair CONTRAST_PAIRS already holds.
+   *
+   * Nothing automated can catch this if it drifts: a box-shadow is not ink, so axe does
+   * not measure it, and axe never scans a hover state anyway. The token is the check. */
+  --ring-today: inset 0 0 0 2px var(--accent);
+  --ring-today-ground: var(--surface-base);
 
   --focus-ring: var(--brand-lavender);
 

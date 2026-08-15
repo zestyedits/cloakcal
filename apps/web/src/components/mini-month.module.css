@@ -22,6 +22,9 @@
   text-align: center;
   font-family: var(--font-display);
   font-size: var(--text-xs);
+  /* Stated, not inherited: the display face has one weight, so anything that lands here
+     above 400 is a synthesised bold rather than emphasis (see fonts.ts). */
+  font-weight: var(--weight-regular);
   letter-spacing: 0.1em;
   color: var(--text-tertiary);
   padding-bottom: var(--space-1);
@@ -72,10 +75,12 @@
 }
 
 /* Today's bezel in miniature: ring, not fill, page ink inside. A circle, not a pill —
-   it is a date marker, not a button shape — and accent-on-surface is the pinned 3:1
-   shape pair in both themes. */
+   it is a date marker, not a button shape. The ground is declared, not inherited: this
+   day carries the same :hover / [data-nav-pending] wash as every other, and the ring
+   cannot be left to sit on it. See tokens.css --ring-today. */
 .day[data-today='true'] .disc {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--ring-today-ground);
+  box-shadow: var(--ring-today);
   color: var(--text-primary);
 }
 

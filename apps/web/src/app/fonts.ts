@@ -36,6 +36,13 @@ export const inter = localFont({
  * (self-hosting explicitly permitted, no UI attribution required), vendored as the Google
  * Fonts latin subsets — Marcellus v14, DM Mono v16.
  *
+ * EACH FAMILY SHIPS ITS OWN LICENCE, and that is an obligation rather than tidiness:
+ * OFL 1.1 §2 requires the copyright notice and the licence to travel with the Font
+ * Software, and subsetting to latin makes each of these a Modified Version, so the
+ * requirement bites harder here, not less. `OFL.txt` in ./fonts is Inter's and names only
+ * Inter's authors; `OFL-Marcellus.txt` and `OFL-DMMono.txt` carry the other two. A fourth
+ * vendored face needs a fourth file — do not assume the existing one covers it.
+ *
  * These are identity, not accent: --font-display and --font-numeral in tokens.css resolve
  * to them on every screen, so both PRELOAD. At 14KB and 2x9KB the three files together
  * cost less than a tenth of the Inter variable file.
@@ -65,6 +72,12 @@ export const marcellus = localFont({
  * DM Mono — the numeral face. A monospace is tabular BY CONSTRUCTION, so times align in
  * any column without begging the font for a tnum feature a subset may not carry. 400 for
  * running numerals, 500 where a time is the row's jewelry.
+ *
+ * NO BOLD, and this face now backs --font-mono as well as --font-numeral — which is a
+ * NEW constraint, because --font-mono used to resolve to the platform monospace and every
+ * platform monospace has a real bold. 500 is the ceiling: a `font-weight: 600` on a key
+ * id, a kbd or a recovery word gets synthesised, same failure mode as Marcellus above.
+ * Nothing does that today; this is here so the next person does not discover it.
  *
  * `adjustFontFallback: false` deliberately: the only options are Arial and Times metrics,
  * and forcing proportional metrics onto a monospace fallback would misalign the very

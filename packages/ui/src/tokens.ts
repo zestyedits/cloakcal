@@ -158,6 +158,13 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'dark/secondary on base', foreground: DARK.textSecondaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/tertiary on base', foreground: DARK.textTertiaryOnBase, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/accent text on base', foreground: DARK.accentText, background: DARK.surfaceBase, minimum: 4.5 },
+  /*
+   * `accent as UI on base` carries more than buttons now: it is the ONLY thing holding
+   * today's bezel (--ring-today), where an unfilled 2px ring is the whole mark and the
+   * date inside renders in ordinary ink. That is also why --ring-today-ground pins the
+   * ring to --surface-base — on --surface-overlay the dark accent is 2.95:1. Do not
+   * relax this pair to 3 > x without moving the bezel first.
+   */
   { name: 'dark/accent as UI on base', foreground: DARK.accent, background: DARK.surfaceBase, minimum: 3 },
   /*
    * Text ON the accent — the filled-button case, and the gap that let a real AA failure
