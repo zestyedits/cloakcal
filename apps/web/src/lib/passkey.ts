@@ -1,7 +1,16 @@
+'use client'
+
 import { PRF_OUTPUT_BYTES, createPrfSalt } from '@cloakcal/crypto'
 
 /**
  * The WebAuthn half of the passkey wrap (ADR 0005).
+ *
+ * 'use client' is REQUIRED here, and the leak suite is what said so — rule 2 forbids any
+ * module under `apps/` without the directive from importing `@cloakcal/crypto`, and this
+ * one imports it for the PRF salt. The directive is honest rather than a way past the
+ * gate: `navigator.credentials` exists only in a browser, so there is no server rendering
+ * of this file to preserve. It was missing because the file reads like a plain helper
+ * module, which is exactly the case the static check exists to catch.
  *
  * Everything DOM-shaped lives here, and everything with a security consequence lives in
  * `packages/crypto/src/passkey.ts`. That split is the reason the derivation has real tests:

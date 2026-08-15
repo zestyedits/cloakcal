@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   RewrapHalfAppliedError,
+  WrapEmailMismatchError,
   WrongPasswordError,
   WrongRecoveryPhraseError,
   rewrapPasswordWrap,
@@ -217,7 +218,10 @@ function messageFor(caught: unknown): string {
     return 'That current password did not open your calendar. If it is the one you sign in with, use your recovery phrase instead.'
   }
   if (caught instanceof WrongRecoveryPhraseError) return caught.message
-  // Carries an instruction the user can act on; do not flatten it.
+  // Both carry an instruction the user can act on; do not flatten either into a generic
+  // failure. The mismatch one names the address the key was actually derived under, which
+  // is the only thing that makes an unopenable wrap explicable rather than maddening.
+  if (caught instanceof WrapEmailMismatchError) return caught.message
   if (caught instanceof RewrapHalfAppliedError) return caught.message
   return caught instanceof Error ? caught.message : String(caught)
 }

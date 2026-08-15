@@ -35,21 +35,23 @@ The server stores wrapped copies only, and only ones it cannot unwrap — see be
 | Server | **Wrapped copies only** | `root_key_wraps`, one row per wrap kind. The wrapping key never leaves the client, so a full database compromise yields no plaintext content. |
 | Backups / logs / telemetry | **Never** | Asserted by the leakage suite. |
 
-## The three wraps (M3 — built)
+## The wraps (four kinds; see amendment 4)
 
-The URK is wrapped independently three ways. Any one recovers it; losing all three is
-unrecoverable, by design.
+The URK is wrapped independently. Any one recovers it; losing them all is unrecoverable,
+by design.
 
 | Wrap | Key derivation | Purpose |
 |---|---|---|
 | Password | Argon2id → HKDF split (see amendment 1), salt derived from the account email | Everyday unlock |
 | Recovery phrase | 24 words (BIP-39 English), 256 bits + checksum, shown once and confirmed | Password loss |
 | Device | Per-device ECDH P-256 keypair (amendment 2), private half non-extractable | New device, or phrase loss |
+| Passkey | HKDF over the WebAuthn PRF output (ADR 0005, migration 0023) | Everyday unlock, and password loss without the phrase |
 
-All three produce the same shape — AES-256-GCM over the 32 URK bytes, with the **wrap kind
+All of them produce the same shape — AES-256-GCM over the 32 URK bytes, with the **wrap kind
 bound into the AAD**. Without that binding a wrap made for one slot would open in another,
 so anyone able to write a row could file a device wrap as the password wrap and unlock the
-account with a key they already held.
+account with a key they already held. That binding is generic over the kind string, which
+is why adding a fourth kind needed no change to it.
 
 ---
 

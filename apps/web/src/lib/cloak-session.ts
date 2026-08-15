@@ -57,6 +57,32 @@ export class WrongPasswordError extends Error {
   }
 }
 
+/**
+ * The wrap was derived under a DIFFERENT email address than the one signing in.
+ *
+ * The account email is the KDF salt, so a changed address derives a different wrap key and
+ * the existing wrap stops opening — with nothing in the failure to say why, because a
+ * failed GCM tag looks identical whatever caused it. `initializeCloak` and
+ * `rewrapPasswordWrap` record the address each wrap was derived under, in the `kdf` blob,
+ * and until now nothing read it back: the one clue we deliberately kept was never shown to
+ * the person who needed it, who got "that password did not open your calendar" instead and
+ * quite reasonably concluded they had mistyped.
+ *
+ * This is the honest remainder of ADR 0006, which proposed removing the email from the salt
+ * entirely and was rejected because it cannot be built (the salt is needed before a session
+ * exists). We cannot stop the hazard, so we name it.
+ */
+export class WrapEmailMismatchError extends Error {
+  constructor(readonly wrappedUnder: string) {
+    super(
+      `Your calendar was set up under ${wrappedUnder}. Your key is derived from that ` +
+        'address, so a different one cannot open it. Sign in with the original address, ' +
+        'or use your recovery phrase to set it up again under this one.',
+    )
+    this.name = 'WrapEmailMismatchError'
+  }
+}
+
 export class WrongRecoveryPhraseError extends Error {
   constructor() {
     super('That recovery phrase did not open your calendar. Check for a mistyped word.')
@@ -180,12 +206,32 @@ async function unwrapWithPassword(
       wrapKey,
     )
   } catch {
-    // Authentication already succeeded, so the password was right for the account. Reaching
-    // here means the wrap does not match it — a rewrap that half-completed, or a restored
-    // backup. Saying "wrong password" is the truthful summary for the user; the distinction
-    // matters to us, not to them.
+    // Authentication already succeeded, so the password was right for the ACCOUNT. Reaching
+    // here means the wrap does not match it, and there is one cause we can actually name.
+    //
+    // The email is the KDF salt, so a wrap derived under a different address cannot open
+    // however correct the password is. `kdf.saltEmail` records which address that was;
+    // reading it back turns an inexplicable "wrong password" into a sentence that tells the
+    // user what happened and what to do. Only a RECORDED mismatch is claimed — wraps
+    // written before that field existed carry no saltEmail, and inferring one would be
+    // guessing.
+    //
+    // Any other cause (a half-completed rewrap, a restored backup) still reads as "wrong
+    // password", which remains the truthful summary: that distinction matters to us, not to
+    // them.
+    const wrappedUnder = saltEmailOf(wrap.kdf)
+    if (wrappedUnder !== null && wrappedUnder !== normalizeAccountEmail(email)) {
+      throw new WrapEmailMismatchError(wrappedUnder)
+    }
     throw new WrongPasswordError()
   }
+}
+
+/** The address a wrap was derived under, when it recorded one. Untrusted jsonb, so typed. */
+function saltEmailOf(kdf: unknown): string | null {
+  if (typeof kdf !== 'object' || kdf === null) return null
+  const value = (kdf as Record<string, unknown>)['saltEmail']
+  return typeof value === 'string' && value !== '' ? value : null
 }
 
 /**
