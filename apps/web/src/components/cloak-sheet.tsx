@@ -180,7 +180,7 @@ export function CloakSheet({
           variant="outline"
           size="sm"
           className={styles.settingsLink}
-          href="/settings#visibility"
+          href="/settings#sharing"
         >
           Adjust in Settings
         </ButtonLink>

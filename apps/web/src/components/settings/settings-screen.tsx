@@ -1,16 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
-import type { CalendarPrefs, SettingsCalendar, SettingsDevice } from '@/server/settings'
+import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { CloakHomeLink } from '../cloak-logo'
 import { ThemeToggle } from '../theme-toggle'
-import { ChangePassword } from '../change-password'
-import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
 import { SignOutButton } from '../sign-out-button'
 import { ButtonLink } from '../ui/button'
 import { AppearanceSection } from './appearance-section'
@@ -31,14 +29,22 @@ import styles from './settings.module.css'
  * is the one door into the store.
  */
 
+/**
+ * Five cards, down from seven.
+ *
+ * Two of the seven contained no settings: People was a lede and a link, and "Coming soon"
+ * was four rows of things that do not exist. Both wore the same card, chevron and weight
+ * as the cards that work, so a third of the page was furniture dressed as controls —
+ * which is most of what made it read as half built. People merged into the card that
+ * decides what people see; the deferred list became a quiet footer that is not a card at
+ * all. Security became a signpost to a page of its own.
+ */
 const SECTIONS = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'time-region', label: 'Time & region' },
   { id: 'calendars', label: 'Calendars' },
-  { id: 'people', label: 'People' },
-  { id: 'visibility', label: 'Visibility' },
+  { id: 'sharing', label: 'People & sharing' },
   { id: 'security', label: 'Security' },
-  { id: 'more', label: 'Coming soon' },
 ] as const
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -79,20 +85,46 @@ function SettingsSection({
       <summary className={styles.summary}>
         <h2 className={styles.sectionTitle}>{title}</h2>
         <span className={styles.summaryState}>{state}</span>
-        <span className={styles.summaryChevron} aria-hidden="true">
-          ›
-        </span>
+        {/* A drawn mark, not the literal "›" character this used to be: a glyph's size,
+            weight and optical centre are whatever the font hands you, and the display face
+            here is not the one that was drawing it. */}
+        <svg
+          className={styles.summaryChevron}
+          viewBox="0 0 12 12"
+          width="12"
+          height="12"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M4.5 2.5 L8 6 L4.5 9.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </summary>
       <div className={styles.sectionBody}>{children}</div>
     </details>
   )
 }
 
-/** A `#section` link must OPEN the card it points at, not scroll to a closed row. */
-function useOpenOnHash() {
+/**
+ * A `#section` link must OPEN the card it points at, not scroll to a closed row.
+ *
+ * Also reports which id the hash names, so the rail can mark it. The rail had no active
+ * state at all: seven identical chips, none of which said where you were or where you had
+ * just been sent.
+ */
+function useOpenOnHash(): string | null {
+  const [current, setCurrent] = useState<string | null>(null)
+
   useEffect(() => {
     const openTarget = () => {
       const id = window.location.hash.slice(1)
+      setCurrent(id === '' ? null : id)
       if (id === '') return
       const target = document.getElementById(id)
       if (target instanceof HTMLDetailsElement) target.open = true
@@ -101,6 +133,26 @@ function useOpenOnHash() {
     window.addEventListener('hashchange', openTarget)
     return () => window.removeEventListener('hashchange', openTarget)
   }, [])
+
+  return current
+}
+
+/** The rail, with the section the hash names marked. */
+function SectionNav({ current }: { current: string | null }) {
+  return (
+    <nav className={styles.nav} aria-label="Settings sections">
+      {SECTIONS.map((section) => (
+        <a
+          key={section.id}
+          className={styles.navLink}
+          href={`#${section.id}`}
+          aria-current={section.id === current ? 'true' : undefined}
+        >
+          {section.label}
+        </a>
+      ))}
+    </nav>
+  )
 }
 
 /** Serializable throughout: this crosses the RSC boundary. Maps arrive as plain records. */
@@ -112,7 +164,6 @@ export interface SettingsProps {
   /** Null in the demo and for a signed-in user with no workspace yet: nothing to write to. */
   readonly workspaceId: string | null
   readonly calendars: readonly SettingsCalendar[]
-  readonly devices: readonly SettingsDevice[]
   readonly audiences: readonly AudienceOption[]
   readonly workspaceRules: readonly VisibilityRule[]
   readonly groupsByContact: Readonly<Record<string, readonly string[]>>
@@ -124,12 +175,11 @@ export function SettingsScreen({
   prefs,
   workspaceId,
   calendars,
-  devices,
   audiences,
   workspaceRules,
   groupsByContact,
 }: SettingsProps) {
-  useOpenOnHash()
+  const openSection = useOpenOnHash()
 
   // The provider's page: calendars carry their sealed names; occurrences are empty because
   // settings renders none. Withheld/audience fields are the owner's trivially.
@@ -164,6 +214,10 @@ export function SettingsScreen({
     [audiences],
   )
 
+
+  const contacts = audiences.filter((a) => a.kind === 'individual').length
+  const groups = audiences.filter((a) => a.kind === 'group').length
+
   return (
     <CloakProvider page={page} email={email} extraFields={nameFields}>
       <div className={styles.page}>
@@ -180,17 +234,33 @@ export function SettingsScreen({
         <div className={styles.body}>
           <h1 className={styles.title}>Settings</h1>
 
-          <nav className={styles.nav} aria-label="Settings sections">
-            {SECTIONS.map((section) => (
-              <a key={section.id} className={styles.navLink} href={`#${section.id}`}>
-                {section.label}
-              </a>
-            ))}
-          </nav>
+          {/* Said ONCE, at the top, rather than inside each card that happens to be
+              writable. It was in two cards a moment ago and read as an app apologising
+              twice for the same thing. */}
+          {fixtureMode && (
+            <p className={styles.demoBanner}>
+              Demo. Display choices are kept in this browser only, so you can try them
+              without an account. Anything that would change real data stays closed.
+            </p>
+          )}
+
+          <SectionNav current={openSection} />
 
           <main id="main" className={styles.sections}>
-            <SettingsSection id="appearance" title="Appearance" state="Dark or light" defaultOpen>
-              <AppearanceSection />
+            <SettingsSection
+              id="appearance"
+              title="Appearance"
+              state={`${VIEW_NAMES[prefs?.defaultView ?? 'agenda']} · shortcuts ${
+                prefs?.keyboardShortcuts === true ? 'on' : 'off'
+              }`}
+              defaultOpen
+            >
+              <AppearanceSection
+                workspaceId={workspaceId}
+                fixtureMode={fixtureMode}
+                defaultView={prefs?.defaultView ?? 'agenda'}
+                keyboardShortcuts={prefs?.keyboardShortcuts ?? false}
+              />
             </SettingsSection>
 
             <SettingsSection
@@ -199,7 +269,7 @@ export function SettingsScreen({
               state={
                 prefs === null
                   ? 'Not set up yet'
-                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]} · opens on ${VIEW_NAMES[prefs.defaultView]}`
+                  : `${prefs.timezone.replaceAll('_', ' ')} · weeks start ${WEEKDAY_NAMES[prefs.weekStart]}`
               }
             >
               <TimeRegionSection
@@ -207,8 +277,6 @@ export function SettingsScreen({
                 fixtureMode={fixtureMode}
                 timezone={prefs?.timezone ?? null}
                 weekStart={prefs?.weekStart ?? 0}
-                defaultView={prefs?.defaultView ?? 'agenda'}
-                keyboardShortcuts={prefs?.keyboardShortcuts ?? false}
               />
             </SettingsSection>
 
@@ -220,126 +288,112 @@ export function SettingsScreen({
               <CalendarsSection fixtureMode={fixtureMode} calendars={calendars} />
             </SettingsSection>
 
+            {/* People and Visibility were two cards, and one of them held no settings at
+                all — a lede and a link across to /people. Splitting "who exists" from
+                "what they see" put a signpost and the thing it points near in separate
+                boxes for no reason a reader could name. One card: the book is the door,
+                the link and group defaults are decided here, and per-person rules still
+                live in the person's file where the preview of them is. */}
             <SettingsSection
-              id="people"
-              title="People"
-              state={(() => {
-                const contacts = audiences.filter((a) => a.kind === 'individual').length
-                const groups = audiences.filter((a) => a.kind === 'group').length
-                if (contacts === 0 && groups === 0) return 'Nobody yet'
-                const parts = [
-                  `${contacts} ${contacts === 1 ? 'contact' : 'contacts'}`,
-                  ...(groups > 0 ? [`${groups} ${groups === 1 ? 'group' : 'groups'}`] : []),
-                ]
-                return parts.join(' · ')
-              })()}
+              id="sharing"
+              title="People & sharing"
+              state={
+                contacts === 0 && groups === 0
+                  ? 'Nobody yet'
+                  : [
+                      `${contacts} ${contacts === 1 ? 'contact' : 'contacts'}`,
+                      ...(groups > 0 ? [`${groups} ${groups === 1 ? 'group' : 'groups'}`] : []),
+                      workspaceRules.length === 0
+                        ? 'no rules'
+                        : `${workspaceRules.length} ${workspaceRules.length === 1 ? 'rule' : 'rules'}`,
+                    ].join(' · ')
+              }
             >
-              {/* The card used to hold the whole contact manager; that moved to /people
-                  when the People area became the book (add, rename, groups, per-person
-                  visibility, all beside the preview). A settings card that duplicated it
-                  would be a second copy to drift, so this one is a signpost. */}
               <p className={styles.sectionLede}>
-                Your contacts live in People now: add and rename them, organize groups,
-                and decide what each person sees, all in one place beside the preview of
-                what they get.
+                Your contacts live in People: add and rename them, organize groups, and
+                decide what each person sees, beside a preview of what they get.
               </p>
               <div>
                 <ButtonLink variant="outline" href={{ pathname: '/people' }}>
                   Open People
                 </ButtonLink>
               </div>
+
+              <div className={styles.subSection}>
+                <div className={styles.panelHead}>
+                  <h3 className={styles.panelTitle}>Defaults</h3>
+                </div>
+                <VisibilitySection
+                  workspaceId={workspaceId}
+                  fixtureMode={fixtureMode}
+                  audiences={audiences}
+                  rules={workspaceRules}
+                  groupsByContact={groupsByContact}
+                />
+              </div>
             </SettingsSection>
 
-            <SettingsSection
-              id="visibility"
-              title="Visibility"
-              state={
-                workspaceRules.length === 0
-                  ? 'Hidden from everyone'
-                  : `${workspaceRules.length} ${workspaceRules.length === 1 ? 'rule' : 'rules'} set`
-              }
-            >
-              <VisibilitySection
-                workspaceId={workspaceId}
-                fixtureMode={fixtureMode}
-                audiences={audiences}
-                rules={workspaceRules}
-                groupsByContact={groupsByContact}
-              />
-            </SettingsSection>
-
+            {/* A signpost, like People. The password and recovery-phrase flows are a page
+                of their own now: they arrived here carrying their own lockup and their own
+                h1, so /settings rendered two h1s and a stray brand mark mid-scroll. */}
             <SettingsSection id="security" title="Security" state="Password & recovery phrase">
               <p className={styles.sectionLede}>
-                Your password and recovery phrase both open the same key. Changing one never
-                touches your events.
+                Your password and your recovery phrase both open the same key. Changing
+                either one re-wraps that key; neither one touches an event.
               </p>
               {email === '' ? (
                 <p className={styles.lockedNote}>
-                  Demo data. Sign in to manage your password and recovery phrase.
+                  Demo. Sign in to manage your password and recovery phrase.
                 </p>
               ) : (
                 <>
-                  {/* Password first: it is the errand people come for. The phrase re-issue is
-                      the one they need and do not know exists, so it stays visible below
-                      rather than behind a menu — same reasoning as /account, whose contents
-                      moved here. */}
-                  <ChangePassword email={email} />
-                  <ReissueRecoveryPhrase email={email} />
+                  <div>
+                    <ButtonLink variant="outline" href={{ pathname: '/settings/security' }}>
+                      Open Security
+                    </ButtonLink>
+                  </div>
                   <div>
                     <SignOutButton />
                   </div>
                 </>
               )}
             </SettingsSection>
-
-            <SettingsSection id="more" title="Coming soon" state="What's next">
-              <p className={styles.sectionLede}>
-                Named here so the roadmap is honest, and quiet so it never outranks what works.
-              </p>
-
-              {devices.length > 0 && (
-                <div>
-                  {devices.map((device) => (
-                    <p key={device.id} className={styles.deferredRow}>
-                      <span className={styles.deferredName}>{device.label}</span>
-                      {device.revokedAt !== null
-                        ? 'Revoked'
-                        : device.lastSeenAt !== null
-                          ? `Last seen ${device.lastSeenAt.slice(0, 10)}`
-                          : 'Never seen'}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              <div>
-                <p className={styles.deferredRow}>
-                  <span className={styles.deferredName}>Device pairing</span>
-                  <span className={styles.soon}>Coming soon</span>
-                  Approve sign-ins from another device, so the recovery phrase becomes a last
-                  resort instead of the only route back in.
-                </p>
-                <p className={styles.deferredRow}>
-                  <span className={styles.deferredName}>Booking</span>
-                  <span className={styles.soon}>Coming soon</span>
-                  Let people book time with you. Hard here on purpose: your contacts are
-                  encrypted, so matching a stranger&apos;s email to one is a real design
-                  problem, not a form.
-                </p>
-                <p className={styles.deferredRow}>
-                  <span className={styles.deferredName}>Export</span>
-                  <span className={styles.soon}>Coming soon</span>
-                  Take your calendar out, decrypted by you, on your machine.
-                </p>
-                <p className={styles.deferredRow}>
-                  <span className={styles.deferredName}>Deleting calendars</span>
-                  <span className={styles.soon}>Coming soon</span>
-                  Deleting a calendar needs an answer for the events it holds. Creating
-                  one works now, from the sidebar or the Calendars card above.
-                </p>
-              </div>
-            </SettingsSection>
           </main>
+
+          {/* Not a card. Four things that do not exist yet had the same shape, weight and
+              chevron as four that do, which is most of what made this page read as half
+              built: a third of it was furniture. They are named, because an honest roadmap
+              is worth something, and they are quiet, because nothing here works. */}
+          <footer className={styles.whatsNext}>
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}>What&apos;s next</h2>
+              <span className={styles.panelCount}>04</span>
+            </div>
+            <p className={styles.deferredRow}>
+              <span className={styles.deferredName}>Device pairing</span>
+              <span className={styles.soon}>Coming soon</span>
+              Approve sign-ins from another device, so the recovery phrase becomes a last
+              resort instead of the only route back in.
+            </p>
+            <p className={styles.deferredRow}>
+              <span className={styles.deferredName}>Booking</span>
+              <span className={styles.soon}>Coming soon</span>
+              Let people book time with you. Hard here on purpose: your contacts are
+              encrypted, so matching a stranger&apos;s email to one is a real design
+              problem, not a form.
+            </p>
+            <p className={styles.deferredRow}>
+              <span className={styles.deferredName}>Export</span>
+              <span className={styles.soon}>Coming soon</span>
+              Take your calendar out, decrypted by you, on your machine.
+            </p>
+            <p className={styles.deferredRow}>
+              <span className={styles.deferredName}>Deleting calendars</span>
+              <span className={styles.soon}>Coming soon</span>
+              Deleting a calendar needs an answer for the events it holds. Creating one
+              works now, from the sidebar or the Calendars card above.
+            </p>
+          </footer>
         </div>
       </div>
     </CloakProvider>

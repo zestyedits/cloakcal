@@ -32,7 +32,7 @@ export default function SettingsLoading() {
         <h1 className={settingsStyles.title}>Settings</h1>
 
         <nav className={settingsStyles.nav} aria-label="Settings sections">
-          {['Appearance', 'Time & region', 'Calendars', 'People', 'Visibility', 'Security'].map(
+          {['Appearance', 'Time & region', 'Calendars', 'People & sharing', 'Security'].map(
             (label) => (
               <span key={label} className={settingsStyles.navLink}>
                 {label}
@@ -42,7 +42,7 @@ export default function SettingsLoading() {
         </nav>
 
         <div className={settingsStyles.sections} aria-busy="true" aria-label="Loading settings">
-          {Array.from({ length: 6 }, (_, i) => (
+          {Array.from({ length: 5 }, (_, i) => (
             <div key={i} className={`${styles.sectionRow} ${styles.pulse}`}>
               <div className={styles.rowTitle} />
               <div className={styles.rowState} />

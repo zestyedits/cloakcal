@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import type { CiphertextField } from '@/server/events'
 
 /**
@@ -41,10 +42,17 @@ export function audienceIdOf(option: AudienceOption): string {
  * one thing, they were two live copies of the same control fighting over the same state.
  * Owner DELETES the param rather than setting `as=owner`, so the plain calendar URL stays
  * the plain calendar URL.
+ *
+ * The `as Route` is the one typedRoutes escape hatch, in one place. Next types `push` as
+ * `RouteImpl<…>` and cannot check a string built at runtime; inlined template literals
+ * happen to satisfy it, which is why this compiled everywhere until the logic moved behind
+ * a function. Worth knowing that `pnpm typecheck` does NOT see this — typedRoutes only
+ * exists during `next build`, so a green typecheck is not evidence a computed href
+ * compiles. Same family as WeekLink, which exists for exactly this reason.
  */
-export function audienceHref(currentQuery: string, audienceId: string): string {
+export function audienceHref(currentQuery: string, audienceId: string): Route {
   const next = new URLSearchParams(currentQuery)
   if (audienceId === 'owner') next.delete('as')
   else next.set('as', audienceId)
-  return next.size > 0 ? `/?${next.toString()}` : '/'
+  return (next.size > 0 ? `/?${next.toString()}` : '/') as Route
 }

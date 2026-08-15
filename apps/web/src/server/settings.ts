@@ -178,6 +178,23 @@ export async function loadSettingsData(): Promise<SettingsData> {
   return { prefs, calendars, visibility, devices: toDevices(deviceResult.data) }
 }
 
+/**
+ * Devices alone, for /settings/security — which needs them and nothing else.
+ *
+ * Separate from loadSettingsData rather than reusing it: that function fans out to
+ * calendars, sealed names and visibility, and the security page would wait on all of it to
+ * render a list of device labels.
+ */
+export async function loadDevices(): Promise<readonly SettingsDevice[]> {
+  const supabase = await supabaseServer()
+  const { data, error } = await supabase
+    .from('devices')
+    .select('id, label, last_seen_at, revoked_at')
+    .order('created_at', { ascending: true })
+  if (error !== null) throw error
+  return toDevices(data)
+}
+
 const toDevices = (rows: unknown): SettingsDevice[] =>
   ((rows ?? []) as Array<{
     id: string

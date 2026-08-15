@@ -31,6 +31,9 @@ describe('middleware path lists', () => {
       PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
     expect(isPublic('/')).toBe(true)
     expect(isPublic('/settings')).toBe(false)
+    // The nested route too: password changes and recovery-phrase re-issues live under
+    // /settings/security, and a nested segment must not slip past the prefix check.
+    expect(isPublic('/settings/security')).toBe(false)
   })
 
   it('does NOT bounce a signed-in user off the root', () => {

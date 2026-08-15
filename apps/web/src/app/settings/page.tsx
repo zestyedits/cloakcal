@@ -63,7 +63,8 @@ export default async function SettingsPage() {
     // to write with must not be handed a plausible-looking fake one.
     workspaceId: data.prefs?.workspaceId ?? null,
     calendars: data.calendars,
-    devices: data.devices,
+    // Devices moved to /settings/security, where they are a security fact rather than a
+    // footnote under a list of features that do not exist yet.
     audiences: data.visibility?.audiences ?? [],
     workspaceRules: data.visibility?.workspaceRules ?? [],
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),

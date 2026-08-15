@@ -166,13 +166,12 @@ export function CalendarsSection({
         </div>
       ))}
 
-      {/* Create (0021). The fixture has no writable backend, so it says so instead of
-          offering a dead form. Delete stays deferred; the Coming-soon row explains. */}
-      {fixtureMode ? (
-        <p className={styles.lockedNote}>Demo data. Sign in to create calendars.</p>
-      ) : (
-        <NewCalendarButton />
-      )}
+      {/* Create (0021). The fixture has no writable backend, so it offers nothing here
+          rather than a dead form — and says nothing either, because the empty state above
+          already said it. Two dashed boxes a few lines apart making the same apology is
+          the sort of thing that makes a page read as unfinished. Delete stays deferred;
+          the What's next footer explains. */}
+      {!fixtureMode && <NewCalendarButton />}
     </>
   )
 }

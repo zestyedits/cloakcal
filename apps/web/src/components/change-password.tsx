@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
   RewrapHalfAppliedError,
   WrongPasswordError,
@@ -10,7 +9,6 @@ import {
   rootKeyFromPassword,
   rootKeyFromRecoveryPhrase,
 } from '@/lib/cloak-session'
-import { CloakHomeLink } from './cloak-logo'
 import { InlineError } from './ui/inline-error'
 import styles from './auth.module.css'
 
@@ -81,10 +79,12 @@ export function ChangePassword({ email }: { email: string }) {
   const busy = working !== null
 
   return (
+    /* No lockup, no h1, no back link. This used to carry a whole page's chrome with it,
+       which was fine when it WAS a page (/account) and became two h1s and a stray brand
+       mark mid-scroll the moment it was rendered inside something else. Its page is
+       /settings/security now, and a page owns its own chrome. */
     <form className={styles.card} onSubmit={submit}>
-      <CloakHomeLink />
-
-      <h1 className={styles.title}>Change your password</h1>
+      <h2 className={styles.title}>Change your password</h2>
       <p className={styles.lede}>
         Your events are not re-encrypted. Your password wraps the key that opens them, so only
         the wrapper changes. Nothing about your calendar is rewritten, and your recovery
@@ -208,9 +208,6 @@ export function ChangePassword({ email }: { email: string }) {
         )}
       </div>
 
-      <p className={styles.switch}>
-        <Link href="/">Back to your calendar</Link>
-      </p>
     </form>
   )
 }
