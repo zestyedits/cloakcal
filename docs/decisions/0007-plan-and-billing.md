@@ -200,6 +200,15 @@ Still to decide when that work starts: webhook idempotency (the spec names delay
 repeated webhooks as a risk), the exact mapping mechanism above, and whether the connection
 string lives in Vercel env or a dedicated pooler.
 
+> **All three are now closed, 2026-08-16 — see ADR 0009.** Idempotency is `billing_events`
+> (0028), keyed on the provider's event id and claimed inside the same transaction as the
+> write, so a rollback cannot leave an event marked done that never landed. The mapping is
+> `client_reference_id` on the Checkout Session, uuid-validated, carried once from an
+> authenticated session; every later event resolves through `provider_customer_id`. The
+> connection string is `BILLING_DATABASE_URL` in Vercel env, pointed at Supabase's transaction
+> pooler, and `billing_writer` gets its LOGIN and its password out of band rather than in a
+> migration — which is the one place the sketch above and the shipped 0028 differ.
+
 ## Consequences
 
 - **A plan is workspace-scoped, not account-scoped.** Consistent with every other table, and
