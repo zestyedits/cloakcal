@@ -487,6 +487,14 @@ Four things about that are worth knowing, and the first is the one that bites.
   purpose: their absence there is what makes the `/account` prerender trap fire. Reproduce
   the CI environment before trusting a green local run —
   `mv apps/web/.env.local /tmp/` and put the two placeholders in its place.
+- **The second red test was a genuinely broken test that only CI could see**, and it is worth
+  knowing as a pattern. `settings.spec.ts`'s demo-preferences test opened Time & region and
+  then asserted on all four controls, two of which live in APPEARANCE — which the accordion
+  had just closed. **`toBeEnabled()` does not imply visible**, so those assertions passed
+  against a hidden `<select>`, and the `selectOption` three lines later waited 30s for an
+  element inside a collapsed `<details>`. Locally the `::details-content` transition left it
+  hittable often enough to pass. Assert `toBeVisible()` alongside `toBeEnabled()` whenever a
+  control lives in a band that something else may have closed.
 - **Branch protection is not merely off, it is UNAVAILABLE.** This file used to say it "is the
   fix and is not yet turned on". The repo is private on a free GitHub plan, and both
   `/branches/main/protection` and `/rulesets` return 403 "Upgrade to GitHub Pro or make this

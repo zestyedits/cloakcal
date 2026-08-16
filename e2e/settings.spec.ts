@@ -70,12 +70,37 @@ test('sections are closed by default with their state on the row', async ({ page
 })
 
 test('demo display preferences work, and say where they are kept', async ({ page }) => {
-  // Appearance is open by default and holds the view and keyboard preferences; time and
-  // region holds the two that are actually about time and region.
+  /*
+   * ONE CARD AT A TIME, and this test has to respect that or it tests nothing.
+   *
+   * It used to open Time & region and then assert on all four controls together, including
+   * the two that live in APPEARANCE — which the accordion had just closed. `toBeEnabled()`
+   * does not imply visibility, so those two assertions passed against a hidden `<select>`,
+   * and the interaction three lines later waited 30s for an element inside a collapsed
+   * `<details>` to become visible. It failed only on CI, which is the giveaway: locally the
+   * `::details-content` transition left it hittable often enough to pass, so a broken test
+   * read as a flaky pipeline for five commits.
+   *
+   * Each card is opened before its own controls are touched now.
+   */
+
+  // Time & region: the two preferences that are actually about time and region.
   await page.getByRole('heading', { level: 2, name: 'Time & region' }).click()
+  await expect(page.locator('#time-region')).toHaveAttribute('open', '')
   await expect(page.getByText(/kept in this browser only/).first()).toBeVisible()
 
-  for (const label of ['Timezone', 'Week starts on', 'Default view', 'Keyboard shortcuts']) {
+  for (const label of ['Timezone', 'Week starts on']) {
+    await expect(page.getByLabel(label)).toBeVisible()
+    await expect(page.getByLabel(label)).toBeEnabled()
+  }
+
+  // Appearance: the view and keyboard preferences. Opening it closes Time & region, which
+  // is the behaviour, not a workaround for it.
+  await page.getByRole('heading', { level: 2, name: 'Appearance' }).click()
+  await expect(page.locator('#appearance')).toHaveAttribute('open', '')
+
+  for (const label of ['Default view', 'Keyboard shortcuts']) {
+    await expect(page.getByLabel(label)).toBeVisible()
     await expect(page.getByLabel(label)).toBeEnabled()
   }
 
@@ -90,6 +115,7 @@ test('demo display preferences work, and say where they are kept', async ({ page
   // looks like it worked.
   await page.getByLabel('Default view').selectOption('month')
   await page.reload()
+  await expect(page.locator('#appearance')).toHaveAttribute('open', '')
   await expect(page.getByLabel('Default view')).toHaveValue('month')
 })
 
