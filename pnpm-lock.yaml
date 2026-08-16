@@ -35,6 +35,9 @@ importers:
       next:
         specifier: 15.5.23
         version: 15.5.23(@playwright/test@1.62.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      stripe:
+        specifier: 22.5.0
+        version: 22.5.0(@types/node@24.13.3)
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
