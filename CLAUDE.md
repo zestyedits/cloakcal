@@ -468,25 +468,42 @@ that needs the throwaway-account recipe.
 native iOS. **Payments are half-deferred now** — the plan surface and its schema exist, the
 processor does not; see the plan/pricing section below and ADR 0007. **Independent security review is a hard gate before public launch.**
 
-## Deployment, as of 2026-08-11
+## Deployment, as of 2026-08-16
 
-**Vercel now auto-deploys `main`.** The project had no Git integration at all — every earlier
-deploy came from the CLI, from a `master` ref, and the live site sat 14 commits behind. It is
-connected now and a push to `main` produces a production deploy.
+**Vercel auto-deploys `main`, and `cloakcal.com` is live.** The project had no Git integration
+at all once — every deploy came from the CLI, from a `master` ref, and the live site sat 14
+commits behind. A push to `main` produces a production deploy now, and the apex serves it.
 
-Three things about that are worth knowing:
+Four things about that are worth knowing, and the first is the one that bites.
 
-- **CI does not gate it.** `ci.yml` has no deploy step and the Hobby plan has no required
-  checks, so they race. A red commit reaches production. Branch protection requiring the `CI`
-  check is the fix and is not yet turned on.
-- **`cloakcal.com` is registered and verified in the Vercel team but attached to NO project**,
-  so no certificate was ever issued and it fails its TLS handshake. Its DNS already points at
-  Vercel, so attaching it needs no DNS changes — but **decline any prompt to move the
-  nameservers to `vercel-dns.com`**, because the zone is on Porkbun and carries the Zoho MX
-  and every Resend record `pnpm email:setup` wrote.
-- **Everything is behind Vercel Authentication** (`all_except_custom_domains`), so every
-  `*.vercel.app` URL bounces a non-team-member to an SSO page. Attaching the apex is what
-  actually makes the site public, not a nicety.
+- **CI DOES NOT GATE THE DEPLOY**, and it spent five commits red while shipping every one of
+  them. `ci.yml` has no deploy step, so the two race. `main` failed from the
+  `design/settings-cohesion` merge onward — `e2e/prelaunch.spec.ts` (both tests) and
+  `e2e/settings.spec.ts`'s "demo display preferences" — and each red commit deployed anyway.
+  **They passed locally and failed only on CI**, which is the tell: the e2e step had
+  `NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK` and no Supabase variables, so `supabaseBrowser()` threw
+  and `/recover` never rendered the form the spec looks for. Fixed 2026-08-16 by giving the
+  **e2e step only** placeholder Supabase values. The `Build web` step still has none, on
+  purpose: their absence there is what makes the `/account` prerender trap fire. Reproduce
+  the CI environment before trusting a green local run —
+  `mv apps/web/.env.local /tmp/` and put the two placeholders in its place.
+- **Branch protection is not merely off, it is UNAVAILABLE.** This file used to say it "is the
+  fix and is not yet turned on". The repo is private on a free GitHub plan, and both
+  `/branches/main/protection` and `/rulesets` return 403 "Upgrade to GitHub Pro or make this
+  repository public". So requiring the `CI` check needs a paid plan or a public repo, and
+  until one of those happens the ONLY gate is whoever runs `git push`.
+- **`cloakcal.com` is attached and serving over TLS** — apex returns HTTP/2 200 and is aliased
+  on the production deployment alongside `cloakcal.vercel.app`. This file claimed for weeks
+  that it was "registered and verified but attached to NO project", failing its handshake;
+  that has not been true for a while. `www.cloakcal.com` is NOT configured and does not
+  resolve. The zone is still on Porkbun, so **decline any prompt to move the nameservers to
+  `vercel-dns.com`** — it carries the Zoho MX and every Resend record `pnpm email:setup` wrote.
+- **Vercel Authentication is still on** (`ssoProtection: all_except_custom_domains`, password
+  protection and trusted IPs both off), so every `*.vercel.app` URL bounces a non-team-member
+  to an SSO page while the custom domain does not. **The apex is therefore genuinely public**,
+  which it was not when this section was written. The thing keeping strangers out is
+  `NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN` being unset and Supabase Auth's own sign-up switch, not
+  the deployment protection.
 
 The two Supabase variables are typed **Sensitive** on Production and Preview, which is why
 `vercel env pull` returns `[SENSITIVE]` for them. Neither is secret. Retyping needs a delete

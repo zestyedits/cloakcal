@@ -77,10 +77,31 @@ jobs:
       # cannot unlock a production build, and relaxing that gate to suit a test would
       # trade a real guarantee for a convenient one. Production artifacts are covered by
       # the build-output leak suite above.
+      # THE ONLY STEP THAT GETS SUPABASE VARIABLES, and the split is deliberate.
+      #
+      # The `Build web` step above must NOT have them: its absence of them is what makes the
+      # prerender trap fire, so a server page missing `force-dynamic` dies loudly here
+      # instead of silently baking an empty session into static HTML on Vercel. That gate
+      # stays exactly as it was.
+      #
+      # But a BROWSER needs them. `supabaseBrowser()` throws when they are undefined, so
+      # /recover never rendered its form and e2e/prelaunch.spec.ts failed on CI while passing
+      # on every machine with an apps/web/.env.local. That is what kept `main` red from the
+      # design/settings-cohesion merge onward, on a pipeline that does not gate the deploy,
+      # so five commits shipped past a red check that was reporting a real environmental
+      # difference rather than a real defect.
+      #
+      # The values are PLACEHOLDERS, not the real project's. Both are public by design (see
+      # docs/deploy.md), but nothing in this suite talks to Supabase: the dev-unlock fixture
+      # serves every page, and a URL that resolves to nothing is enough to let the client
+      # construct. Pointing CI at the live project would be strictly worse — a test that can
+      # reach production data is a test that can change it.
       - name: E2E, accessibility and visual
         run: npx playwright test
         env:
           NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK: '1'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder.supabase.co'
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ci_placeholder_not_a_real_key'
 
       - name: Upload Playwright report
         if: failure()
