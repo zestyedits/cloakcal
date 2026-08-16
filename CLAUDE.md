@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1074 unit tests
-pnpm test:e2e            # 344 Playwright tests, runs its own dev server
+pnpm test                # 1102 unit tests
+pnpm test:e2e            # 360 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
@@ -150,10 +150,24 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 *(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
 security is its own route — see the 2026-08-15 pass below.)*
 
-**Migrations 0001–0027 are ALL applied to production**, verified 2026-08-16 against the live
+**Migrations 0001–0028 are ALL applied to production**, verified 2026-08-16 against the live
 schema rather than assumed: `workspaces.holiday_region` exists, `availability_windows` exists
 with RLS enabled, `set_workspace_prefs` takes `p_holiday_region`, `set_availability` exists,
 and the security advisor returns zero lints. Anon sweep clean.
+
+**0028 went up BEFORE its code was committed, which is backwards and worth not repeating.**
+For a few hours production held the `billing_writer` role, the provider columns and
+`billing_events` with nothing in git explaining them. The usual drift in this project is code
+ahead of schema, which the 42703 fallbacks handle; schema ahead of code has no such safety
+net and is simply confusing. Commit first, then push, then apply.
+
+**How to verify a migration landed when MCP is denied** — and it is denied entirely, read-only
+calls included. PostgREST answers the question with the public anon key: a missing column
+returns `42703`, a missing table returns `PGRST205`, and a table that exists but denies `anon`
+returns `42501`. That last one is the useful signal, because it proves existence AND the
+grant posture in one request. Always probe a column you know is absent in the same pass —
+without that control, `42501` at the table level can hide the fact that you never actually
+reached the column you were asking about.
 
 **How to apply one, because this took three sessions to work out.** The MCP `apply_migration`
 and `execute_sql` tools are both denied by the permission classifier and always will be. The
@@ -299,11 +313,39 @@ used. This note said "at exactly the floor" for months, which understates a secu
 parameter and is the kind of wrong that invites someone to "correct" the code downward to
 match the docs. `assertKdfParams` refuses any server-supplied weakening, and being above
 the floor is the right posture here rather than a nicety: the wrapped root key is servable
-to an offline attacker, so the cost of a guess is the only thing making one expensive. **One real gap:
-there is NO Content-Security-Policy anywhere** — no headers in next.config.ts, none in
-middleware. For a browser-E2EE app XSS is total compromise, so a per-response-nonce CSP
-(ASVS V3.4.3 at L3) is the single highest-value security change on the board. Next phase,
-not this one; noted so it cannot be forgotten.
+to an offline attacker, so the cost of a guess is the only thing making one expensive.
+
+**The CSP gap this note recorded for months is CLOSED (2026-08-16).** A per-response nonce,
+built in `apps/web/src/lib/csp.ts` and applied in middleware. Four things about it matter:
+
+- **`buildCsp` is a pure function so the PRODUCTION policy can be asserted without a
+  server.** Playwright runs `next dev`, and dev is deliberately looser — `'unsafe-eval'` for
+  React Refresh, `ws:` for HMR. The browser suite therefore only ever sees the weak policy;
+  `security-headers.server.test.ts` reads the strict one directly.
+- **It is applied ABOVE middleware's dev-unlock early return, and a test pins that order.**
+  Every Playwright project sets that flag, so a policy applied after it would be absent in
+  dev, absent under test, and present only in production. Same shape as `/opengraph-image`.
+- **`connect-src` names the Supabase origin, and NOTHING HERE CAN VERIFY THAT.** The fixture
+  never calls Supabase, so a wrong origin passes every test and breaks every real account on
+  its first query, as an opaque network error with no mention of CSP outside the console.
+  Only the throwaway-account recipe sees it. Re-check it by hand after any change to that
+  directive.
+- **`style-src` keeps `'unsafe-inline'`**, stated rather than buried: Next inlines critical
+  CSS and next/font emits an inline `<style>`, neither nonce-able. Script is where the
+  compromise lives and `script-src` has neither unsafe. Do not "fix" a CSP-broken page by
+  moving that pattern into `script-src`.
+
+**Every app route is DYNAMIC now, as a direct consequence** — a per-request nonce cannot
+exist in a page built once, so the root layout reading `headers()` opts the whole app out.
+`/sign-in`, `/sign-up` and `/recover` were the last prerendered ones. **This displaced a
+privacy gate, and the way it displaced it is the lesson**: `build-output.leak.test.ts`
+scanned prerendered HTML and RSC payloads off disk, and when the input vanished the RSC
+assertion failed loudly while the HTML one kept PASSING — Next's framework `500.html` still
+matched its filter, so it was green while scanning a page that could never hold user
+content. Both moved to `e2e/leak.spec.ts`, which fetches each route's HTML and its Flight
+payload (`RSC: 1`) from a live server and guards the bodies are non-empty first. What
+remains on disk asserts that NO app route prerenders, which is what fails if one is ever
+made static again without restoring a scan.
 
 **Day and Month are real views now** (second pass, same day). `?view=agenda|week|day|month`
 + `?date=YYYY-MM-DD` (`?week=` accepted as a legacy alias); agenda/week stay ONE fetch with
@@ -523,8 +565,20 @@ availability.** Four things, and three of them found bugs nothing else could see
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
    by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
-4. Stripe, the `billing_writer` role and entitlement enforcement — ADR 0007 records the
-   design; nothing is built. *(This slot used to read "a Settings toggle for keyboard
+4. **Stripe. The SCHEMA half is built and live (0028); the processor half is not.**
+   `billing_writer` exists with grants and policies on `subscriptions` and `billing_events`
+   only — it cannot read `workspaces`, `events` or `auth.users`, which is asserted rather
+   than asserted-about (`packages/db/test/billing-writer.test.ts` runs AS the role). It is
+   **NOLOGIN with no password**: a password in a committed migration is a password in the git
+   history forever, so the credential is set out of band and the role cannot connect until it
+   is. `billing_events` settles the idempotency question ADR 0007 left open — the event id is
+   the primary key, so a replay is a constraint violation the handler treats as "already
+   done". Still to build: the Stripe SDK, checkout / webhook / portal routes, the connection
+   string, and **cancelling upstream before an account delete** (the cascade on
+   `subscriptions` destroys the local row while the processor keeps charging — 0024's header
+   flags this).
+   Blocked on a `sk_test_…` key. Nothing takes real money before the independent security
+   review, which has not started. *(This slot used to read "a Settings toggle for keyboard
    shortcuts". That toggle SHIPPED with 0022 and is in Appearance; the line outlived it.)*
 5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
    it needs an answer for the events first. Calendar-move on edit is the same shape —
