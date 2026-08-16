@@ -150,7 +150,7 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 *(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
 security is its own route — see the 2026-08-15 pass below.)*
 
-**Migrations 0018–0022 are applied to production; 0023, 0024 and 0025 are NOT** (prefs incl. timezone + week_start,
+**Migrations 0018–0023 are applied to production; 0024 and 0025 are NOT** (prefs incl. timezone + week_start,
 `update_calendar`, the four group RPCs 0017 never had, `create_calendar`, and
 `default_view` + `keyboard_shortcuts`), anon sweep clean. **Keep this line current.** It
 said "0018–0020" for two migrations longer than it was true, and the cost was real: the
@@ -740,8 +740,12 @@ their passkeys may be all they have.
 **None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
 authenticator only proves the API was called as intended. Safari's PRF behaviour and the
 two-prompt flow are unverified until someone runs the throwaway-account recipe in a browser.
-**Migration 0023 is also not applied to production yet** — and 0024 and 0025 now queue behind
-it. They go up in order.
+**Migration 0023 IS applied to production**, contrary to what this file said for weeks.
+Verified 2026-08-15 against the live project: `credential_id` and `prf_salt` both exist, all
+four paired constraints are there, `root_key_wraps_one_per_credential` is there, and the kind
+check already lists `passkey`. The claim that it was unapplied was stale, and it had a cost —
+the plan page listed passkeys as "coming soon" on the strength of it. **0024 and 0025 are the
+ones still outstanding.**
 
 **Device pairing is demoted, not deleted.** Spec §Recovery names three routes; passkeys are
 the second. The pairing crypto (`packages/crypto/src/device.ts`, ECDH P-256) and schema

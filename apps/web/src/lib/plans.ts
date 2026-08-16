@@ -115,14 +115,9 @@ export const PLANS: readonly PlanTier[] = [
       'View As, to see your calendar the way someone else would',
       'Contacts and groups, whose names are encrypted too',
       'Repeating events that keep their wall time across a clock change',
-      'A 24 word recovery phrase, and password changes',
+      'Passkeys, a 24 word recovery phrase, and password changes',
     ],
     planned: [
-      {
-        name: 'Passkeys',
-        detail:
-          'Open your calendar with a face, a fingerprint or a device PIN. Built and tested, and waiting on a database migration before it works on a real account, so it is listed here rather than above.',
-      },
       {
         name: 'Export',
         detail:
