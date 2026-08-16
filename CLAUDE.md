@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1249 unit tests
-pnpm test:e2e            # 460 Playwright tests, runs its own dev server
+pnpm test                # 1269 unit tests
+pnpm test:e2e            # 464 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
@@ -671,6 +671,27 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **postgres.js defaults `ssl` to FALSE, and the query string is the only other thing that
+  sets it.** Options beat the query string, so `ssl: 'require'` in `server/billing/db.ts` is
+  what makes TLS unskippable; without it, a `BILLING_DATABASE_URL` retyped without
+  `?sslmode=require` sends the `billing_writer` password and every subscription row in
+  cleartext, with no error and nothing here able to see it.
+- **`on conflict (workspace_id)` does not catch a conflict on the OTHER two unique columns.**
+  0028 makes `provider_customer_id` and `provider_subscription_id` UNIQUE, and a 23505 on
+  either rolls the transaction back, un-claims the event, and 500s — so Stripe retries the
+  same doomed event until it disables the endpoint. Reachable by reusing one test customer
+  across two throwaway accounts, which is exactly what the recipe invites. Caught explicitly
+  now and acknowledged with a 200, because retrying cannot resolve a unique violation.
+- **Adding a workspace dependency can unlock rule 2's static gate.** `@cloakcal/db`'s main
+  entry re-exports a module that imports `@cloakcal/crypto`, and
+  `server-boundary.leak.test.ts` matched two literal specifiers. `apps/web` gaining
+  `@cloakcal/db` — for the zero-import `/billing-queries` subpath — made
+  `import { anything } from '@cloakcal/db'` legal in a server module. The sweep now knows
+  about re-export laundering and allowlists the one subpath.
+- **This repo writes no semicolons, so `[^;]*` in a source-scanning regex runs to the end of
+  the file.** A sweep meant to find a value import matched across every import above it and
+  reported an `import type` line. Scan per statement, not with a character class that has
+  nothing to stop at.
 - **A wrong `whsec_` disables the webhook endpoint, and the app looks perfectly fine.** Every
   delivery 400s, Stripe retries for days, then disables the endpoint and emails whoever owns
   the Stripe account. Meanwhile nothing in the product looks wrong, because 0024 made absence

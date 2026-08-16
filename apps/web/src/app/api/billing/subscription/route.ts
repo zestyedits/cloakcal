@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
 import { stripeClient } from '@/server/billing/stripe'
+import { formatMoney } from '@/server/billing/view'
 import {
   billingResponse,
   isFailure,
@@ -85,19 +86,56 @@ export async function POST(request: Request): Promise<Response> {
     }
     if (item.price.id === target) return Response.json({ ok: true })
 
-    await stripe.subscriptions.update(current, {
-      /*
-       * `items[0].id` IS REQUIRED, and omitting it is the single most common way to break a
-       * plan switch: Stripe ADDS a second item instead of replacing the first, and the
-       * customer ends up subscribed to monthly AND yearly simultaneously. There is no error.
-       *
-       * `quantity` is restated because changing a price RESETS it to 1 unless carried over.
-       * It is always 1 here today, and writing it means that stays true by statement rather
-       * than by coincidence.
-       */
-      items: [{ id: item.id, price: target, quantity: item.quantity ?? 1 }],
-      proration_behavior: 'create_prorations',
-    })
+    /*
+     * `items[0].id` IS REQUIRED, and omitting it is the single most common way to break a plan
+     * switch: Stripe ADDS a second item instead of replacing the first, and the customer ends
+     * up subscribed to monthly AND yearly simultaneously. There is no error.
+     *
+     * `quantity` is restated because changing a price RESETS it to 1 unless carried over.
+     *
+     * The SAME array is used for the preview and for the change, deliberately: a preview that
+     * models different parameters from the update is a number that is not the number.
+     */
+    const items = [{ id: item.id, price: target, quantity: item.quantity ?? 1 }]
+    const proration = 'create_prorations' as const
+
+    /*
+     * THE PREVIEW STEP, AND IT IS NOT OPTIONAL POLISH.
+     *
+     * Switching cadence CHARGES A CARD IMMEDIATELY, for a prorated amount that is neither $8
+     * nor $72 — so a button that posts straight through takes money the user was never shown.
+     * The Terms say we show the amount before you confirm, and ADR 0009 §2 says the same, and
+     * for one commit this route did neither.
+     *
+     * Note the inversion this fixes: Cancel, which moves no money today, has a two-step
+     * confirmation; Switch, which moves money now, had none.
+     *
+     * If the preview FAILS, no confirm button is rendered and nothing is charged. Refusing to
+     * act blind is the same instinct as split-plan.ts proving a truncation is lossless before
+     * it is written.
+     */
+    if (body['confirm'] !== true) {
+      const preview = await stripe.invoices.createPreview({
+        customer: typeof live.customer === 'string' ? live.customer : live.customer.id,
+        subscription: current,
+        subscription_details: { items, proration_behavior: proration },
+      })
+
+      const due = preview.amount_due
+      return Response.json({
+        preview: {
+          // What is actually taken today. Negative or zero when switching DOWN, where the
+          // unused remainder becomes credit against the next invoice rather than a refund —
+          // which the copy has to say, because "you will be charged $0" reads as a refund.
+          amount: formatMoney(Math.max(due, 0), preview.currency),
+          charges: due > 0,
+          credit: due < 0 ? formatMoney(-due, preview.currency) : null,
+          cadence,
+        },
+      })
+    }
+
+    await stripe.subscriptions.update(current, { items, proration_behavior: proration })
     return Response.json({ ok: true })
   } catch (error) {
     /*

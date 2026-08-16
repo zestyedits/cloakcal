@@ -166,7 +166,7 @@ function formatDate(instant: string | null, timezone: string): string | null {
 }
 
 /** Stripe's minor units, in Stripe's currency — which is not necessarily the catalog's. */
-function formatMoney(amount: number, currency: string): string {
+export function formatMoney(amount: number, currency: string): string {
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',

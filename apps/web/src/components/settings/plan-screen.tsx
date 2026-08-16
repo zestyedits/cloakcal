@@ -10,6 +10,7 @@ import {
 } from '@/lib/plans'
 import { describeBilling } from '@/lib/billing-copy'
 import type { BillingView } from '@/server/billing/view'
+import type { CheckoutReturn } from './billing-band'
 import { PageMasthead, PageShell } from '../page-shell'
 import { Button } from '../ui/button'
 import { PlanBadge } from '../ui/plan-badge'
@@ -45,6 +46,7 @@ export function PlanScreen({
   plan,
   billing = null,
   billingPreview = false,
+  checkout = null,
 }: {
   demo: boolean
   plan: PlanId
@@ -57,6 +59,8 @@ export function PlanScreen({
   billing?: BillingView | null
   /** The `?billing=` preview. Inert controls, and they say so. Fixture-gated by the caller. */
   billingPreview?: boolean
+  /** Where Stripe sent the user back to. Suppresses the purchase control while it settles. */
+  checkout?: CheckoutReturn
 }) {
   const current = planById(plan)
   // By id, NOT by `purchase === 'coming-soon'`. Selecting on the purchase state would make
@@ -172,7 +176,7 @@ export function PlanScreen({
               <div className={settings.panelHead}>
                 <h2 className={settings.panelTitle}>Billing</h2>
               </div>
-              <BillingBand view={billing} preview={billingPreview} />
+              <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
             </section>
           )}
 

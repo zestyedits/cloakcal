@@ -21,6 +21,24 @@ const REPO = fileURLToPath(new URL('../../..', import.meta.url))
 /** Packages that must never be reachable from a server module. */
 const CLIENT_ONLY_PACKAGES = ['@cloakcal/cloak-store', '@cloakcal/crypto']
 
+/**
+ * PACKAGES WHOSE MAIN ENTRY RE-EXPORTS ONE OF THE ABOVE, so importing them from a server
+ * module launders the ban.
+ *
+ * `@cloakcal/db`'s `src/index.ts` re-exports `./events.js`, which imports `@cloakcal/crypto` on
+ * its first line. Until the billing work, `apps/web` did not depend on `@cloakcal/db` at all, so
+ * the specifier would not even resolve from there and the two literals above were a complete
+ * list. Adding the dependency — for the zero-import `@cloakcal/db/billing-queries` subpath —
+ * unlocked a door this rule exists to keep shut, and left it unwatched.
+ *
+ * The SUBPATH is what apps/web is allowed to reach, and it is a leaf module with no imports at
+ * all. The main entry is not. Matching on the bare specifier and on any subpath other than the
+ * allowed one keeps the useful import and closes the laundering route.
+ */
+const LAUNDERING: readonly { readonly pkg: string; readonly allow: readonly string[] }[] = [
+  { pkg: '@cloakcal/db', allow: ['@cloakcal/db/billing-queries'] },
+]
+
 /** Roots that ship application code. Test files and the packages themselves are excluded. */
 const SCAN_ROOTS = ['apps']
 
@@ -66,13 +84,69 @@ async function collectModules(): Promise<Module[]> {
   return out
 }
 
+const escape = (pkg: string) => pkg.replace(/[/@-]/g, (c) => `\\${c}`)
+
 const importsAny = (source: string, packages: readonly string[]): string[] =>
   packages.filter((pkg) => {
-    const escaped = pkg.replace(/[/@-]/g, (c) => `\\${c}`)
+    const escaped = escape(pkg)
     return new RegExp(`from\\s+['"]${escaped}(/[^'"]*)?['"]|require\\(['"]${escaped}`).test(source)
   })
 
+/**
+ * Which laundering packages a module reaches by a specifier that is not on their allowlist.
+ *
+ * Captures the whole specifier so the allowlist can be compared exactly, rather than by
+ * prefix: `@cloakcal/db/billing-queries-and-also-events` must not pass because it starts the
+ * same way.
+ */
+const launders = (source: string): string[] => {
+  const found: string[] = []
+  for (const { pkg, allow } of LAUNDERING) {
+    const pattern = new RegExp(
+      `from\\s+['"](${escape(pkg)}(?:/[^'"]*)?)['"]|require\\(['"](${escape(pkg)}(?:/[^'"]*)?)['"]`,
+      'g',
+    )
+    for (const match of source.matchAll(pattern)) {
+      const specifier = match[1] ?? match[2]
+      if (specifier !== undefined && specifier !== pkg && allow.includes(specifier)) continue
+      if (specifier !== undefined) found.push(specifier)
+    }
+  }
+  return found
+}
+
 describe('server modules cannot reach the decryption packages', () => {
+  /**
+   * THE INDIRECT ROUTE, WHICH WAS OPEN FOR EXACTLY ONE COMMIT.
+   *
+   * `@cloakcal/db`'s main entry re-exports a module that imports `@cloakcal/crypto`, so
+   * `import { anything } from '@cloakcal/db'` in a server file reaches the ban's target
+   * without naming it. Before the billing work `apps/web` had no dependency on
+   * `@cloakcal/db`, so the specifier did not resolve and the two-literal list above was
+   * genuinely complete. Adding the dependency for a leaf subpath unlocked the door.
+   *
+   * The allowed subpath is a module with ZERO imports, which is the property that makes it
+   * safe and which `packages/db/src/billing-queries.ts` states in its own header.
+   */
+  it('finds no server module reaching a client-only package through a re-export', async () => {
+    const modules = await collectModules()
+    const violations = modules
+      .filter((m) => !m.isClient)
+      .map((m) => ({ path: m.path, imports: launders(m.source) }))
+      .filter((v) => v.imports.length > 0)
+
+    expect(violations).toEqual([])
+  })
+
+  it('would catch that route if somebody took it', async () => {
+    // The sweep above passes when nothing does the wrong thing, which is also what it does
+    // when the pattern is broken. This proves the pattern still fires.
+    expect(launders(`import { events } from '@cloakcal/db'`)).toEqual(['@cloakcal/db'])
+    expect(launders(`import x from '@cloakcal/db/events'`)).toEqual(['@cloakcal/db/events'])
+    // And that the one specifier apps/web is allowed to use still passes.
+    expect(launders(`import { UUID } from '@cloakcal/db/billing-queries'`)).toEqual([])
+  })
+
   it('finds no server module importing a client-only package', async () => {
     const modules = await collectModules()
     const violations = modules

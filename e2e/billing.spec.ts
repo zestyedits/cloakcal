@@ -267,6 +267,31 @@ test.describe('pro', () => {
     await expect(page.getByRole('button', { name: 'Cancel Pro' })).toBeVisible()
   })
 
+  /**
+   * A CADENCE SWITCH CHARGES A CARD IMMEDIATELY, for a prorated amount that is neither $8 nor
+   * $72. The Terms promise the amount is shown before you confirm, and ADR 0009 specifies
+   * preview-then-confirm — and for one commit the button posted straight through, while Cancel,
+   * which moves no money today, had a two-step confirmation. This is the guard on that.
+   */
+  test('states what a cadence switch costs before it can be confirmed', async ({ page }) => {
+    const band = await open(page, 'active')
+    await band.getByRole('button', { name: 'Switch to yearly' }).click()
+
+    const confirm = page.getByRole('group', { name: /Confirm switching to yearly/ })
+    await expect(confirm).toBeVisible()
+    // A real figure, not a promise of one.
+    await expect(confirm.getByText(/charges you \$\d/)).toBeVisible()
+    await expect(confirm.getByText(/\$72 a year/)).toBeVisible()
+
+    // The safe choice is listed first, same rule as the cancel confirmation.
+    const names = await confirm.getByRole('button').allTextContents()
+    expect(names[0]).toContain('Keep monthly')
+
+    await confirm.getByRole('button', { name: 'Keep monthly' }).click()
+    await expect(confirm).toHaveCount(0)
+    await expect(band.getByRole('button', { name: 'Switch to yearly' })).toBeVisible()
+  })
+
   test('offers to keep Pro while cancelling, and withholds a second cancel', async ({ page }) => {
     const band = await open(page, 'cancelling')
     await expect(page.getByText('You are on Pro until 3 March 2026, and it will not renew.')).toBeVisible()
@@ -392,6 +417,15 @@ test.describe('accessibility', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     await page.getByRole('button', { name: 'Cancel Pro' }).click()
     await expect(page.getByRole('group', { name: 'Confirm cancelling Pro' })).toBeVisible()
+    await axeClean(page)
+  })
+
+  test('the switch confirmation scans clean, open, in the light theme', async ({ page }) => {
+    const band = await open(page, 'active')
+    await page.getByRole('button', { name: 'Switch to light mode' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await band.getByRole('button', { name: 'Switch to yearly' }).click()
+    await expect(page.getByRole('group', { name: /Confirm switching/ })).toBeVisible()
     await axeClean(page)
   })
 

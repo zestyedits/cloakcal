@@ -429,7 +429,18 @@ async function main(): Promise<void> {
   console.log('\x1b[2mAll six are required. billingConfig() returns null if ANY is missing,')
   console.log('so a half-configured deployment renders no purchase control at all.\x1b[0m\n')
   console.log(`STRIPE_SECRET_KEY=${config.secretKey.slice(0, 12)}…`)
+  /*
+   * PRINTED IN FULL, DELIBERATELY, unlike the key above — and the asymmetry is the point
+   * rather than an oversight. The API key already exists somewhere you can re-read it; a
+   * webhook signing secret is returned by Stripe EXACTLY ONCE, on create, and there is no API
+   * call that reads it back. Truncating it here would mean the only copy is unrecoverable and
+   * the endpoint has to be deleted and recreated. It lands in terminal scrollback and shell
+   * history, which is a real cost, so: paste it into Vercel and clear your history.
+   */
   console.log(`STRIPE_WEBHOOK_SECRET=${secret ?? '<unchanged — keep the one you have>'}`)
+  if (secret !== null) {
+    warn('that secret is shown ONCE and cannot be read back. Store it now, then clear scrollback.')
+  }
   console.log(`STRIPE_PRICE_PRO_MONTHLY=${monthly}`)
   console.log(`STRIPE_PRICE_PRO_ANNUAL=${annual}`)
   console.log(`STRIPE_PORTAL_CONFIGURATION_ID=${portalId}`)

@@ -58,6 +58,14 @@ export const CLAIM_EVENT = `
  * client gives up first and we roll back deliberately, and if it somehow does not, Postgres
  * kills the transaction. Either way Stripe retries, which is the correct failure direction.
  *
+ * IT LOCKS NOTHING WHEN THE ROW DOES NOT EXIST YET, which is worth stating because the
+ * paragraph above reads as if it always applies. The FIRST `checkout.session.completed` for an
+ * account is the event that CREATES the row, so it takes no lock, and what actually serialises
+ * two concurrent first writes is the primary key conflict inside the upsert — last committer
+ * wins, on possibly older snapshots. Low impact, because every branch re-fetches from the API
+ * anyway. If the guarantee is ever wanted unconditionally, `pg_advisory_xact_lock` keyed on the
+ * workspace id holds whether the row is there or not.
+ *
  * `billing_writer` cannot read `workspaces` at all (ADR 0007 spends a page on why widening it
  * is the wrong fix), so this table is the ONLY place the mapping can be looked up.
  *
@@ -116,5 +124,10 @@ export const UPSERT_SUBSCRIPTION = `
  * Not defence against injection — the values above are bind parameters. It is defence against
  * a `client_reference_id` that is well-formed nonsense: the insert would succeed against a
  * foreign key that happens to exist, and somebody else's account would acquire a plan.
+ *
+ * IT ACCEPTS VERSIONS 1 TO 5 ONLY. `workspaces.id` is `gen_random_uuid()`, which is v4, so it
+ * fits today. If anything ever moves to UUIDv7 this regex silently rejects every real id and
+ * EVERY CHECKOUT becomes `ignored` — a total billing outage that looks like nothing at all,
+ * because the events are acknowledged with a 200. Widen the version nibble in the same commit.
  */
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i

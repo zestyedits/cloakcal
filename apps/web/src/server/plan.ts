@@ -166,7 +166,7 @@ export async function loadSubscription(workspaceId: string | null): Promise<Subs
         .eq('workspace_id', workspaceId)
         .maybeSingle<RawSubscription>()
 
-    let { data, error } = await query(FULL_ROW)
+    const { data, error } = await query(FULL_ROW)
 
     /*
      * THE 42703 RETRY, copied deliberately from loadWorkspacePrefs rather than invented.

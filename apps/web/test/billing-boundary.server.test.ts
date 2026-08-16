@@ -47,10 +47,47 @@ const code = (source: string): string =>
  * this file did exactly that.
  */
 function importersOf(basename: string, self: string): string[] {
-  const pattern = new RegExp(
-    `\\bfrom\\s+['"](?:\\./${basename}|[^'"]*server/billing/${basename})['"]`,
-  )
+  // BOTH a static `from '…'` and a dynamic `import('…')`. The first version of this matched
+  // only `from`, so `await import('@/server/billing/db')` walked straight past a sweep whose
+  // entire claim is "exactly one importer, one hop deep".
+  const target = `(?:\\./${basename}|[^'"]*server/billing/${basename})`
+  const pattern = new RegExp(`\\bfrom\\s+['"]${target}['"]|\\bimport\\s*\\(\\s*['"]${target}['"]`)
   return FILES.filter((f) => f.path !== self && pattern.test(code(f.source))).map((f) => f.path)
+}
+
+/**
+ * `'use client'` at the top, allowing for a leading comment and either quote style.
+ *
+ * A bare `source.startsWith("'use client'")` misses `"use client"` and misses a file with a
+ * licence header — and a client module this sweep fails to RECOGNISE is a client module it
+ * silently exempts, which is the wrong direction for every assertion below.
+ */
+const isClient = (source: string): boolean =>
+  /^\s*(?:\/\*[\s\S]*?\*\/|\/\/.*\n)*\s*(['"])use client\1/.test(source)
+
+/**
+ * Each import statement, separately, with its `type` marker preserved.
+ *
+ * THIS REPO WRITES NO SEMICOLONS, which broke the obvious pattern in a way that passed rather
+ * than failed. `^import (?!type )[^;]*from '…'` has nothing to stop `[^;]*` at, so it ran from
+ * the FIRST import in the file all the way to whichever `from` clause matched — reporting a
+ * `import type` line as a value import because some earlier line was not one. A pattern that
+ * cannot tell the two apart is a pattern that either cries wolf or, with the negation the other
+ * way round, exempts everything.
+ */
+interface ImportStatement {
+  readonly specifier: string
+  readonly typeOnly: boolean
+}
+
+function importsIn(source: string): ImportStatement[] {
+  const found: ImportStatement[] = []
+  for (const match of code(source).matchAll(/\bimport\s+(type\s+)?([^'"]*?)from\s+['"]([^'"]+)['"]/g)) {
+    // `import { type A, B }` is a VALUE import that happens to carry a type: only the
+    // statement-level `import type` erases the whole thing.
+    found.push({ specifier: match[3] ?? '', typeOnly: match[1] !== undefined })
+  }
+  return found
 }
 
 describe('the source tree this sweep reads', () => {
@@ -84,14 +121,49 @@ describe('the write-capable database connection', () => {
    * against the server's own shape instead of a hand-copied duplicate that drifts.
    */
   it('is never value-imported by a client module', () => {
+    // `view` and `fixture` ARE in this list. The JSDoc above discussed `view` and the original
+    // alternation omitted it, which is precisely the module a client component has a reason to
+    // name — and `import type` is what makes naming it safe.
+    const SERVER_BILLING = /billing\/(db|apply|config|request|view|fixture)$/
     const offenders = FILES.filter(
       (f) =>
-        f.source.trimStart().startsWith("'use client'") &&
-        /^import (?!type )[^;]*\bfrom\s+['"][^'"]*billing\/(db|apply|config|request)['"]/m.test(
-          code(f.source),
-        ),
+        isClient(f.source) &&
+        importsIn(f.source).some((i) => !i.typeOnly && SERVER_BILLING.test(i.specifier)),
     ).map((f) => f.path)
     expect(offenders).toEqual([])
+  })
+
+  it('would catch a client module that value-imported one', () => {
+    // The sweep above passes when nothing does the wrong thing, and also when the pattern is
+    // broken. This is the difference. It caught exactly that: the first version reported
+    // `billing-band.tsx` because its regex ran across newlines this repo does not terminate.
+    const bad = `'use client'\nimport { loadBillingView } from '@/server/billing/view'`
+    const good = `'use client'\nimport type { BillingView } from '@/server/billing/view'`
+    expect(importsIn(bad).some((i) => !i.typeOnly)).toBe(true)
+    expect(importsIn(good).every((i) => i.typeOnly)).toBe(true)
+  })
+
+  /**
+   * THE DRIVER ITSELF, not just our wrapper around it. The Stripe SDK gets this treatment
+   * below and the Postgres driver — which is the one carrying write access — had none, so a
+   * second connection opened anywhere under `src/` was invisible to every sweep here.
+   */
+  it('is the only module that opens a Postgres connection', () => {
+    const importers = FILES.filter((f) => /\bfrom\s+['"]postgres['"]/.test(code(f.source))).map(
+      (f) => f.path,
+    )
+    expect(importers).toEqual(['server/billing/db.ts'])
+  })
+
+  /**
+   * TLS IS SET IN CODE, NOT LEFT TO THE CONNECTION STRING. postgres.js defaults `ssl` to
+   * FALSE and lets the query string override the default, so without this option the only
+   * thing encrypting the `billing_writer` password and every subscription row is somebody
+   * having typed `?sslmode=require` into an environment variable.
+   */
+  it('sets ssl explicitly, so a retyped connection string cannot silently drop TLS', () => {
+    const source = FILES.find((f) => f.path === 'server/billing/db.ts')?.source ?? ''
+    expect(source).toMatch(/ssl:\s*'require'/)
   })
 })
 
@@ -130,7 +202,7 @@ describe('the billing secrets', () => {
 
   it('is never imported by a client module', () => {
     const offenders = FILES.filter(
-      (f) => f.source.trimStart().startsWith("'use client'") && /from ['"]stripe['"]/.test(f.source),
+      (f) => isClient(f.source) && /from ['"]stripe['"]/.test(f.source),
     ).map((f) => f.path)
     expect(offenders).toEqual([])
   })

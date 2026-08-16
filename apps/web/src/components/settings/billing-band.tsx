@@ -69,7 +69,18 @@ function isStripeUrl(value: unknown): value is string {
 
 type Action = 'checkout' | 'cancel' | 'resume' | 'switch' | 'card'
 
-export function BillingBand({ view, preview }: { view: BillingView; preview: boolean }) {
+/** What Stripe sent us back to, if anything. Read on the server, passed in as a prop. */
+export type CheckoutReturn = 'done' | 'cancelled' | null
+
+export function BillingBand({
+  view,
+  preview,
+  checkout = null,
+}: {
+  view: BillingView
+  preview: boolean
+  checkout?: CheckoutReturn
+}) {
   const router = useRouter()
   const pro = planById('pro')
   const price = pro.price
@@ -80,8 +91,48 @@ export function BillingBand({ view, preview }: { view: BillingView; preview: boo
   const [notice, setNotice] = useState<string | null>(null)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
 
+  /**
+   * WHAT THE SWITCH WOULD ACTUALLY COST, fetched before anything is charged.
+   *
+   * Null means "no switch is being proposed". A cadence switch takes money IMMEDIATELY, for a
+   * prorated amount that is neither $8 nor $72, so a button that posts straight through
+   * charges a card for a figure the user was never shown. The Terms promise we show it first;
+   * this is the state that keeps that promise.
+   *
+   * If the preview fails, this stays null and NO confirm button is drawn. Refusing to switch
+   * blind is the point — the error is rendered, the action is not offered.
+   */
+  const [proposal, setProposal] = useState<{
+    cadence: PlanCadence
+    amount: string
+    charges: boolean
+    credit: string | null
+  } | null>(null)
+
   const copy = describeBilling(view.state, view.renewsOn)
-  const purchasable = canPurchase(view.state) && price !== null
+
+  /*
+   * THE DOUBLE-PURCHASE WINDOW, AND IT WAS OPEN.
+   *
+   * `success_url` has always been `?checkout=done`, and until this line NOTHING READ IT. So
+   * somebody returning from a successful Stripe checkout before the webhook landed saw the
+   * ordinary Free screen — "Continue to Stripe" still rendered, still enabled — because our own
+   * row is written by `billing_writer` in the webhook and cannot possibly be current yet.
+   *
+   * Pressing it again was not harmless. The guard in `checkout/route.ts` keys off
+   * `providerSubscriptionId`, which is still null, so it would let a second session through;
+   * `customer` is only passed when we already have one, so Stripe would create a SECOND
+   * customer; the upsert overwrites both provider ids unconditionally, so the row would forget
+   * the first subscription; and every later event for it would take the `unknown-customer`
+   * branch and log a warning nobody reads. Charged twice, with one of the two invisible in the
+   * product and uncancellable from it.
+   *
+   * Suppressing the control for this one render is the cheap half of the fix. The route-side
+   * half is the `already_subscribed` guard, which only starts working once the webhook lands.
+   */
+  const settling = checkout === 'done' && view.plan !== 'pro'
+
+  const purchasable = canPurchase(view.state) && price !== null && !settling
   // TWO GATES, and the second is the one that matters: a granted account has `plan === 'pro'`
   // and no subscription to act on, so a Cancel button here would post a null id and 500 on an
   // account that never paid. `canManage` alone would let it through.
@@ -140,7 +191,78 @@ export function BillingBand({ view, preview }: { view: BillingView; preview: boo
     }
   }
 
+  /** Step one of the switch: ask what it costs. Charges nothing and changes nothing. */
+  async function previewSwitch(target: PlanCadence) {
+    /*
+     * THE PREVIEW MODE STILL SHOWS THE SECOND STEP, unlike every other action here, and the
+     * difference is deliberate. Everything else answers "nothing was sent" because pressing it
+     * is the whole interaction. This one has a SECOND SCREEN behind it — the one carrying the
+     * real amount and the confirm button — and stopping at step one would leave that screen
+     * exactly as unreachable as it was before this file existed: no axe run, no 44px sweep, no
+     * 390px guard. Same reasoning as the `?billing=` preview itself, one level down.
+     *
+     * The figures are fabricated and the CONFIRM is still inert, which is what keeps this
+     * honest: nothing is fetched and nothing can be sent.
+     */
+    if (preview) {
+      setError(null)
+      setNotice(null)
+      setProposal({
+        cadence: target,
+        amount: target === 'annual' ? '$64.20' : '$0',
+        charges: target === 'annual',
+        credit: target === 'annual' ? null : '$52.40',
+      })
+      return
+    }
+    setBusy('switch')
+    setError(null)
+    setNotice(null)
+    setProposal(null)
+    try {
+      const response = await fetch('/api/billing/subscription', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          intent: 'switch',
+          cadence: target,
+          confirm: false,
+          subscriptionId: view.subscriptionId,
+        }),
+      })
+      const payload: unknown = await response.json().catch(() => null)
+      const data = (payload ?? {}) as {
+        error?: unknown
+        preview?: { amount?: unknown; charges?: unknown; credit?: unknown }
+      }
+
+      if (!response.ok || data.preview === undefined) {
+        // No proposal, so no confirm button. "We could not work out what this would cost" is a
+        // better outcome than a switch nobody priced.
+        setError(
+          response.ok
+            ? 'We could not work out what this would cost. Nothing has changed. Try again in a minute.'
+            : billingErrorMessage(data.error),
+        )
+        setBusy(null)
+        return
+      }
+
+      setProposal({
+        cadence: target,
+        amount: String(data.preview.amount ?? ''),
+        charges: data.preview.charges === true,
+        credit: typeof data.preview.credit === 'string' ? data.preview.credit : null,
+      })
+      setBusy(null)
+    } catch {
+      setError(billingErrorMessage('provider_unavailable'))
+      setBusy(null)
+    }
+  }
+
   const other: PlanCadence = view.cadence === 'annual' ? 'monthly' : 'annual'
+  const wordFor = (cadence: PlanCadence) => (cadence === 'annual' ? 'yearly' : 'monthly')
 
   return (
     <div className={styles.band} data-billing={view.state}>
@@ -161,6 +283,22 @@ export function BillingBand({ view, preview }: { view: BillingView; preview: boo
         <p className={styles.testNote}>
           Billing is in test mode. This will not charge a real card, and a real card will be
           declined. It is here so the flow can be checked, not so anything can be bought.
+        </p>
+      )}
+
+      {/* Rendered as a plain note and never as a toast: a message about money must not be
+          dismissible by a timer. Neither branch grants anything — `settling` only ever REMOVES
+          a control. */}
+      {settling && (
+        <p className={styles.testNote} role="status">
+          Payment received. Stripe has it, and Pro is being switched on. This usually takes a
+          few seconds. Reload the page if it has not appeared in a minute, and do not pay
+          again.
+        </p>
+      )}
+      {checkout === 'cancelled' && (
+        <p className={styles.notice} role="status">
+          You stopped before paying. Nothing was charged.
         </p>
       )}
 
@@ -301,13 +439,7 @@ export function BillingBand({ view, preview }: { view: BillingView; preview: boo
                   <Button
                     variant="outline"
                     busy={busy === 'switch'}
-                    onClick={() =>
-                      void post('switch', '/api/billing/subscription', {
-                        intent: 'switch',
-                        cadence: other,
-                        subscriptionId: view.subscriptionId,
-                      })
-                    }
+                    onClick={() => void previewSwitch(other)}
                   >
                     Switch to {other === 'annual' ? 'yearly' : 'monthly'}
                   </Button>
@@ -333,6 +465,60 @@ export function BillingBand({ view, preview }: { view: BillingView; preview: boo
           </>
         )}
       </div>
+
+      {/*
+        STEP TWO OF THE SWITCH: the actual number, then confirm. It only exists once a preview
+        has come back, so a failed preview offers no way to proceed.
+      */}
+      {manageable && proposal !== null && (
+        <div
+          className={styles.confirm}
+          role="group"
+          aria-label={`Confirm switching to ${wordFor(proposal.cadence)} billing`}
+        >
+          <p className={styles.confirmQuestion}>
+            Switch to {wordFor(proposal.cadence)} billing?
+          </p>
+          <p className={plan.note}>
+            {proposal.charges
+              ? `This charges you ${proposal.amount} today, worked out for the time you have already paid for.`
+              : 'There is nothing to pay today.'}{' '}
+            {proposal.credit !== null &&
+              `The ${proposal.credit} you have already paid for stays on your account as credit against your next invoice, rather than coming back to your card. `}
+            After that you are billed{' '}
+            {price !== null && formatPlanPrice(price, proposal.cadence)}{' '}
+            {proposal.cadence === 'annual' ? 'a year' : 'a month'}.
+          </p>
+          <div className={styles.confirmActions}>
+            {/* The safe choice first, same rule as the cancel confirmation. */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() => {
+                setProposal(null)
+                setError(null)
+              }}
+            >
+              Keep {wordFor(view.cadence ?? other)}
+            </Button>
+            <Button
+              size="sm"
+              busy={busy === 'switch'}
+              onClick={() =>
+                void post('switch', '/api/billing/subscription', {
+                  intent: 'switch',
+                  cadence: proposal.cadence,
+                  confirm: true,
+                  subscriptionId: view.subscriptionId,
+                })
+              }
+            >
+              {busy === 'switch' ? 'Switching' : `Switch to ${wordFor(proposal.cadence)}`}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {manageable && view.state !== 'cancelling' && confirmingCancel && (
         <div className={styles.confirm} role="group" aria-label="Confirm cancelling Pro">

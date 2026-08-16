@@ -37,6 +37,28 @@ const OPTIONS = {
   max: 1,
   idle_timeout: 20,
   connect_timeout: 10,
+
+  /*
+   * TLS SET HERE, NOT LEFT TO THE CONNECTION STRING, AND THE DEFAULT IS THE REASON.
+   *
+   * postgres.js resolves every option as `k in options ? options[k] : k in query ? query[k]
+   * : default`, and **the default for `ssl` is `false`**. So without this line the only thing
+   * turning encryption on is somebody having typed `?sslmode=require` into an environment
+   * variable — and `billingConfig()` validates that string's PREFIX character by character
+   * while saying nothing at all about its query.
+   *
+   * Paste the URL into Vercel without the suffix and the `billing_writer` password and every
+   * subscription row cross the network in cleartext. No error, no test, and nothing in this
+   * repo able to see it. `.env.example` has the suffix, which is exactly the kind of
+   * correctness that survives right up until somebody retypes a value.
+   *
+   * Because OPTIONS wins over the query string, this makes it unskippable rather than merely
+   * documented. `verify-full` would be stronger still — `require` encrypts without
+   * authenticating the peer — but it needs a root certificate story on Vercel that does not
+   * exist yet, and encrypted-but-unverified beats plaintext by a wide margin. Recorded rather
+   * than quietly settled for.
+   */
+  ssl: 'require',
 } as const
 
 /**

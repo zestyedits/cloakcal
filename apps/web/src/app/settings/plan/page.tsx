@@ -86,7 +86,20 @@ export default async function PlanPage({
     ? await loadBillingView(prefs?.workspaceId ?? null, prefs?.timezone ?? DISPLAY_TIMEZONE)
     : null
 
+  /*
+   * WHERE STRIPE SENT THEM BACK TO, and reading it closes a real double-purchase window.
+   *
+   * `success_url` has been `?checkout=done` since the checkout route was written and NOTHING
+   * READ IT, so a customer returning before the webhook landed saw the ordinary Free screen
+   * with a live "Continue to Stripe" button — and our own row is written by `billing_writer`
+   * in the webhook, so it cannot possibly be current at that moment. The band suppresses the
+   * purchase control while this is set. It never grants anything.
+   */
+  const params = await searchParams
+  const returned = Array.isArray(params.checkout) ? params.checkout[0] : params.checkout
+  const checkout = returned === 'done' || returned === 'cancelled' ? returned : null
+
   // `demo` passed explicitly, never inferred from an empty email: a signed-in user whose
   // email is null is not demoing, and would otherwise be told they have no account.
-  return <PlanScreen demo={false} plan={plan} billing={billing} />
+  return <PlanScreen demo={false} plan={plan} billing={billing} checkout={checkout} />
 }

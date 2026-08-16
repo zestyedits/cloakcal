@@ -93,8 +93,29 @@ export async function POST(request: Request): Promise<Response> {
           'Recorded and acknowledged. If this persists, the subscription was probably created ' +
           'in the dashboard rather than through checkout, and has no workspace to belong to.',
       )
+    } else if (outcome.kind === 'conflict') {
+      /*
+       * ERROR, not warn, and it is the loudest line in this file for a reason: money has
+       * already moved and the row could not be written. One Stripe customer or subscription is
+       * bound to two workspaces, which needs a person. Both ids are named because untangling
+       * it is impossible without them, and neither is our own account identifier.
+       */
+      console.error(
+        `[billing] ${event.type} conflicts with an existing row. customer=${outcome.customerId} ` +
+          `subscription=${outcome.subscriptionId} workspace=${outcome.workspaceId}. ` +
+          'Acknowledged rather than retried, because retrying cannot resolve a unique ' +
+          'violation and would burn Stripe retries until the endpoint is disabled. A paid ' +
+          'subscription may now have no local record. Resolve by hand.',
+      )
     } else if (outcome.kind === 'ignored') {
-      console.info(`[billing] ${event.type} ignored: ${outcome.reason}`)
+      /*
+       * WARN, NOT INFO, AND THIS IS NOT A LOGGING PREFERENCE. One of the reasons this branch
+       * fires is a `checkout.session.completed` with no valid workspace id — a Payment Link, a
+       * session created in the dashboard, or one from an older deploy. By then STRIPE HAS
+       * TAKEN MONEY, and the event id is now claimed, so re-sending it from the dashboard will
+       * do nothing. It was logged at the quietest level in the file.
+       */
+      console.warn(`[billing] ${event.type} ignored: ${outcome.reason}`)
     }
 
     return new Response(null, { status: 200 })

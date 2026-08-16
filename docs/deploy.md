@@ -117,21 +117,17 @@ Generate a URL-safe password so there is no percent-encoding step to get wrong:
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
 ```
 
-Then, in the SQL editor:
+Then, in the SQL editor, **one line**:
 
 ```sql
 alter role billing_writer with login password '<generated>';
-alter role billing_writer set search_path = public;
-alter role billing_writer set statement_timeout = '8s';
-alter role billing_writer set idle_in_transaction_session_timeout = '10s';
-alter role billing_writer connection limit 5;
 ```
 
-The two timeouts are load-bearing rather than hygiene. The webhook holds a transaction open
-across a Stripe API call — it has to, because the row lock must be taken before the fetch or
-two concurrent deliveries race and the older snapshot wins — and
-`idle_in_transaction_session_timeout` is what stops a Stripe outage pinning a pooler slot.
-The connection limit bounds a retry storm.
+The `search_path`, the two timeouts and the connection limit used to live here too, and they
+are in **migration 0029** now. They are limits rather than secrets, and three source files
+cite them as safety guarantees — a guarantee that lives only in a runbook is a guarantee
+nobody has. The password is the one part that genuinely cannot go in a migration, because a
+password in a committed migration is a password in the git history forever.
 
 ### Verify the connection string before the first checkout, not after
 

@@ -249,12 +249,42 @@ describe('subscription changes', () => {
    * AND yearly at once. There is no error.
    */
   it('names the item id when swapping a price', () => {
-    expect(code(SUBSCRIPTION)).toMatch(/items:\s*\[\{\s*id:\s*item\.id/)
+    expect(code(SUBSCRIPTION)).toMatch(/\bid:\s*item\.id\b/)
   })
 
   /** Changing a price RESETS quantity to 1 unless it is carried over. */
   it('carries the quantity across a price change', () => {
     expect(code(SUBSCRIPTION)).toMatch(/quantity:\s*item\.quantity/)
+  })
+
+  /**
+   * THE PREVIEW AND THE UPDATE MUST MODEL THE SAME CHANGE. A preview built from different
+   * parameters from the update it precedes is a number that is not the number — which is worse
+   * than showing none, because the user confirmed against it.
+   */
+  it('previews the same items and proration it then applies', () => {
+    const body = code(SUBSCRIPTION)
+    expect(body).toMatch(/subscription_details:\s*\{\s*items,\s*proration_behavior:\s*proration/)
+    expect(body).toMatch(/subscriptions\.update\([^)]*\{\s*items,\s*proration_behavior:\s*proration/)
+  })
+
+  /**
+   * A CADENCE SWITCH CHARGES A CARD IMMEDIATELY, for a prorated amount that is neither $8 nor
+   * $72. The Terms promise the amount is shown before you confirm, and ADR 0009 §2 specifies
+   * preview-then-confirm — and for one commit this route did neither, while Cancel, which moves
+   * no money today, had a two-step confirmation. Three artefacts disagreed and the code was the
+   * one that was wrong.
+   */
+  it('refuses to switch without an explicit confirm', () => {
+    const body = code(SUBSCRIPTION)
+    expect(body).toContain('createPreview')
+    expect(body).toMatch(/body\['confirm'\]\s*!==\s*true/)
+    // The preview branch RETURNS. If it fell through, the confirm gate would be decoration.
+    const previewAt = body.indexOf("body['confirm'] !== true")
+    const updateAt = body.indexOf('subscriptions.update(current, { items')
+    expect(previewAt).toBeGreaterThan(-1)
+    expect(updateAt).toBeGreaterThan(previewAt)
+    expect(body.slice(previewAt, updateAt)).toMatch(/return Response\.json\(\{\s*preview:/)
   })
 
   /**
