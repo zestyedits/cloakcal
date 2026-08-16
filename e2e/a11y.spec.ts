@@ -206,3 +206,71 @@ test.describe('landing', () => {
     }
   })
 })
+
+/*
+ * THE LIGHT THEME, on every page that has one.
+ *
+ * Every axe run in this project scanned the dark theme, and the light theme is the one the
+ * brand references actually specify the calendar in. That gap was not theoretical: it hid a
+ * failing `--text-tertiary` (3.31 to 3.41 across the three surfaces, under AA at any size)
+ * on the mini month's dates, the sidebar headings, every form legend and the security page's
+ * hints; a `--status-success` used as a 12px label at 3.47; the settings rail's index dimmed
+ * with opacity to 3.46; and the agenda's delete trigger dimmed the same way to 3.36. Four
+ * separate defects, none visible to a dark-only sweep, all found the day one of these ran.
+ *
+ * A separate loop rather than a theme parameter on the runs above, because the toggle is a
+ * click and the dark pass should not pay for it.
+ */
+for (const [label, path] of [
+  ['calendar', '/'],
+  ['week', '/?view=week'],
+  ['month', '/?view=month'],
+  ['settings', '/settings'],
+  ['security', '/settings/security'],
+  ['people', '/people'],
+] as const) {
+  test(`the ${label} page scans clean in the LIGHT theme`, async ({ page }) => {
+    await page.goto(path)
+    await page.getByRole('button', { name: 'Switch to light mode' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+
+    /*
+     * Let paint settle before axe, WITHOUT a wait that can hang the suite.
+     *
+     * axe measures COMPOSITED colour, so scanning mid-animation reports contrast failures
+     * against frames that are not finished painting. The repo's usual spelling is
+     * `Promise.all(document.getAnimations().map((a) => a.finished))`, and on this page, in
+     * the light theme, it hangs until the 30s test timeout. Three separate reasons it can,
+     * all of them real and none of them obvious:
+     *
+     *   1. `a.finished` RESOLVES WITH THE ANIMATION OBJECT, so `Promise.all` hands Playwright
+     *      an array of live host objects to serialise back across the bridge. The `async`
+     *      body returning undefined is what stops that. Elsewhere in this suite the same
+     *      call survives only because the array is empty by the time it runs.
+     *   2. An INFINITE animation's `finished` never resolves, by construction. The loading
+     *      fallbacks' `.pulse` is `iteration-count: infinite`.
+     *   3. A CANCELLED transition REJECTS rather than resolving, and one rejection fails the
+     *      whole `Promise.all`. Switching the theme retargets transitions mid-flight.
+     *
+     * The settle is still the mechanism; `settled` is a BACKSTOP, not a sleep standing in for
+     * a wait. It bounds a promise that provably can fail to settle, and it stays correct
+     * under prefers-reduced-motion because there the animations finish in 1ms and the race is
+     * won by the real branch every time.
+     */
+    await page.evaluate(async () => {
+      const settled = new Promise<void>((resolve) => setTimeout(resolve, 2_000))
+      const painted = Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ).then(() => undefined)
+      await Promise.race([painted, settled])
+    })
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+  })
+}

@@ -267,6 +267,11 @@
   --focus-ring: var(--brand-lavender);
 
   --status-success: var(--brand-teal);
+  /* Success as TEXT. On dark the shape colour is already text-grade (9.63:1 on raised), so
+     this resolves to the same teal rather than a second value -- but the TOKEN must exist in
+     BOTH themes, or a component naming it renders with no colour in one of them. The light
+     block is where the two genuinely diverge. */
+  --status-success-text: var(--brand-teal);
   --status-warning: var(--brand-amber);
   --status-danger: var(--brand-rose);
 
@@ -311,6 +316,25 @@
    * nothing may rely on them being seen. */
   --engrave-hairline: rgba(205, 195, 165, 0.28);
   --minute-tick: rgba(205, 195, 165, 0.42);
+  /* The same index, QUIETER — for a figure that labels rather than states, like the
+     settings rail's section numbers. A TOKEN, not `opacity` over --numeral-ink, which is
+     the trap this project has now fallen into twice: the rail dimmed with opacity 0.7 and
+     composited to 3.46:1 in the light theme, which no axe run had ever looked at. Both
+     values below are text-grade on base, raised AND sunken, and pinned in CONTRAST_PAIRS.
+     The dark one is exactly what that 0.7 already composited to, so nothing moves here. */
+  --numeral-ink-quiet: #928b78;
+
+  /* The plan badge. OPAQUE, unlike every --privacy-*-quiet above, because this badge
+   * renders on base, raised and sunken and sits under the account row's hover overlay —
+   * four composites to pin, one of them a state nothing screenshots. Opaque means the ink
+   * is checked against its own wash once per theme and no surface can change the answer.
+   * Deliberately NOT the privacy palette: those colours are learned meaning, and a billing
+   * tier in the "Limited details" indigo would look exactly like a privacy chip.
+   * 8.03:1 and 7.93:1 here, both pinned in CONTRAST_PAIRS. */
+  --plan-free-quiet: #1c2130;
+  --plan-free-ink: #b4b7c4;
+  --plan-pro-quiet: #2b2c30;
+  --plan-pro-ink: #cdc3a5;
 }
 
 /* -----------------------------------------------------------------------
@@ -331,7 +355,17 @@
 
   --text-primary: var(--brand-deep-navy);
   --text-secondary: rgba(11, 13, 20, 0.68);
-  --text-tertiary: rgba(11, 13, 20, 0.48);
+  /* 0.60, up from 0.48, because 0.48 FAILED AA everywhere it was used: it composites to
+     3.41:1 on white, 3.36:1 on base and 3.31:1 on sunken at 12px. Not a near miss and not
+     theoretical — it was the ink on the mini month's dates, the sidebar headings, the
+     security page's hints and every form legend. Nothing caught it for the life of the
+     theme, because every axe run in this project scanned the DARK theme, where the same
+     token sits at 4.91:1 and passes. The light theme is the one the references actually
+     specify (see the header), and it was the one nobody measured.
+     0.60 gives 5.09 / 4.99 / 4.81 on raised / base / sunken, which is where dark already
+     sat. Hierarchy against --text-secondary (0.68) is thinner now; that is the right trade,
+     because a level nobody can read is not a level. */
+  --text-tertiary: rgba(11, 13, 20, 0.60);
   --text-inverse: var(--brand-white);
 
   --accent: #5847e0; /* darkened from --brand-indigo: 4.5:1 on white, which #6D5CFF misses */
@@ -342,6 +376,12 @@
   --focus-ring: #4a3ac9;
 
   --status-success: #0f9c78;
+  /* Success as TEXT rather than as a shape, exactly as --status-danger-solid exists for
+     the filled case. #0f9c78 is a 3:1 pair against raised and is fine as a dot or a border;
+     as the 12px "Free" label under a time it measured 3.47:1 and failed. A colour is checked
+     as a SHAPE and as TEXT, and those are different pairs -- third time this project has
+     paid for that. 5.83 / 5.40 / 4.89 on raised / base / sunken. */
+  --status-success-text: #0a7357;
   --status-warning: #a86a00;
   --status-danger: #c8355b;
   --status-danger-solid: #c8355b;
@@ -362,6 +402,14 @@
   --numeral-ink: #5c4d2a;
   --engrave-hairline: rgba(92, 77, 42, 0.34);
   --minute-tick: rgba(92, 77, 42, 0.5);
+  /* The light quiet index. 4.88:1 on sunken, where the settings rail draws it. */
+  --numeral-ink-quiet: #756340;
+
+  /* The light plan badge. Same reasoning as the dark block; 5.36:1 and 6.61:1. */
+  --plan-free-quiet: #e6e8f0;
+  --plan-free-ink: #5a5d68;
+  --plan-pro-quiet: #eae6dc;
+  --plan-pro-ink: #5c4d2a;
 }
 
 /* -----------------------------------------------------------------------

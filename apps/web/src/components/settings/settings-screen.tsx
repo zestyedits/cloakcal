@@ -7,6 +7,7 @@ import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import type { AudienceOption } from '@/lib/audiences'
 import { VIEW_LABELS } from '@/lib/calendar-views'
 import { SECTIONS } from '@/lib/settings-sections'
+import { planById, type PlanId } from '@/lib/plans'
 import { SettingsNav, useVisibleSection } from './settings-nav'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
 import { PageMasthead, PageShell } from '../page-shell'
@@ -147,6 +148,8 @@ export interface SettingsProps {
   readonly audiences: readonly AudienceOption[]
   readonly workspaceRules: readonly VisibilityRule[]
   readonly groupsByContact: Readonly<Record<string, readonly string[]>>
+  /** The tier this account is on. Free unless a `subscriptions` row says otherwise (0024). */
+  readonly plan: PlanId
 }
 
 export function SettingsScreen({
@@ -158,6 +161,7 @@ export function SettingsScreen({
   audiences,
   workspaceRules,
   groupsByContact,
+  plan,
 }: SettingsProps) {
   const hashSection = useOpenOnHash()
   /**
@@ -497,6 +501,35 @@ export function SettingsScreen({
                   </div>
                 </>
               )}
+            </SettingsSection>
+
+            {/* A signpost, like Security. Prices, a comparison and a roadmap do not fit in
+                a band that opens one at a time, and a card holding only a lede and a link
+                is the shape the seven-to-five pass deleted. This one says what it is and
+                points at the page. */}
+            <SettingsSection
+              id="plan"
+              open={openSectionId === 'plan'}
+              onOpen={(next) => openBand('plan', next)}
+              title="Plan"
+              description={describe('plan')}
+              /* "Demo", not "Free". A plan is an ACCOUNT fact and the fixture has no
+                 account, so printing Free here would be one string answering two different
+                 questions — the same error as inferring the demo from an empty email. */
+              state={fixtureMode ? 'Demo' : planById(plan).name}
+            >
+              <p className={styles.sectionLede}>
+                Free covers everything CloakCal does today. Pro is named and priced on the
+                plan page, and cannot be bought yet: billing opens when sign-ups do.
+              </p>
+              {/* Unlike Security, this link is offered in the demo too. The plan page reads
+                  no account state and renders the same either way, so pointing at it is not
+                  the dead end the security link would be. */}
+              <div>
+                <ButtonLink variant="outline" href={{ pathname: '/settings/plan' }}>
+                  Open Plan
+                </ButtonLink>
+              </div>
             </SettingsSection>
           </main>
 

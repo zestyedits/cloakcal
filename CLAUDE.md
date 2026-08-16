@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 757 unit tests
-pnpm test:e2e            # 91 Playwright tests, runs its own dev server
+pnpm test                # 994 unit tests
+pnpm test:e2e            # 323 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
@@ -150,7 +150,7 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 *(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
 security is its own route — see the 2026-08-15 pass below.)*
 
-**Migrations 0018–0022 are applied to production** (prefs incl. timezone + week_start,
+**Migrations 0018–0025 are applied to production** (prefs incl. timezone + week_start,
 `update_calendar`, the four group RPCs 0017 never had, `create_calendar`, and
 `default_view` + `keyboard_shortcuts`), anon sweep clean. **Keep this line current.** It
 said "0018–0020" for two migrations longer than it was true, and the cost was real: the
@@ -352,19 +352,121 @@ Agenda left you on Month, and so did Today and the `t` hotkey. Agenda and week h
 between them, since that pair is a client toggle that never consults the URL. Every builder
 names its view now, unconditionally.
 
+**The 2026-08-15 plan pass: a tier you can see, and a price nobody can pay yet.**
+`/settings/plan` and a badge in the sidebar account cluster, plus migration 0024 behind
+them. Pricing is decided and recorded in ADR 0007: **Free is everything CloakCal does
+today**, because "basic privacy is never paywalled" makes the whole shipped product free by
+the spec's own rule; **Pro is $8 a month or $72 a year** (three months free) and is named,
+priced and explicitly NOT purchasable. Pro's `includes` list is EMPTY on purpose — listing
+shipped features under it would be claiming free accounts do not have them — and its four
+planned items (booking, external sync, shared calendars, automations) are each unbuilt and
+labelled so. Export is on FREE permanently: charging to leave is not something a privacy
+product gets to do. **No published limits on either tier**, because nothing counts anything
+and there is nowhere to enforce a count.
+
+**The plan is the first fact in this product the user may READ and may not WRITE**, and that
+asymmetry is why it is not a column on `workspaces`. `workspaces_update` (0002) is
+`for update to authenticated using (owner_id = auth.uid())`, and a policy is ROW-level: it
+cannot name a column, so it authorises every column of every row it authorises. And the
+column-level revoke that looks like the fix is a **silent no-op** — verified on PGlite while
+writing 0024, not reasoned about: with the table-level UPDATE grant standing,
+`revoke update (plan) ... from authenticated` leaves `has_column_privilege` true and warns
+about nothing. Same family as the 0009 grant trap. So `subscriptions` is its own table with
+ONE `for select` policy, `revoke insert, update, delete` on top of it, and **no row for
+anybody: absence means Free**, which needs no bootstrap insert and therefore no insert policy
+at all. Both gates were proved by hand — removing the revoke reds three tests, widening the
+policy to `for all` reds two others.
+
+**How billing will write without a service-role key is in ADR 0007 and is the reason for the
+separate table.** A webhook has no session, rule 4 bans the service key and
+`security-posture.test.ts` bans SECURITY DEFINER, so it connects as its own `billing_writer`
+role with a policy on that one table. On a table holding one fact, that role's blast radius
+is that fact; there is no spelling of the same grant against `workspaces` that does not also
+hand it `lifecycle` and `route_token` on every row.
+
+**A third defect, and it is the one worth reading: TRUNCATE was granted to `anon` on every
+table.** Supabase's default ACL for a new public table is `arwdDxtm` for both `anon` and
+`authenticated` — which includes TRUNCATE, and **RLS does not filter TRUNCATE**. There is no
+per-row decision for a policy to make, so `force row level security` plus a `using (false)`
+policy does not stop it; only the absent privilege does. All sixteen tables had it, `events`
+and `cloaked_fields` included. Latent rather than open — PostgREST exposes no TRUNCATE verb
+and `anon` is NOLOGIN, so nothing could reach it — but the blast radius was the whole database
+for every user. `0025_revoke_truncate.sql` takes TRUNCATE, REFERENCES, TRIGGER and MAINTAIN
+away from both roles and leaves the four DML verbs RLS actually mediates.
+
+It surfaced because 0024 wrote its revoke as an ALLOWLIST (`revoke all` then `grant select`)
+rather than naming three DML verbs, which is the lesson to carry: **subtracting the verbs you
+thought of cannot survive a verb you have not heard of.** MAINTAIN is exactly that verb — new
+in PostgreSQL 17, and it arrived pre-granted. **The harness could not have caught it either**:
+its shim granted four of the eight privileges under a comment claiming it mirrored Supabase,
+so the harness was a STRICTER fiction than production on precisely the axis a hardening
+migration is tested for. It grants all eight now. Same shape as the missing `anon` role that
+hid the 0009 hole, and the fix is the same: the sweep in `security-posture.test.ts` is the
+backstop, not the migration, because `alter default privileges` cannot reach Supabase's
+`supabase_admin` defaults.
+
+**The light theme had never been scanned, and it was carrying four separate AA failures.**
+Every axe run in this repo scanned dark, and light is the theme the brand references actually
+draw the calendar in. One pass with a light-theme sweep found: `--text-tertiary` at
+rgba(11,13,20,0.48) measuring 3.31 to 3.41 across the three surfaces, which is the ink on the
+mini month's dates, the sidebar headings, every form legend and the security page's hints;
+`--status-success` used as a 12px "Free" label at 3.47 (a colour checked as a SHAPE and used
+as TEXT, the third time that has bitten here); the settings rail's index dimmed with opacity
+to 3.46; and the agenda's delete trigger dimmed the same way to 3.36. Tertiary is 0.60 now
+(4.81 worst case, where dark already sat), `--status-success-text` exists for the label case,
+and both opacity dims are tokens. `e2e/a11y.spec.ts` now scans SIX pages in the light theme,
+which is the guard that stops this recurring.
+
+**Waiting on `getAnimations()` can hang, three ways, and the repo's usual one-liner hits all
+three.** `a.finished` RESOLVES WITH THE ANIMATION OBJECT, so `Promise.all(...)` hands
+Playwright an array of live host objects to serialise back and it wedges until the test times
+out — the existing calls survive only because the array is empty by the time they run, and
+ten finished button transitions after a theme toggle is enough to break it. An INFINITE
+animation's `finished` never resolves at all (`.pulse` in the loading fallbacks). And a
+CANCELLED transition REJECTS, failing the whole `Promise.all`. The light sweep filters
+infinite animations, catches rejections, returns `undefined` from an async body, and races a
+2s backstop — the settle is still the mechanism, the cap only bounds a promise that provably
+can fail to settle.
+
+**Two more defects found on the way, both fixed.** `e2e/settings.spec.ts`'s first test was named
+"in the stated order" and only ever asserted each heading was VISIBLE, so a section could be
+inserted anywhere or two could swap and the suite stayed green; it reads the DOM order now.
+And `.navIndex` in the settings rail was `--numeral-ink` at `opacity: 0.7`, which composites
+to 5.86:1 on dark and **3.46:1 on light** at 12px — an AA failure on /settings,
+/settings/security and /settings/plan that nothing had ever seen, because until
+`e2e/plan.spec.ts` every axe run in this repo scanned the dark theme only. `--numeral-ink-quiet`
+is a real token now, pinned on all three grounds in both themes. **Second time this project
+has dimmed with opacity over ink that barely passes**; the mini month was the first. There is
+now one axe test that scans a non-default theme, and it is what caught this.
+
+**The badge shows for Free as well as Pro**, because absent would be ambiguous — free, or
+unreadable, or not loaded — and a badge that appears only when you pay is a status symbol,
+which inverts "paying buys power, not standing". It does NOT reuse the privacy inks: those
+four colours are learned meaning, and a billing tier in the "Limited details" indigo would put
+something indistinguishable from a privacy chip in the sidebar. Its washes are OPAQUE where
+the privacy chip's are alpha, because it renders on three surfaces and under a hover nothing
+screenshots. **It never renders in the fixture** (the account cluster needs a real session),
+so `/settings/plan` renders the same component under the demo — that is what puts it in front
+of axe at all — and the sidebar composition is pinned by `plan-badge.server.test.ts` instead.
+The one thing no test here can see is a real email beside a real badge in a 300px sidebar;
+that needs the throwaway-account recipe.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
    by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
-4. A Settings toggle for keyboard shortcuts, per WCAG 2.1.4 above.
+4. Stripe, the `billing_writer` role and entitlement enforcement — ADR 0007 records the
+   design; nothing is built. *(This slot used to read "a Settings toggle for keyboard
+   shortcuts". That toggle SHIPPED with 0022 and is in Appearance; the line outlived it.)*
 5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
    it needs an answer for the events first. Calendar-move on edit is the same shape —
    `update_cloaked_event` (0011) takes no calendar id.
 
-**Deferred by design:** booking, payments, CRM, automations, external calendar sync, teams,
-native iOS. **Independent security review is a hard gate before public launch.**
+**Deferred by design:** booking, CRM, automations, external calendar sync, teams,
+native iOS. **Payments are half-deferred now** — the plan surface and its schema exist, the
+processor does not; see the plan/pricing section below and ADR 0007. **Independent security review is a hard gate before public launch.**
 
 ## Deployment, as of 2026-08-11
 
@@ -638,7 +740,17 @@ their passkeys may be all they have.
 **None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
 authenticator only proves the API was called as intended. Safari's PRF behaviour and the
 two-prompt flow are unverified until someone runs the throwaway-account recipe in a browser.
-**Migration 0023 is also not applied to production yet.**
+**Migration 0023 was applied to production all along**, contrary to what this file said for
+weeks. Verified 2026-08-15 against the live project: `credential_id` and `prf_salt` both
+exist, all four paired constraints are there, `root_key_wraps_one_per_credential` is there,
+and the kind check already lists `passkey`. The stale claim had a cost — the plan page listed
+passkeys as "coming soon" on the strength of it. **0024 and 0025 went up 2026-08-15 and are
+verified live**: `subscriptions` grants `authenticated=SELECT` and nothing else, anon has no
+grant on it at all, its one policy is `SELECT` to `authenticated`, RLS is enabled and forced,
+and it holds zero rows (absence is Free). TRUNCATE, REFERENCES, TRIGGER and MAINTAIN are now
+granted to `anon`/`authenticated` on **zero** tables, down from all sixteen, and the
+`postgres` default ACL for new tables reads `anon=arwd, authenticated=arwd` — DML only, so a
+new table no longer arrives pre-granted TRUNCATE.
 
 **Device pairing is demoted, not deleted.** Spec §Recovery names three routes; passkeys are
 the second. The pairing crypto (`packages/crypto/src/device.ts`, ECDH P-256) and schema

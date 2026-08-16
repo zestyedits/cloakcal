@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
+import { loadPlan } from '@/server/plan'
 import { readDemoPrefs } from '@/server/demo-prefs'
 import { loadSettingsData } from '@/server/settings'
 import { SettingsScreen, type SettingsProps } from '@/components/settings/settings-screen'
@@ -48,7 +49,15 @@ export default async function SettingsPage() {
   // from being a wall of grey controls when nobody is signed in.
   const data =
     dataPromise === null
-      ? { prefs: null, calendars: [], visibility: null, devices: [] }
+      ? {
+          prefs: null,
+          calendars: [],
+          visibility: null,
+          devices: [],
+          // The fixture has no account, so it has no plan on file. loadPlan says so with
+          // source 'demo' and still answers 'free', which is what the catalog describes.
+          plan: await loadPlan(null),
+        }
       : await dataPromise
 
   const prefs = fixtureMode ? await readDemoPrefs() : data.prefs
@@ -68,6 +77,7 @@ export default async function SettingsPage() {
     audiences: data.visibility?.audiences ?? [],
     workspaceRules: data.visibility?.workspaceRules ?? [],
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),
+    plan: data.plan,
   }
 
   return <SettingsScreen {...props} />

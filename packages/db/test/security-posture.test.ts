@@ -122,6 +122,79 @@ describe('RLS coverage cannot regress', () => {
     expect(rows.map((r) => r['table_name'])).toEqual([])
   })
 
+  /**
+   * TRUNCATE is the one verb row level security cannot filter.
+   *
+   * Supabase's default ACL for a new public table is `authenticated=arwdDxtm` — SELECT,
+   * INSERT, UPDATE, DELETE, **TRUNCATE**, REFERENCES, TRIGGER, MAINTAIN — so every table
+   * arrives with TRUNCATE already granted and no policy can take it back. A table with RLS
+   * forced and a `using (false)` policy is still emptied by it.
+   *
+   * All sixteen tables granted it, to `anon` as well as `authenticated`, until 0025 revoked
+   * it across the schema. KNOWN_TRUNCATE_DEBT is EMPTY and should stay that way: it exists so
+   * that if a table ever legitimately needs the privilege, granting it is a deliberate edit
+   * here rather than a silent default nobody reads.
+   *
+   * These two tests are the real backstop rather than 0025 itself. `alter default privileges`
+   * only changes defaults owned by the role that runs it, and Supabase carries a second set
+   * under `supabase_admin` that a migration cannot touch — so a new table can still arrive
+   * pre-granted, and only a sweep will notice. Exactly the shape of 0009, which claimed to
+   * have made new functions safe by default, was wrong, and was saved by its sweep.
+   */
+  const KNOWN_TRUNCATE_DEBT: string[] = []
+
+  it('keeps the debt list empty, so it cannot become an escape hatch', () => {
+    // The anon EXECUTE sweep beside this one has no allowlist, and neither should this. A
+    // list that a failing table can be added to is a sweep that reports green while checking
+    // one fewer thing. It exists only so a genuine future exception is a deliberate edit
+    // here, in front of this assertion, rather than a silent default.
+    expect(KNOWN_TRUNCATE_DEBT).toEqual([])
+  })
+
+  it('adds no NEW table that hands TRUNCATE to a caller', async () => {
+    const { rows } = await db.raw(`
+      select distinct table_name from information_schema.table_privileges
+      where table_schema = 'public'
+        and privilege_type = 'TRUNCATE'
+        and grantee in ('anon', 'authenticated')
+      order by 1
+    `)
+    const offenders = rows
+      .map((r) => r['table_name'] as string)
+      .filter((name) => !KNOWN_TRUNCATE_DEBT.includes(name))
+    expect(offenders).toEqual([])
+  })
+
+  it('actually refuses a truncate of the events table, as both roles', async () => {
+    /*
+     * The behavioural half. The two sweeps above read the catalog, which is what catches a
+     * NEW table; this one proves the privilege is genuinely gone on the table whose loss
+     * would matter most, and it is the assertion that fails loudly if 0025 is ever reverted.
+     *
+     * `events` rather than `subscriptions`, deliberately: subscriptions was locked down by
+     * its own migration, so it would pass with or without 0025 and prove nothing.
+     */
+    await expect(db.asUnauthenticated('truncate public.events')).rejects.toThrow(
+      /permission denied/iu,
+    )
+    await expect(db.asAnon('truncate public.events')).rejects.toThrow(/permission denied/iu)
+  })
+
+  it('keeps the debt list honest, so a fixed table cannot linger on it', async () => {
+    // The other direction. Without this, a hardening migration could revoke TRUNCATE
+    // everywhere and leave sixteen stale names here implying a hole that no longer exists —
+    // which is how an allowlist turns into folklore.
+    const { rows } = await db.raw(`
+      select distinct table_name from information_schema.table_privileges
+      where table_schema = 'public'
+        and privilege_type = 'TRUNCATE'
+        and grantee in ('anon', 'authenticated')
+    `)
+    const actual = rows.map((r) => r['table_name'] as string)
+    const fixed = KNOWN_TRUNCATE_DEBT.filter((name) => !actual.includes(name))
+    expect(fixed, 'these no longer grant TRUNCATE, so drop them from the list').toEqual([])
+  })
+
   it('gives every workspace-scoped policy a WITH CHECK, not just a USING', async () => {
     // USING controls what you may read-modify; WITH CHECK controls what the row may
     // become. A policy with only USING lets a caller move a row into another workspace.

@@ -73,8 +73,18 @@ const AUTH_SHIM = /* sql */ `
   -- table added by a later migration unreachable, and a hardening migration that revokes
   -- a privilege (audit_log) would be undone by any later sweep. Default privileges avoid
   -- both failure modes: grants land at creation time, and explicit REVOKEs stay revoked.
+  --
+  -- \`grant all\`, NOT the four DML verbs this used to name. Supabase's real default ACL is
+  -- \`authenticated=arwdDxtm\` — SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES,
+  -- TRIGGER and MAINTAIN, verified against pg_default_acl on the live project. Granting
+  -- four of the eight made this harness a STRICTER FICTION than production, on exactly the
+  -- axis a hardening migration is tested for: 0024's first draft revoked three DML verbs
+  -- and left TRUNCATE behind, and nothing here could have seen it, because nothing here had
+  -- ever granted TRUNCATE. Same failure the missing \`anon\` role caused and that the
+  -- comment above records — there was nothing to assert against, so the assertion passed by
+  -- testing the wrong thing.
   alter default privileges in schema public
-    grant select, insert, update, delete on tables to authenticated;
+    grant all on tables to authenticated;
   alter default privileges in schema public
     grant usage, select on sequences to authenticated;
 
@@ -114,6 +124,8 @@ const MIGRATIONS = [
   '0021_create_calendar.sql',
   '0022_view_and_keyboard_prefs.sql',
   '0023_passkey_wrap.sql',
+  '0024_subscriptions.sql',
+  '0025_revoke_truncate.sql',
 ] as const
 
 export interface QueryResult {

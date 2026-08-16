@@ -84,6 +84,9 @@ const DARK = {
    * never uses (app copy sits on raised/overlay surfaces). Composited by the same math. */
   textSecondaryOnBase: '#b3b5ba', // rgba(245,246,250,0.72) over #0b0d14
   textTertiaryOnBase: '#808287', // rgba(245,246,250,0.5) over #0b0d14
+  textTertiaryOnRaised: '#868890', // rgba(245,246,250,0.5) over #161a25
+  textTertiaryOnSunken: '#7e8085', // rgba(245,246,250,0.5) over #070910
+  statusSuccessText: '#22d3a6',
   /* Ink on --surface-sunken (#070910), the sunken track. Composited, not the raw alpha. */
   textPrimaryOnSunken: '#f5f6fa',
   textSecondaryOnSunken: '#b2b4b8', // rgba(245,246,250,0.72) over #070910
@@ -121,6 +124,23 @@ const DARK = {
    * metal but are DECORATIVE shapes and deliberately absent here: nothing may render
    * them as ink or rely on them being seen. */
   numeralInk: '#cdc3a5',
+  /* The same index, quieter. See tokens.css: a token rather than opacity over numeralInk,
+   * because that composited to 3.46:1 in the light theme on the settings rail. */
+  numeralInkQuiet: '#928b78',
+  /* The plan badge's two materials, as OPAQUE hexes rather than composited alphas, unlike
+   * every privacy chip above. A chip only ever sits on --surface-raised, so one composite
+   * per ink is the whole check. This badge renders on --surface-base (the sidebar account
+   * row), --surface-raised (the settings plate) and --surface-sunken (the price cards),
+   * and it sits under --surface-overlay for as long as a pointer rests on the account row.
+   * An alpha wash would need all four composited and pinned, and the hover is a state
+   * nothing screenshots and axe never scans. Opaque costs one pair per plan per theme and
+   * cannot be changed by a state no test looks at.
+   *
+   * NOT the privacy inks; tokens.css states that argument in full. */
+  planFreeInk: '#b4b7c4',
+  planFreeQuiet: '#1c2130',
+  planProInk: '#cdc3a5',
+  planProQuiet: '#2b2c30',
 } as const
 
 const LIGHT = {
@@ -131,6 +151,12 @@ const LIGHT = {
   /* Ink on --surface-sunken (#e9ebf2). */
   textPrimaryOnSunken: '#0b0d14',
   textSecondaryOnSunken: '#52545b', // rgba(11,13,20,0.68) over #e9ebf2
+  /* Tertiary at 0.60, up from 0.48 which failed AA on all three grounds. See tokens.css. */
+  textTertiaryOnBase: '#696a70', // rgba(11,13,20,0.60) over #f5f6fa
+  textTertiaryOnRaised: '#6d6e72', // rgba(11,13,20,0.60) over #ffffff
+  textTertiaryOnSunken: '#64666d', // rgba(11,13,20,0.60) over #e9ebf2
+  /* Success as TEXT. The shape colour (#0f9c78) is 3.47:1 and fails as a 12px label. */
+  statusSuccessText: '#0a7357',
   surfaceSunken: '#e9ebf2',
   accent: '#5847e0',
   accentHover: '#4a3ac9',
@@ -151,6 +177,12 @@ const LIGHT = {
   /* The light Dial's index ink: the champagne engraved as a dark bronze rather than
    * applied as a gold — same hue family, dark enough to be text on paper. */
   numeralInk: '#5c4d2a',
+  numeralInkQuiet: '#756340',
+  /* The light plan badge. Same reasoning as the dark block above. */
+  planFreeInk: '#5a5d68',
+  planFreeQuiet: '#e6e8f0',
+  planProInk: '#5c4d2a',
+  planProQuiet: '#eae6dc',
 } as const
 
 export const CONTRAST_PAIRS: readonly ContrastPair[] = [
@@ -263,6 +295,78 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/privacy limited ink on chip', foreground: LIGHT.privacyLimitedInk, background: LIGHT.privacyLimitedChip, minimum: 4.5 },
   { name: 'light/privacy busy ink on chip', foreground: LIGHT.privacyBusyInk, background: LIGHT.privacyBusyChip, minimum: 4.5 },
   { name: 'light/privacy hidden ink on chip', foreground: LIGHT.privacyHiddenInk, background: LIGHT.privacyHiddenChip, minimum: 4.5 },
+
+  /*
+   * The plan badge, held at 4.5 rather than 3, because the WORD is the entire content: the
+   * badge renders no icon and its wash carries no meaning, so the label is the only thing
+   * that has to be read. The twice-shipped "checked as a shape, not as text" lesson runs
+   * the other way round here — the wash is the decorative half, held to nothing, exactly as
+   * --engrave-hairline is, and the text is the half that gets pinned.
+   *
+   * One pair per plan per theme, and no pair against a surface, which is what the opaque
+   * washes in DARK/LIGHT above buy: the badge's ground is its own wash on every surface it
+   * appears on and under the account row's hover.
+   */
+  /*
+   * The quiet index, on all three grounds. It is drawn on --surface-sunken today (the
+   * settings rail) and the other two are pinned because a token invites reuse.
+   *
+   * THIS EXISTS BECAUSE OF A LIVE AA FAILURE, found by the first axe run in this repo
+   * against a non-default theme. `.navIndex` was --numeral-ink at opacity 0.7, which is
+   * 5.86:1 composited on dark sunken and 3.46:1 on light — so /settings, /settings/security
+   * and the rail everywhere failed 1.4.3 in the light theme, invisibly, because every axe
+   * scan here ran in dark. Second time this project has dimmed with opacity over ink that
+   * barely passes; the mini month was the first.
+   */
+  { name: 'dark/quiet numeral ink on sunken', foreground: DARK.numeralInkQuiet, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'dark/quiet numeral ink on base', foreground: DARK.numeralInkQuiet, background: DARK.surfaceBase, minimum: 4.5 },
+  { name: 'dark/quiet numeral ink on raised', foreground: DARK.numeralInkQuiet, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'light/quiet numeral ink on sunken', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceSunken, minimum: 4.5 },
+  { name: 'light/quiet numeral ink on base', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceBase, minimum: 4.5 },
+  { name: 'light/quiet numeral ink on raised', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceRaised, minimum: 4.5 },
+
+  /*
+   * TERTIARY INK, ON EVERY GROUND AND IN BOTH THEMES.
+   *
+   * Only `dark/tertiary on base` was pinned before, which is how the LIGHT theme carried a
+   * failing tertiary for the life of the theme: rgba(11,13,20,0.48) is 3.41 / 3.36 / 3.31 on
+   * raised / base / sunken, under AA at every size, and it was the ink on the mini month's
+   * dates, the sidebar headings, the security hints and every form legend. Nothing saw it
+   * because every axe run in this repo scanned dark, where the same token sits at 4.91.
+   *
+   * One pair per ground per theme now, so a token used on three surfaces is checked on three
+   * surfaces. That is the same gap in a different coat as the shape-versus-text one below.
+   */
+  { name: 'dark/tertiary on raised', foreground: DARK.textTertiaryOnRaised, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'dark/tertiary on sunken', foreground: DARK.textTertiaryOnSunken, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'light/tertiary on base', foreground: LIGHT.textTertiaryOnBase, background: LIGHT.surfaceBase, minimum: 4.5 },
+  { name: 'light/tertiary on raised', foreground: LIGHT.textTertiaryOnRaised, background: LIGHT.surfaceRaised, minimum: 4.5 },
+  { name: 'light/tertiary on sunken', foreground: LIGHT.textTertiaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
+
+  /*
+   * Success as TEXT, which is a different pair from the success chip three lines up.
+   * `--status-success` is held to 3 there because it is a shape; the "Free" note under an
+   * agenda time is a 12px WORD, and the light value measured 3.47:1. Third time this project
+   * has been caught by a colour that passed as a shape and failed as text, after the Save
+   * button and the Delete button.
+   */
+  { name: 'dark/success as text on raised', foreground: DARK.statusSuccessText, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'light/success as text on raised', foreground: LIGHT.statusSuccessText, background: LIGHT.surfaceRaised, minimum: 4.5 },
+  { name: 'light/success as text on base', foreground: LIGHT.statusSuccessText, background: LIGHT.surfaceBase, minimum: 4.5 },
+
+  { name: 'dark/plan free ink on its wash', foreground: DARK.planFreeInk, background: DARK.planFreeQuiet, minimum: 4.5 },
+  { name: 'dark/plan pro ink on its wash', foreground: DARK.planProInk, background: DARK.planProQuiet, minimum: 4.5 },
+  { name: 'light/plan free ink on its wash', foreground: LIGHT.planFreeInk, background: LIGHT.planFreeQuiet, minimum: 4.5 },
+  { name: 'light/plan pro ink on its wash', foreground: LIGHT.planProInk, background: LIGHT.planProQuiet, minimum: 4.5 },
+
+  /*
+   * The annual price card's accent edge, on the sunken recess it is drawn against. A
+   * graphical object at 3:1 (WCAG 1.4.11). The existing "accent as UI" pairs are against
+   * base only, and a border on a DARKER ground is a different measurement — which is the
+   * same gap that shipped the two label-on-fill failures, one surface over.
+   */
+  { name: 'dark/accent as UI on sunken', foreground: DARK.accent, background: DARK.surfaceSunken, minimum: 3 },
+  { name: 'light/accent as UI on sunken', foreground: LIGHT.accent, background: LIGHT.surfaceSunken, minimum: 3 },
 ]
 
 /** WCAG 2.1 relative luminance. */
