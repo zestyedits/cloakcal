@@ -3,6 +3,11 @@
 **Written 2026-08-16, for an outside reviewer.** Paste this whole file into a second set of
 eyes and ask them to argue with it.
 
+> **This is a frozen snapshot, not a living document.** It restates rules that live
+> authoritatively in `CLAUDE.md` and the ADRs, because a reviewer with no other context needs
+> them in one place. Do not try to keep it in step by hand — CLAUDE.md wins on any
+> disagreement, and this file should be regenerated rather than patched.
+
 This is not marketing copy and it is not a design document. It is a complete, deliberately
 unflattering description of a pre-launch product: what is built, what is deployed, what is
 tested, and — the section that matters most — **what is untested, unverified, or known to be
@@ -380,8 +385,8 @@ therefore *disables* billing. It also refuses the literal `[SENSITIVE]`, which i
 
 ## 8. What is tested
 
-- **1249 unit tests** across 12 vitest projects.
-- **460 Playwright tests** across phone, desktop, a11y and visual projects.
+- **1269 unit tests** across 12 vitest projects.
+- **466 Playwright tests** across phone, desktop, a11y and visual projects.
 - **PGlite** (WASM Postgres, no Docker) runs the real migrations and the real RLS policies, so
   the DB tests cover the production path rather than an approximation of it.
 - **Leak tests** fetch every route's HTML *and* Flight payload from a live server and guard the
@@ -410,6 +415,12 @@ checked in a browser. Everything below is not.
 
 ### Never met a real service
 
+0. **Three independent reviews ran against the billing code and found sixteen defects between
+   them**, including a cadence switch that charged a card with no preview, a Postgres
+   connection that defaulted to plaintext, a poison-event path that would have got the webhook
+   endpoint disabled, an open double-purchase window, and a static privacy gate that this same
+   branch had unlocked. All are fixed. The number is the useful signal: this code is young, and
+   a fourth reviewer would probably find more.
 1. **Stripe has never been contacted.** No key exists. Checkout has never run, no webhook has
    ever been delivered, no card has ever been charged, and no plan has ever flipped as a result
    of a payment. Every billing test is source-level, PGlite, or a fabricated fixture.
