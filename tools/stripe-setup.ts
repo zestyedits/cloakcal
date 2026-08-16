@@ -281,9 +281,17 @@ async function ensurePortal(
       enabled: true,
       mode: 'at_period_end',
       proration_behavior: 'none',
-      // Asking a privacy product's departing customer WHY, and storing the answer at a
-      // payment processor, is off-brand in a way a reviewer notices before a customer does.
-      cancellation_reason: { enabled: false },
+      /*
+       * `cancellation_reason` IS OMITTED, NOT SET TO `{ enabled: false }`.
+       *
+       * Stripe requires `features[subscription_cancel][cancellation_reason][options]` whenever
+       * the object is present AT ALL — passing `{ enabled: false }` is rejected for a missing
+       * `options` list it will never use. So the way to switch it off is to not mention it,
+       * and the run below prints what Stripe actually stored rather than assuming.
+       *
+       * Off because asking a privacy product's departing customer WHY, and storing the answer
+       * at a payment processor, is off-brand in a way a reviewer notices before a customer does.
+       */
     },
     subscription_update: {
       enabled: true,
@@ -318,6 +326,24 @@ async function ensurePortal(
       : await stripe.billingPortal.configurations.update(existing.id, fields)
 
   ok(`${existing === undefined ? 'created' : 'updated'} ${saved.id}`)
+
+  /*
+   * READ BACK WHAT STRIPE ACTUALLY STORED, because two of these are things we asked for by
+   * omission rather than by value, and an omission that defaulted the wrong way is invisible.
+   * `cancellation_reason` in particular cannot be set to false explicitly (see above), so the
+   * only way to know it is off is to look.
+   */
+  const cancel = saved.features.subscription_cancel
+  info(`cancel: ${cancel.enabled ? 'enabled' : 'DISABLED'}, mode ${String(cancel.mode)}`)
+  if (cancel.cancellation_reason?.enabled === true) {
+    warn(
+      'Stripe defaulted the cancellation-reason survey ON. It asks a departing customer why ' +
+        'and stores the answer at the processor. Turn it off in the dashboard.',
+    )
+  } else {
+    ok('cancellation-reason survey is off')
+  }
+  info(`payment method update: ${saved.features.payment_method_update.enabled ? 'on' : 'OFF'}`)
   // Passed EXPLICITLY on every session rather than relying on "the default configuration",
   // because a dashboard edit to the default would silently change what the app does.
   info('pass this as STRIPE_PORTAL_CONFIGURATION_ID; the app never uses the account default')
