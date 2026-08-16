@@ -53,6 +53,24 @@ test('renders under the demo without inventing an account', async ({ page }) => 
   await expect(page.locator('[data-plan]')).toHaveCount(0)
 })
 
+/**
+ * THE ASSERTION THAT ACTUALLY PROTECTS AGAINST THE FLAG BEING ON BY ACCIDENT.
+ *
+ * The name-regex sweep below is a good guard and it is guessing: it protects against a button
+ * called "Upgrade" and not against one called "Continue to Stripe", which is what the billing
+ * band deliberately calls its own. This one does not depend on knowing the copy. The band
+ * renders `[data-billing]` and nothing else does, so its absence IS "billing is switched off",
+ * which is the state every deployment and every Playwright project is in.
+ *
+ * Two guards, deliberately, and they fail for different reasons: this one catches the flag
+ * being on, the regex catches somebody hand-wiring a purchase control outside the band.
+ */
+test('renders no billing band at all while billing is switched off', async ({ page }) => {
+  await expect(page.locator('[data-billing]')).toHaveCount(0)
+  await expect(page.getByText(/Billing is in test mode/)).toHaveCount(0)
+  await expect(page.getByText(/Billing preview/)).toHaveCount(0)
+})
+
 test('names Pro’s prices and says plainly that it cannot be bought', async ({ page }) => {
   await expect(page.getByText('$8', { exact: false }).first()).toBeVisible()
   await expect(page.getByText('$72', { exact: false }).first()).toBeVisible()

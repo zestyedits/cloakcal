@@ -1,0 +1,321 @@
+/*
+ * The billing band on /settings/plan.
+ *
+ * Composed from settings.module.css and plan.module.css wherever a shape already exists —
+ * bands, ledes, the price cards, the roadmap note ink — so this file owns only what billing
+ * genuinely adds: the cadence radios, the fact rows, the cancel confirmation, the invoice
+ * list, and two notices.
+ *
+ * INK RULE FOR THIS WHOLE FILE: --text-secondary, never --text-tertiary. plan.module.css
+ * states the reason in full and it applies to every row here — tertiary composited in the
+ * LIGHT theme measures about 3.3:1 on all three grounds, and /settings/plan is one of the
+ * handful of pages whose spec runs axe in BOTH themes. There is nowhere on this page for a
+ * light-theme AA failure to hide.
+ */
+
+.band {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/*
+ * TEST MODE, drawn as an EDGE and never as ink.
+ *
+ * --status-warning is a shape colour: it is pinned in CONTRAST_PAIRS against the page at 3:1,
+ * and there is no --status-warning-text token the way --status-success-text and
+ * --status-danger-solid exist for their cases. A colour checked as a shape and then used as
+ * text has now shipped an AA failure in this repo three times (the Save button, the Delete
+ * button, the "Free" label). So the border carries the emphasis and --text-primary carries the
+ * words, which also means the notice still reads at all with colours forced off.
+ */
+.testNote {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--status-warning);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  max-width: 42rem;
+}
+
+/* The preview banner. Accent edge rather than warning: a preview is not a hazard, it is a
+   different thing entirely, and spending the warning colour on it would leave nothing louder
+   for the notice that actually says money will not move. */
+.previewNote {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  max-width: 42rem;
+}
+
+/* A neutral result, for the preview's "nothing was sent". NOT InlineError, which is
+   role="alert" and dressed as danger: nothing went wrong, and announcing a non-failure as one
+   trains people to ignore the ones that matter. */
+.notice {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+/*
+ * THE FACT ROWS. A definition list, laid out as label-above-value on a phone and as a row from
+ * 480px.
+ *
+ * `minmax(0, auto)` on the label track and `min-width: 0` on both cells, for the reason
+ * plan.module.css spells out about the price grid: a grid item's default min-width is its
+ * CONTENT, so "Visa ending 4242" or a long formatted date sizes its own track and pushes the
+ * page sideways at 390px. `never scrolls sideways` in the billing spec is what sees it.
+ */
+.facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.fact {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+@media (min-width: 480px) {
+  .fact {
+    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: baseline;
+  }
+}
+
+.factLabel {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.factValue {
+  min-width: 0;
+  margin: 0;
+  /* WRAPS. `white-space: nowrap` here is the exact shape that pushed /settings into horizontal
+     overflow once already, and nothing but the 390px guard would see it. */
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+/* The fieldset holding the two price cards. No border and no padding of its own: the cards
+   are the control, and a box around them would read as a third card. */
+.cadence {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cadenceLegend {
+  padding: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* The card becomes the target. .priceCard from plan.module.css supplies the recess, the
+   padding and the min-width: 0; this adds only the things a control needs. */
+.cadenceCard {
+  position: relative;
+  cursor: pointer;
+}
+
+/*
+ * The radio is REAL and merely placed under the card's own edge, rather than hidden.
+ *
+ * `opacity: 0` on a positioned input, not `display: none` and not `appearance: none`: a
+ * display-none input is unfocusable, drops out of the tab order and takes the group semantics
+ * with it, and this is a control that decides an amount of money. Keeping it in the layout
+ * means the focus ring below is drawn by :has() against a real focus, and forced-colours mode
+ * still paints something.
+ */
+.cadenceInput {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Selected state said twice, never by colour alone: the accent edge AND the raised ground.
+   The yearly card already wears an accent border as "better value", so selection has to be
+   distinguishable from it — hence the ground change carrying equal weight. */
+.cadenceCard:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.cadenceCard:hover:not(:has(input:disabled)) {
+  border-color: var(--border-strong);
+}
+
+/* Focus lands on the invisible input, so the ring has to be drawn on the card. `:focus-visible`
+   inside :has() keeps it off a pointer click, matching every other control here. */
+.cadenceCard:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.cadenceCard:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 1; /* Never dim with opacity. See the mini-month lesson in CLAUDE.md. */
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.actions > p {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+/* The cancel confirmation, in delete-event's grammar: a recess that replaces the trigger in
+   place rather than a modal, with the safe choice first. */
+.confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+}
+
+.confirmQuestion {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.invoices {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.invoicesTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.invoiceList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invoiceRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.invoiceRow:first-of-type {
+  border-top: 0;
+}
+
+.invoiceDate {
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.invoiceAmount {
+  font-family: var(--font-numeral);
+  letter-spacing: var(--tracking-numeral);
+  color: var(--numeral-ink);
+}
+
+.invoiceStatus {
+  min-width: 0;
+}
+
+/* A real link, sized to the 44px sweep. `margin-inline-start: auto` pushes it to the end
+   without a justify-content that would strand the other three when the row wraps. */
+.invoiceLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  margin-inline-start: auto;
+  border-radius: var(--radius-control);
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Underline weight, not a second colour. There is no --accent-text-hover token, and inventing
+   one would be a fifth ink to pin in CONTRAST_PAIRS on four grounds in two themes for a hover
+   state — the thickening reads at least as clearly and cannot fail a contrast check. */
+.invoiceLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.invoiceLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The clipping spelling, not `display: none` or `width: 0`, which remove the text from the
+   accessibility tree along with the screen. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
