@@ -30,8 +30,25 @@ describe('parseDemoPrefs', () => {
       weekStart: 1,
       defaultView: 'month',
       keyboardShortcuts: false,
+      holidayRegion: 'GB',
     }
     expect(parseDemoPrefs(encodeURIComponent(JSON.stringify(prefs)))).toEqual(prefs)
+  })
+
+  it('fills in a preference a cookie predates rather than discarding the rest', () => {
+    // A cookie written before holidayRegion existed is the real-world case, not a
+    // hypothetical: this one is a day old at most, but the field-by-field parse is what
+    // stops the next added preference resetting the four before it.
+    const older = {
+      timezone: 'Europe/Berlin',
+      weekStart: 1,
+      defaultView: 'month',
+      keyboardShortcuts: false,
+    }
+    expect(parseDemoPrefs(encodeURIComponent(JSON.stringify(older)))).toEqual({
+      ...older,
+      holidayRegion: DEMO_DEFAULT_PREFS.holidayRegion,
+    })
   })
 
   /**

@@ -57,8 +57,50 @@
   background: var(--surface-sunken);
 }
 
+/*
+ * The date line: holiday on the left, date number kept hard right.
+ *
+ * `margin-left: auto` on the number rather than `justify-content: space-between`, because
+ * space-between with a single child parks it on the LEFT — and most cells have no holiday,
+ * so that is the common case, not the edge one.
+ */
+.dateLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/*
+ * `min-width: 0` on the holiday ITSELF, not only on .dateLine. A flex item's default
+ * min-width is content-based, so without this a long holiday name refuses to shrink, pushes
+ * the date number out of the cell, and takes the whole 7-column grid into horizontal
+ * overflow. Exactly the trap that put /settings sideways at 390px.
+ */
+.holiday {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-secondary);
+}
+
+.holiday[data-kind='observance'] {
+  color: var(--text-tertiary);
+}
+
+/* Cells outside the anchor month are already dimmed; the holiday goes with them rather
+   than staying at full strength and out-shouting the dates around it. */
+.cell[data-outside] .holiday {
+  color: var(--text-tertiary);
+}
+
 .number {
   align-self: flex-end;
+  margin-left: auto;
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
 import { NavPendingMark } from './ui/nav-pending'
 import styles from './mini-month.module.css'
 
@@ -47,6 +48,7 @@ export function MiniMonth({
   timezone,
   weekStart,
   audience,
+  holidays = {},
 }: {
   /** ISO instant of the visible range's first day. */
   from: string
@@ -60,6 +62,16 @@ export function MiniMonth({
   weekStart: number
   /** Carried into every link so View As survives navigation, like the steppers. */
   audience: string
+  /**
+   * Public holidays by date. At this size there is room for a mark and no name, so a
+   * PUBLIC holiday gets an underline beneath the date and an observance gets nothing —
+   * the mini month's job is jumping to a day, and a two-tier hint in 24px of space would
+   * be decoration nobody can decode.
+   *
+   * The name still reaches assistive tech through the link's accessible name, so the
+   * underline is never the only carrier of the information.
+   */
+  holidays?: HolidayMap
 }) {
   const { title, cells, names } = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -122,21 +134,29 @@ export function MiniMonth({
             {name}
           </span>
         ))}
-        {cells.map((cell) => (
-          <Link
-            key={cell.day}
-            className={styles.day}
-            href={{ pathname: '/', query: queryFor(cell.day) }}
-            data-outside={cell.outside || undefined}
-            data-today={cell.today || undefined}
-            data-in-week={cell.inWeek || undefined}
-            aria-label={`Open ${cell.day}`}
-            aria-current={cell.today ? 'date' : undefined}
-          >
-            <span className={styles.disc}>{cell.number}</span>
-            <NavPendingMark />
-          </Link>
-        ))}
+        {cells.map((cell) => {
+          const holiday = primaryHoliday(holidays[cell.day])
+          const marked = holiday?.kind === 'public'
+          return (
+            <Link
+              key={cell.day}
+              className={styles.day}
+              href={{ pathname: '/', query: queryFor(cell.day) }}
+              data-outside={cell.outside || undefined}
+              data-today={cell.today || undefined}
+              data-in-week={cell.inWeek || undefined}
+              data-holiday={marked || undefined}
+              // The name rather than the mark: an underline nobody can hover is no
+              // information at all to a screen reader, and this is the surface with no
+              // room to print it.
+              aria-label={holiday === undefined ? `Open ${cell.day}` : `Open ${cell.day}, ${holiday.name}`}
+              aria-current={cell.today ? 'date' : undefined}
+            >
+              <span className={styles.disc}>{cell.number}</span>
+              <NavPendingMark />
+            </Link>
+          )
+        })}
       </div>
     </nav>
   )

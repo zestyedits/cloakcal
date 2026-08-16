@@ -2,6 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  HOLIDAY_REGIONS,
+  resolveHolidayRegion,
+  type HolidayPreference,
+  type HolidayRegion,
+} from '@cloakcal/domain'
 import { rpcErrorMessage } from '@/lib/rpc-error'
 import { canSavePrefs, saveCalendarPrefs } from '@/lib/save-prefs'
 import type { CalendarPrefs } from '@/server/settings'
@@ -10,6 +16,11 @@ import { InlineError } from '../ui/inline-error'
 import styles from './settings.module.css'
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** Region id to plain label, for the one place that names a resolved region inline. */
+const REGION_LABELS: Record<HolidayRegion, string> = Object.fromEntries(
+  HOLIDAY_REGIONS.map((region) => [region.id, region.label]),
+) as Record<HolidayRegion, string>
 
 /**
  * Timezone and week start — Tier A preferences, live even while the calendar is locked.
@@ -31,13 +42,20 @@ export function TimeRegionSection({
   fixtureMode,
   timezone,
   weekStart,
+  holidayRegion,
 }: {
   workspaceId: string | null
   fixtureMode: boolean
   timezone: string | null
   weekStart: WeekStart
+  /** The stored tri-state: auto, off, or an explicit region. */
+  holidayRegion: HolidayPreference
 }) {
   const router = useRouter()
+
+  // What `auto` currently resolves to, so the option can say so rather than leaving the
+  // user to discover that their timezone maps to nothing we ship.
+  const resolved = resolveHolidayRegion('auto', timezone ?? 'America/New_York')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -115,6 +133,47 @@ export function TimeRegionSection({
             </option>
           ))}
         </select>
+      </div>
+
+      {/*
+        Holidays belong in this card rather than under Appearance, because the question is
+        WHICH COUNTRY, not how the calendar looks. The sidebar switch is the on/off; this is
+        where you say whose holidays.
+      */}
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="settings-holidays">
+          Holidays
+        </label>
+        <select
+          id="settings-holidays"
+          className={styles.select}
+          value={holidayRegion}
+          disabled={disabled}
+          onChange={(event) =>
+            void save({ holidayRegion: event.target.value as HolidayPreference })
+          }
+        >
+          {/* `auto` names what it resolved to, so the option is a statement rather than a
+              promise: "Match my timezone (United States)" versus the bare word, which leaves
+              the user to guess whether it found anything. */}
+          <option value="auto">
+            {resolved === null
+              ? 'Match my timezone (no match yet)'
+              : `Match my timezone (${REGION_LABELS[resolved]})`}
+          </option>
+          <option value="off">Do not show holidays</option>
+          {HOLIDAY_REGIONS.map((region) => (
+            <option key={region.id} value={region.id}>
+              {region.label}
+              {'note' in region ? ` (${region.note})` : ''}
+            </option>
+          ))}
+        </select>
+        <p className={styles.fieldNote}>
+          Public holidays and the days people mark, drawn from a built-in list. Nothing is
+          fetched and nothing about your calendar leaves the browser to work out which ones
+          to show.
+        </p>
       </div>
     </>
   )

@@ -1,0 +1,103 @@
+/*
+ * The Holidays row in the sidebar's calendars list.
+ *
+ * Deliberately the same rhythm as `.calendarItem` beside it — 44px minimum, the same gap,
+ * the same small type — so it reads as another entry in that list rather than as chrome that
+ * wandered in. What differs is the marker: a check in a box where a calendar has a colour
+ * swatch, because this layer has no colour and never gets one from the calendar palette. A
+ * holiday is not one of your calendars and the row should not be able to pretend otherwise.
+ */
+
+.wrap {
+  display: block;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.row:hover .name {
+  color: var(--text-primary);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * 10px to match `.swatch`'s optical size, but a bordered box rather than a filled dot: the
+ * calendar swatches ARE their colour, and this control's meaning is on/off. Filled-with-a-
+ * check versus empty is a shape change, so it survives both themes and needs no hue to be
+ * distinguished — the rule this project applies to every state that could have been a colour.
+ */
+.mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-strong);
+  color: transparent;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.mark[data-on] {
+  background: var(--accent);
+  border-color: var(--accent);
+  /* White on --accent is the sanctioned filled pair, already pinned in CONTRAST_PAIRS at
+     4.5:1 in both themes. The check is a glyph and would only owe 3:1, but reusing the
+     proven pair is how the "checked as a SHAPE, used as TEXT" mistake stops recurring. */
+  color: var(--brand-white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark {
+    transition: none;
+  }
+}
+
+.text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.name {
+  color: var(--text-secondary);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/*
+ * Which region, or why nothing is showing. `min-width: 0` plus ellipsis on the ITEM, not
+ * only the container: a flex item's default min-width is content-based, and "No region for
+ * your timezone yet" is long enough to push a 300px sidebar sideways without it. That is
+ * the same trap that put /settings into horizontal overflow at 390px.
+ */
+.detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}

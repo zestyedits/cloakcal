@@ -14,6 +14,7 @@ import {
   safeTimezone,
   weekRange,
 } from '@/server/range'
+import { resolveHolidays } from '@/server/holidays'
 import { loadWorkspacePrefs, type CalendarPrefs } from '@/server/settings'
 import { readDemoPrefs } from '@/server/demo-prefs'
 import { stepQuery } from '@/lib/calendar-links'
@@ -143,6 +144,12 @@ export default async function Page({
         ? formatMonth(anchor)
         : formatRange(range, timezone)
 
+  // Public dates, computed from a rule table — no query, no network, nothing about this
+  // user. Anchored rather than ranged because four surfaces draw from it and they do not
+  // share one window: the mini month shows a whole month while the day view shows one day.
+  // See server/holidays.ts for why this is server-side and why that costs no privacy.
+  const holidays = resolveHolidays(prefs?.holidayRegion ?? 'auto', timezone, dateParam(anchor))
+
   const calendarPage = await getCalendarPage(range, timezone)
 
   // Audience resolution and redaction live in ONE function shared with the People
@@ -211,6 +218,12 @@ export default async function Page({
       // no plan, and inventing a Free chip for it would be the same dishonesty as storing
       // a plan in a cookie.
       plan={await planPromise}
+      // Public holidays for the window around the anchor, plus the tri-state behind them so
+      // the sidebar row can say "Off" versus "on, but your timezone maps to no region we
+      // ship" — two states that look identical if only the resolved region crosses over.
+      holidays={holidays.byDate}
+      holidayRegion={holidays.region}
+      holidayPreference={prefs?.holidayRegion ?? 'auto'}
     />
   )
 }

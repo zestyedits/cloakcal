@@ -404,6 +404,7 @@ export function SettingsScreen({
                 fixtureMode={fixtureMode}
                 timezone={prefs?.timezone ?? null}
                 weekStart={prefs?.weekStart ?? 0}
+                holidayRegion={prefs?.holidayRegion ?? 'auto'}
               />
             </SettingsSection>
 

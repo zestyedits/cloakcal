@@ -3,7 +3,7 @@ import { updateDemoPrefs } from '@/lib/demo-prefs'
 import type { CalendarPrefs } from '@/server/settings'
 
 /**
- * THE write path for the four display preferences, wherever the control lives.
+ * THE write path for the display preferences, wherever the control lives.
  *
  * Two callers today — the Settings card and the calendar's "make this my default view"
  * button — and they must not each carry their own copy of "demo writes a cookie, an
@@ -40,6 +40,7 @@ export async function saveCalendarPrefs(
     p_week_start: patch.weekStart ?? null,
     p_default_view: patch.defaultView ?? null,
     p_keyboard_shortcuts: patch.keyboardShortcuts ?? null,
+    p_holiday_region: patch.holidayRegion ?? null,
   })
   if (error !== null) throw error
 }

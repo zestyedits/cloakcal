@@ -1,3 +1,4 @@
+import { isHolidayPreference } from '@cloakcal/domain'
 import type { WeekStart } from '@/server/range'
 import type { CalendarPrefs } from '@/server/settings'
 import { isCalendarView } from './calendar-views'
@@ -41,6 +42,10 @@ export const DEMO_DEFAULT_PREFS: CalendarPrefs = {
   weekStart: 0,
   defaultView: 'agenda',
   keyboardShortcuts: true,
+  // 'US' rather than 'auto': the fixture's timezone is America/New_York, so auto resolves to
+  // the same answer, but naming it keeps the demo's holidays from moving if that ever
+  // changes. The e2e suite asserts on specific dates.
+  holidayRegion: 'US',
 }
 
 /**
@@ -86,7 +91,11 @@ export function parseDemoPrefs(raw: string | undefined): CalendarPrefs {
       ? record['keyboardShortcuts']
       : DEMO_DEFAULT_PREFS.keyboardShortcuts
 
-  return { timezone, weekStart, defaultView, keyboardShortcuts }
+  const holidayRegion = isHolidayPreference(record['holidayRegion'])
+    ? record['holidayRegion']
+    : DEMO_DEFAULT_PREFS.holidayRegion
+
+  return { timezone, weekStart, defaultView, keyboardShortcuts, holidayRegion }
 }
 
 /** What the browser currently holds, for callers that need to merge into it. */

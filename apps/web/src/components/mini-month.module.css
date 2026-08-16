@@ -65,6 +65,39 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * A public holiday: a short rule under the date.
+ *
+ * A pseudo-element rather than a real node, so the cell's markup and its 44px target are
+ * untouched. `--text-tertiary` because this is a hint at the edge of legibility by design —
+ * it is never the only carrier of the fact, which reaches assistive tech through the link's
+ * accessible name and reaches everyone else in full on the four larger surfaces.
+ *
+ * Only PUBLIC holidays are marked. Two tiers of hint in a 24px cell would be decoration
+ * nobody can decode, and if only one tier fits it should be the day the office is shut.
+ */
+.day[data-holiday] .disc {
+  position: relative;
+}
+
+.day[data-holiday] .disc::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.1rem;
+  width: 0.55rem;
+  height: 1.5px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: var(--text-tertiary);
+}
+
+/* Under the filled today disc the ink flips with the disc, or the rule disappears into it. */
+.day[data-today] [data-holiday] .disc::after,
+.day[data-today][data-holiday] .disc::after {
+  background: currentColor;
+}
+
 .disc {
   display: inline-flex;
   align-items: center;

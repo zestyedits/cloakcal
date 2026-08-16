@@ -25,6 +25,25 @@ export {
 } from './edit-scope.js'
 
 export {
+  easterSunday,
+  holidaysByDate,
+  holidaysForYear,
+  holidaysInRange,
+  isHolidayPreference,
+  isHolidayRegion,
+  primaryHoliday,
+  regionFromTimezone,
+  resolveHolidayRegion,
+  HOLIDAY_PREFERENCE_DEFAULT,
+  HOLIDAY_REGIONS,
+  type Holiday,
+  type HolidayKind,
+  type HolidayMap,
+  type HolidayPreference,
+  type HolidayRegion,
+} from './holidays.js'
+
+export {
   divergentOccurrences,
   fromIcalSeries,
   toIcalSeries,
