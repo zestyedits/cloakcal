@@ -51,22 +51,54 @@ export interface WorkspacePrefs extends CalendarPrefs {
 }
 
 
+/** Everything except the newest column, which a not-yet-migrated database lacks. */
+const PREFS_COLUMNS = 'id, timezone, week_start, default_view, keyboard_shortcuts'
+
+interface PrefsRow {
+  id: string
+  timezone: string
+  week_start: number
+  default_view: string
+  keyboard_shortcuts: boolean
+  holiday_region?: string
+}
+
+/**
+ * THE READ TOLERATES A DATABASE THAT HAS NOT RUN 0026 YET, and that is not defensive
+ * padding — it is the fix for a real ordering hazard this function already had.
+ *
+ * Vercel deploys on a push to `main`; migrations are applied by hand. So there is always a
+ * window where the new code is live and the new column is not, and PostgREST answers a
+ * select naming an unknown column with a 400. This function used to destructure `data` and
+ * DROP the error, so that 400 arrived as `data === null` — indistinguishable from "this user
+ * has no workspace". The consequence was silent and wide: every signed-in user would fall
+ * back to the default timezone, week start and view, `workspaceId` would be null so every
+ * preference control would disable itself, and Settings would say "Not set up yet" to
+ * someone whose account is entirely fine.
+ *
+ * So: ask for the new column, and if the database does not have it yet, ask again without
+ * it and treat the preference as its default. One extra round trip, only ever in the window
+ * between deploy and migration, and only until the migration lands.
+ */
 export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
   const supabase = await supabaseServer()
-  const { data } = await supabase
-    .from('workspaces')
-    .select('id, timezone, week_start, default_view, keyboard_shortcuts, holiday_region')
-    .eq('lifecycle', 'active')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<{
-      id: string
-      timezone: string
-      week_start: number
-      default_view: string
-      keyboard_shortcuts: boolean
-      holiday_region: string
-    }>()
+
+  const query = (columns: string) =>
+    supabase
+      .from('workspaces')
+      .select(columns)
+      .eq('lifecycle', 'active')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle<PrefsRow>()
+
+  let { data, error } = await query(`${PREFS_COLUMNS}, holiday_region`)
+
+  // 42703 is undefined_column. Anything else is a real failure and keeps the old behaviour
+  // of returning null rather than inventing a workspace.
+  if (error !== null && error.code === '42703') {
+    ;({ data } = await query(PREFS_COLUMNS))
+  }
 
   if (data === null) return null
 
