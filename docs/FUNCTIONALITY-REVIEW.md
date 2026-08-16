@@ -460,9 +460,13 @@ checked in a browser. Everything below is not.
     the two race. `main` once spent five commits red while shipping every one of them.
 12. **Branch protection is unavailable**, not merely off: the repo is private on a free GitHub
     plan and the API returns 403. The only gate is whoever runs `git push`.
-13. **Visual baselines exist for macOS only.** CI is Ubuntu, so the visual project **skips there**
-    and checks nothing until a Linux baseline is generated and committed. Until 2026-08-11 every
-    committed baseline was Windows and the suite had never run anywhere.
+13. **The visual baselines are per-platform and go stale silently.** macOS and Linux baselines
+    both exist and both run, but a change that alters a page's pixels reds CI on Linux while
+    passing locally on macOS — because the person making the change regenerates one and not the
+    other. `main` was already red on exactly this when the billing work started: the previous
+    merge added a footer to the landing page and left the Linux landing baselines behind.
+    Regenerating them is a manual workflow dispatch. (Until 2026-08-11 every committed baseline
+    was Windows and the suite had never run anywhere.)
 14. **Screenshot diffs catch layout, not colour.** Repointing a brand colour at red measured 0.04%
     of the page and passed.
 15. **Migrations are applied by hand** while code deploys on push, so the two always disagree for
