@@ -18,21 +18,15 @@ import { DEFAULT_PLAN_ID, isPlanId, type PlanId } from '@/lib/plans'
  */
 
 /**
- * Where the answer came from. Nothing renders this — it exists so "no row" is a state with a
- * name rather than a `??` buried in a return, and it is the first thing you want to see when
- * a badge is showing the wrong tier.
+ * Returns a PlanId and nothing else.
+ *
+ * An `AccountPlan { planId, source }` wrapper lived here first, carrying where the answer
+ * came from — 'stored' | 'default' | 'demo'. Nothing rendered it, nothing logged it and no
+ * test asserted on it, so it was a shape three call sites had to unwrap for no reader. The
+ * distinction it recorded is real but it is not this function's to publish: every branch
+ * below already says which case it is, in the one place anyone debugging would look.
  */
-export type PlanSource = 'stored' | 'default' | 'demo'
-
-export interface AccountPlan {
-  readonly planId: PlanId
-  readonly source: PlanSource
-}
-
-/** The safe answer, and the common one. */
-const FREE: AccountPlan = { planId: DEFAULT_PLAN_ID, source: 'default' }
-
-export async function loadPlan(workspaceId: string | null): Promise<AccountPlan> {
+export async function loadPlan(workspaceId: string | null): Promise<PlanId> {
   // The fixture branch comes FIRST and never touches supabaseServer(), same as
   // getCalendarPage. CI has no Supabase variables, so reaching for a client here would
   // throw during a build rather than return a plan.
@@ -42,9 +36,9 @@ export async function loadPlan(workspaceId: string | null): Promise<AccountPlan>
   // and a plan is the one fact in this product that is not the user's to state. A
   // cookie-backed plan would model precisely the capability 0024 spends a whole table to
   // remove, and would be the pattern whoever wires the real thing copies.
-  if (isDevFixtureEnabled()) return { planId: DEFAULT_PLAN_ID, source: 'demo' }
+  if (isDevFixtureEnabled()) return DEFAULT_PLAN_ID
 
-  if (workspaceId === null) return FREE
+  if (workspaceId === null) return DEFAULT_PLAN_ID
 
   /*
    * A BILLING LOOKUP MUST NOT 500 THE CALENDAR, and the try covers the CLIENT as well as the
@@ -65,12 +59,12 @@ export async function loadPlan(workspaceId: string | null): Promise<AccountPlan>
       .eq('workspace_id', workspaceId)
       .maybeSingle<{ plan: string }>()
 
-    if (error !== null || data === null) return FREE
+    if (error !== null || data === null) return DEFAULT_PLAN_ID
 
     // Clamped even though a CHECK constraint stands behind it, exactly as loadWorkspacePrefs
     // clamps default_view. A clamp beats trusting a cast.
-    return isPlanId(data.plan) ? { planId: data.plan, source: 'stored' } : FREE
+    return isPlanId(data.plan) ? data.plan : DEFAULT_PLAN_ID
   } catch {
-    return FREE
+    return DEFAULT_PLAN_ID
   }
 }

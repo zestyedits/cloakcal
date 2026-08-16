@@ -84,6 +84,9 @@ const DARK = {
    * never uses (app copy sits on raised/overlay surfaces). Composited by the same math. */
   textSecondaryOnBase: '#b3b5ba', // rgba(245,246,250,0.72) over #0b0d14
   textTertiaryOnBase: '#808287', // rgba(245,246,250,0.5) over #0b0d14
+  textTertiaryOnRaised: '#868890', // rgba(245,246,250,0.5) over #161a25
+  textTertiaryOnSunken: '#7e8085', // rgba(245,246,250,0.5) over #070910
+  statusSuccessText: '#22d3a6',
   /* Ink on --surface-sunken (#070910), the sunken track. Composited, not the raw alpha. */
   textPrimaryOnSunken: '#f5f6fa',
   textSecondaryOnSunken: '#b2b4b8', // rgba(245,246,250,0.72) over #070910
@@ -133,12 +136,7 @@ const DARK = {
    * nothing screenshots and axe never scans. Opaque costs one pair per plan per theme and
    * cannot be changed by a state no test looks at.
    *
-   * NOT the privacy inks, and that is a correctness decision rather than a style one. Those
-   * four colours are learned MEANING in this product; a billing tier wearing the "Limited
-   * details" indigo would teach a false equivalence on the one palette that cannot afford
-   * to blur, and would put something that looks exactly like a privacy chip in the sidebar.
-   * Free is the steel of the overlay surface; Pro is the champagne family the Dial already
-   * uses for value. */
+   * NOT the privacy inks; tokens.css states that argument in full. */
   planFreeInk: '#b4b7c4',
   planFreeQuiet: '#1c2130',
   planProInk: '#cdc3a5',
@@ -153,6 +151,12 @@ const LIGHT = {
   /* Ink on --surface-sunken (#e9ebf2). */
   textPrimaryOnSunken: '#0b0d14',
   textSecondaryOnSunken: '#52545b', // rgba(11,13,20,0.68) over #e9ebf2
+  /* Tertiary at 0.60, up from 0.48 which failed AA on all three grounds. See tokens.css. */
+  textTertiaryOnBase: '#696a70', // rgba(11,13,20,0.60) over #f5f6fa
+  textTertiaryOnRaised: '#6d6e72', // rgba(11,13,20,0.60) over #ffffff
+  textTertiaryOnSunken: '#64666d', // rgba(11,13,20,0.60) over #e9ebf2
+  /* Success as TEXT. The shape colour (#0f9c78) is 3.47:1 and fails as a 12px label. */
+  statusSuccessText: '#0a7357',
   surfaceSunken: '#e9ebf2',
   accent: '#5847e0',
   accentHover: '#4a3ac9',
@@ -320,6 +324,35 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/quiet numeral ink on sunken', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'light/quiet numeral ink on base', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceBase, minimum: 4.5 },
   { name: 'light/quiet numeral ink on raised', foreground: LIGHT.numeralInkQuiet, background: LIGHT.surfaceRaised, minimum: 4.5 },
+
+  /*
+   * TERTIARY INK, ON EVERY GROUND AND IN BOTH THEMES.
+   *
+   * Only `dark/tertiary on base` was pinned before, which is how the LIGHT theme carried a
+   * failing tertiary for the life of the theme: rgba(11,13,20,0.48) is 3.41 / 3.36 / 3.31 on
+   * raised / base / sunken, under AA at every size, and it was the ink on the mini month's
+   * dates, the sidebar headings, the security hints and every form legend. Nothing saw it
+   * because every axe run in this repo scanned dark, where the same token sits at 4.91.
+   *
+   * One pair per ground per theme now, so a token used on three surfaces is checked on three
+   * surfaces. That is the same gap in a different coat as the shape-versus-text one below.
+   */
+  { name: 'dark/tertiary on raised', foreground: DARK.textTertiaryOnRaised, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'dark/tertiary on sunken', foreground: DARK.textTertiaryOnSunken, background: DARK.surfaceSunken, minimum: 4.5 },
+  { name: 'light/tertiary on base', foreground: LIGHT.textTertiaryOnBase, background: LIGHT.surfaceBase, minimum: 4.5 },
+  { name: 'light/tertiary on raised', foreground: LIGHT.textTertiaryOnRaised, background: LIGHT.surfaceRaised, minimum: 4.5 },
+  { name: 'light/tertiary on sunken', foreground: LIGHT.textTertiaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
+
+  /*
+   * Success as TEXT, which is a different pair from the success chip three lines up.
+   * `--status-success` is held to 3 there because it is a shape; the "Free" note under an
+   * agenda time is a 12px WORD, and the light value measured 3.47:1. Third time this project
+   * has been caught by a colour that passed as a shape and failed as text, after the Save
+   * button and the Delete button.
+   */
+  { name: 'dark/success as text on raised', foreground: DARK.statusSuccessText, background: DARK.surfaceRaised, minimum: 4.5 },
+  { name: 'light/success as text on raised', foreground: LIGHT.statusSuccessText, background: LIGHT.surfaceRaised, minimum: 4.5 },
+  { name: 'light/success as text on base', foreground: LIGHT.statusSuccessText, background: LIGHT.surfaceBase, minimum: 4.5 },
 
   { name: 'dark/plan free ink on its wash', foreground: DARK.planFreeInk, background: DARK.planFreeQuiet, minimum: 4.5 },
   { name: 'dark/plan pro ink on its wash', foreground: DARK.planProInk, background: DARK.planProQuiet, minimum: 4.5 },

@@ -5,8 +5,8 @@
  * server component that imports a plain value out of a `'use client'` module gets a
  * client-reference proxy rather than the value, and when that happens inside a Suspense
  * fallback it renders as a DOUBLED PAGE rather than as an error. Three modules read this
- * one — the server page under app/settings/plan/, its loading fallback, and the screen —
- * which is precisely the shape that broke once already.
+ * one, and `settings-screen.tsx` — a `'use client'` module — is among them, which is exactly
+ * the shape that broke once already.
  *
  * WHAT IS ON EACH SIDE OF THE LINE, AND WHY.
  *
@@ -36,12 +36,30 @@ export type PlanId = 'free' | 'pro'
 /**
  * Whether money can change hands for a tier TODAY.
  *
- * A union rather than a boolean, and that is load-bearing. When billing lands a third member
- * `'available'` appears here, and TypeScript's exhaustiveness checking walks the compiler
- * through every place a tier is rendered. A boolean flipping false to true would compile
- * silently and ship a button that takes no payment.
+ * A union rather than a boolean, and `purchaseLabel` below is what makes that load-bearing
+ * rather than decorative: it switches exhaustively, so adding `'available'` here is a
+ * COMPILE ERROR at the one place a tier's purchase state is rendered. A boolean flipping
+ * false to true would compile silently and ship a button that takes no payment.
  */
 export type PlanPurchase = 'included' | 'coming-soon'
+
+/**
+ * The tag a tier wears. The `never` branch is the guarantee: it stops compiling the moment
+ * a third purchase state exists, which is exactly when somebody needs to look at every
+ * surface that renders one.
+ */
+export function purchaseLabel(purchase: PlanPurchase): string | null {
+  switch (purchase) {
+    case 'included':
+      return null
+    case 'coming-soon':
+      return 'Coming soon'
+    default: {
+      const unhandled: never = purchase
+      throw new Error(`unhandled purchase state: ${String(unhandled)}`)
+    }
+  }
+}
 
 export interface PlanPrice {
   /** Named, never assumed. A price with no currency in its type is how a $ ships as a £. */

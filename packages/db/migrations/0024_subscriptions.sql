@@ -36,7 +36,14 @@
 -- Postgres role with its own policy:
 --
 --     create policy subscriptions_write on public.subscriptions
---       for all to billing_writer using (true) with check (true);
+--       for insert to billing_writer with check (true);
+--     create policy subscriptions_amend on public.subscriptions
+--       for update to billing_writer using (true) with check (true);
+--
+-- NAMED VERBS, not `for all`, which would also cover DELETE — inert only while the grant
+-- withholds it, so a later `grant all` would silently arm a policy nobody re-read. ADR 0007
+-- §3 is the full argument, including why that role must be LOGIN rather than reached by
+-- `set role` from `postgres`.
 --
 -- On a table holding one fact, that role's blast radius IS that fact. There is no spelling
 -- of the same grant against `workspaces`: a row-level policy for a writer role would hand it

@@ -423,12 +423,16 @@
 }
 
 /* Availability's new home, once the chip slot went to privacy: a quiet word under the
-   time. Success ink on the raised row is a 3:1-checked pair, and "Free" is never the
-   only carrier — the time itself is right above it. */
+   time. "Free" is never the only carrier — the time itself is right above it.
+
+   --status-success-TEXT, not --status-success. The comment here used to say "a 3:1-checked
+   pair", which was true of the token and wrong for this use: 3:1 is the bar for a SHAPE, and
+   this is a 12px word. In the light theme it measured 3.47:1 and failed AA. A colour is
+   checked as a shape and as text, and those are different pairs. */
 .freeNote {
   display: block;
   font-size: var(--text-xs);
-  color: var(--status-success);
+  color: var(--status-success-text);
 }
 
 /* The unrestricted case: the second label is the calendar name, quiet, no chip dress. */

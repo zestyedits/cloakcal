@@ -77,7 +77,7 @@ export default async function SettingsPage() {
     audiences: data.visibility?.audiences ?? [],
     workspaceRules: data.visibility?.workspaceRules ?? [],
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),
-    plan: data.plan.planId,
+    plan: data.plan,
   }
 
   return <SettingsScreen {...props} />

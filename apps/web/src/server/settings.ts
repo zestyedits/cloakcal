@@ -1,11 +1,12 @@
 import 'server-only'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isCalendarView } from '@/lib/calendar-views'
+import type { PlanId } from '@/lib/plans'
 import type { CalendarView } from '@/components/calendar-screen'
 import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
 import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
-import { loadPlan, type AccountPlan } from './plan'
+import { loadPlan } from './plan'
 
 /**
  * Workspace preferences, read server-side because the server needs them BEFORE it can do
@@ -116,7 +117,7 @@ export interface SettingsData {
    * The devices note above is the standing warning on this interface: if the Plan card ever
    * stops rendering the tier, this comes out with it, exactly as devices did.
    */
-  readonly plan: AccountPlan
+  readonly plan: PlanId
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {

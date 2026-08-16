@@ -100,10 +100,13 @@ export default async function Page({
 
   // Started HERE and awaited at the very bottom, so it overlaps the events fetch entirely
   // rather than sitting in front of it. The plan is a badge, not framing: unlike the prefs
-  // above, nothing below needs it to decide what to query. Caught for the same reason
-  // /settings catches its data promise — an early return must not leave a rejection loose.
+  // above, nothing below needs it to decide what to query.
+  //
+  // No `.catch()` guard, unlike /settings' data promise, and the difference is real rather
+  // than an oversight: loadPlan cannot reject. Everything after its fixture branch is inside
+  // its own try/catch, including the supabaseServer() construction, so there is no rejection
+  // for an early return to leave loose.
   const planPromise = loadPlan(workspacePrefs?.workspaceId ?? null)
-  planPromise.catch(() => undefined)
 
   // The URL always wins so links stay shareable; the STORED default only fills the
   // absent-or-unknown case. Resolved here rather than at the top because the fallback is
@@ -207,7 +210,7 @@ export default async function Page({
       // real session, so the demo never shows one: a fixture has no account and therefore
       // no plan, and inventing a Free chip for it would be the same dishonesty as storing
       // a plan in a cookie.
-      plan={(await planPromise).planId}
+      plan={await planPromise}
     />
   )
 }

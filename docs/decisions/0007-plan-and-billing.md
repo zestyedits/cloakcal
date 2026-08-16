@@ -64,8 +64,9 @@ day they are metered. Until then `apps/web/src/lib/plans.ts` carries none.
 ### 2. The plan lives in its own table, and the user cannot write it
 
 Migration `0024_subscriptions.sql`: `public.subscriptions`, keyed by `workspace_id`, one
-`plan` column, one `for select` policy, and `revoke insert, update, delete ... from
-authenticated`.
+`plan` column, one `for select` policy, and `revoke all ... from authenticated` followed by
+`grant select`. An ALLOWLIST, not a list of verbs to subtract — see below for why the obvious
+`revoke insert, update, delete` is not enough.
 
 **Not a column on `workspaces`**, where every other setting lives, because
 `workspaces_update` (0002) is `for update to authenticated using (owner_id = auth.uid())` and
@@ -184,9 +185,16 @@ workspace through `workspaces.owner_id` before it can write. `billing_writer` ho
 the schema and privileges on `subscriptions` only, so it cannot read `workspaces` at all. That
 is stated here because the natural fix under time pressure is to widen the role to
 `workspaces` — which is the exact thing this section spends its length arguing against. The
-mapping must be resolved OUTSIDE the database (a stored `provider_customer_id` on the
-subscriptions row, written on the first checkout while a real session exists) rather than by
-giving the writer read access to the account table.
+mapping must be resolved OUTSIDE the database rather than by giving the writer read access to
+the account table.
+
+The shape, stated so the next phase does not rediscover the contradiction: a
+`provider_customer_id` column on this row, written by **`billing_writer`** — not by the user,
+who holds SELECT only and must keep holding only that. The workspace id comes from the
+SESSION at checkout, when a real one exists: the browser starts checkout, the server hands
+Stripe the workspace id as client_reference_id, and the first webhook writes the row keyed by
+it. Every webhook after that resolves customer to workspace from this table alone, which is
+the only table the role can see.
 
 Still to decide when that work starts: webhook idempotency (the spec names delayed and
 repeated webhooks as a risk), the exact mapping mechanism above, and whether the connection

@@ -23,11 +23,11 @@ export const dynamic = 'force-dynamic'
 export default async function PlanPage() {
   const fixtureMode = isDevFixtureEnabled()
 
-  // The demo renders the whole page, honestly. It is the catalog plus a note saying there is
-  // no account here, and it is what puts the badge, the price cards and their tokens in
-  // front of the axe scan and the 44px sweep at all — every Playwright project runs in
+  // The demo renders the whole page, honestly: the catalog, plus a note saying there is no
+  // account here. That is what puts the price cards, the roadmap rows and their tokens in
+  // front of the axe scan and the 44px sweep at all, since every Playwright project runs in
   // fixture mode. loadPlan handles this branch itself and never touches Supabase.
-  if (fixtureMode) return <PlanScreen demo plan={(await loadPlan(null)).planId} />
+  if (fixtureMode) return <PlanScreen demo plan={await loadPlan(null)} />
 
   const supabase = await supabaseServer()
   const { data } = await supabase.auth.getUser()
@@ -42,5 +42,5 @@ export default async function PlanPage() {
 
   // `demo` passed explicitly, never inferred from an empty email: a signed-in user whose
   // email is null is not demoing, and would otherwise be told they have no account.
-  return <PlanScreen demo={false} plan={plan.planId} />
+  return <PlanScreen demo={false} plan={plan} />
 }

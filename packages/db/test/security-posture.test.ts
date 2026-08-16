@@ -143,6 +143,14 @@ describe('RLS coverage cannot regress', () => {
    */
   const KNOWN_TRUNCATE_DEBT: string[] = []
 
+  it('keeps the debt list empty, so it cannot become an escape hatch', () => {
+    // The anon EXECUTE sweep beside this one has no allowlist, and neither should this. A
+    // list that a failing table can be added to is a sweep that reports green while checking
+    // one fewer thing. It exists only so a genuine future exception is a deliberate edit
+    // here, in front of this assertion, rather than a silent default.
+    expect(KNOWN_TRUNCATE_DEBT).toEqual([])
+  })
+
   it('adds no NEW table that hands TRUNCATE to a caller', async () => {
     const { rows } = await db.raw(`
       select distinct table_name from information_schema.table_privileges

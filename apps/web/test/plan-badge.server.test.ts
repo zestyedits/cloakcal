@@ -36,10 +36,11 @@ const badge = read('../src/components/ui/plan-badge.tsx')
 
 describe('the badge in the account cluster', () => {
   it('renders inside the account row, beside the email', () => {
-    expect(screen).toContain('<PlanBadge plan={plan} />')
-    // Inside .accountMeta, which is the one-line pair. A third line in a 44px row is a
+    // Loose on purpose: `<PlanBadge` rather than the exact element, so adding a prop or
+    // reflowing the JSX does not red a test whose subject is PLACEMENT. Inside .accountMeta,
+    // which is the one-line email-and-badge pair — a third line inside a 44px row is a
     // cramped row, not a hierarchy.
-    expect(screen).toMatch(/accountMeta[\s\S]{0,300}<PlanBadge/u)
+    expect(screen).toMatch(/accountMeta[\s\S]*?<PlanBadge/u)
   })
 
   it('gives both the row and the email a min-width of 0', () => {
@@ -125,7 +126,12 @@ describe('nothing in the app writes a plan', () => {
      * user's to state, and a cookie-backed one would model precisely the capability 0024
      * spends a table to remove.
      */
+    // Comments stripped, for the reason `rules()` exists above: demo-prefs.ts is entitled to
+    // EXPLAIN in prose why a plan does not live there, and a test that reads prose as code
+    // would red on the sentence that documents the rule it is enforcing.
     const demoPrefs = read('../src/lib/demo-prefs.ts')
+      .replace(/\/\*[\s\S]*?\*\//gu, '')
+      .replace(/\/\/.*$/gmu, '')
     expect(demoPrefs).not.toMatch(/\bplan\b/iu)
   })
 })

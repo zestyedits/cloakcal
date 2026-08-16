@@ -40,8 +40,17 @@ test('the settings card is a signpost that states the plan', async ({ page }) =>
 test('renders under the demo without inventing an account', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
   await expect(page.getByText(/There is no account here, so there is no plan on file/)).toBeVisible()
-  // The fixture has no account, so nothing may tell it which plan it is on.
+  /*
+   * The fixture has no account, so NOTHING may tell it which plan it is on — not the
+   * sentence and not the badge. Both halves matter: the badge said "Free" directly above the
+   * note saying there is no plan on file, which is one surface contradicting another in the
+   * same view, and only the sentence was asserted.
+   */
   await expect(page.getByText(/You are on/)).toHaveCount(0)
+  // The BADGE, by its data attribute rather than its text: getByText defaults to a
+  // case-insensitive substring match, so "Free plan" also matches the closing sentence
+  // "cloaking an event stays on the free plan", which is copy this page should keep.
+  await expect(page.locator('[data-plan]')).toHaveCount(0)
 })
 
 test('names Pro’s prices and says plainly that it cannot be bought', async ({ page }) => {

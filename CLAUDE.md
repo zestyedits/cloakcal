@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 985 unit tests
-pnpm test:e2e            # 91 Playwright tests, runs its own dev server
+pnpm test                # 994 unit tests
+pnpm test:e2e            # 323 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
@@ -404,6 +404,29 @@ migration is tested for. It grants all eight now. Same shape as the missing `ano
 hid the 0009 hole, and the fix is the same: the sweep in `security-posture.test.ts` is the
 backstop, not the migration, because `alter default privileges` cannot reach Supabase's
 `supabase_admin` defaults.
+
+**The light theme had never been scanned, and it was carrying four separate AA failures.**
+Every axe run in this repo scanned dark, and light is the theme the brand references actually
+draw the calendar in. One pass with a light-theme sweep found: `--text-tertiary` at
+rgba(11,13,20,0.48) measuring 3.31 to 3.41 across the three surfaces, which is the ink on the
+mini month's dates, the sidebar headings, every form legend and the security page's hints;
+`--status-success` used as a 12px "Free" label at 3.47 (a colour checked as a SHAPE and used
+as TEXT, the third time that has bitten here); the settings rail's index dimmed with opacity
+to 3.46; and the agenda's delete trigger dimmed the same way to 3.36. Tertiary is 0.60 now
+(4.81 worst case, where dark already sat), `--status-success-text` exists for the label case,
+and both opacity dims are tokens. `e2e/a11y.spec.ts` now scans SIX pages in the light theme,
+which is the guard that stops this recurring.
+
+**Waiting on `getAnimations()` can hang, three ways, and the repo's usual one-liner hits all
+three.** `a.finished` RESOLVES WITH THE ANIMATION OBJECT, so `Promise.all(...)` hands
+Playwright an array of live host objects to serialise back and it wedges until the test times
+out — the existing calls survive only because the array is empty by the time they run, and
+ten finished button transitions after a theme toggle is enough to break it. An INFINITE
+animation's `finished` never resolves at all (`.pulse` in the loading fallbacks). And a
+CANCELLED transition REJECTS, failing the whole `Promise.all`. The light sweep filters
+infinite animations, catches rejections, returns `undefined` from an async body, and races a
+2s backstop — the settle is still the mechanism, the cap only bounds a promise that provably
+can fail to settle.
 
 **Two more defects found on the way, both fixed.** `e2e/settings.spec.ts`'s first test was named
 "in the stated order" and only ever asserted each heading was VISIBLE, so a section could be

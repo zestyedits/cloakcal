@@ -4,6 +4,7 @@ import {
   annualSavingPercent,
   formatPlanPrice,
   planById,
+  purchaseLabel,
   type PlanId,
   type PlanTier,
 } from '@/lib/plans'
@@ -27,11 +28,14 @@ import styles from './plan.module.css'
  * interactive things are one disabled button and the rail, both of which are client islands
  * of their own rendered with serialisable props.
  *
- * IT RENDERS THE SAME IN THE DEMO, and that is a testing decision as much as an honesty one,
- * exactly as the Passkeys card is. Every Playwright project runs in fixture mode, so the
- * badge, the price cards and their tokens would be measured by nothing — not the axe scan,
- * not the 44px sweep — if this page hid itself without a session. The one thing that changes
- * is the sentence about YOUR plan, because a fixture has no account to have one.
+ * IT RENDERS IN THE DEMO, and that is a testing decision as much as an honesty one, exactly
+ * as the Passkeys card is: every Playwright project runs in fixture mode, so the price cards,
+ * the roadmap rows and their tokens would be measured by nothing — not the axe scan in either
+ * theme, not the 44px sweep — if this page hid itself without a session.
+ *
+ * Two things change in the demo, and both are the same rule: a fixture has NO ACCOUNT, so it
+ * cannot have a plan. The "you are on Free" sentence becomes a note saying so, and the badge
+ * is not rendered at all.
  */
 export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
   const current = planById(plan)
@@ -54,9 +58,16 @@ export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
           <section className={settings.band}>
             <div className={settings.panelHead}>
               <h2 className={settings.panelTitle}>Your plan</h2>
-              {/* Rendered in the demo too. It is labelling the plan being described, which
-                  is true whether or not anyone is signed in. */}
-              <PlanBadge plan={plan} />
+              {/* NOT rendered in the demo. A fixture has no account, so it has no plan for a
+                  badge to state, and printing "Free" beside "there is no plan on file" is one
+                  surface contradicting the other in the same view. The settings card reaches
+                  the same conclusion by printing "Demo" instead of a tier.
+
+                  That leaves the badge with no rendered coverage anywhere, which is a real
+                  cost and the honest one: it is the same position the sidebar badge is in,
+                  and it is covered the same way — colour by CONTRAST_PAIRS, where CLAUDE.md
+                  says colour belongs, and structure by plan-badge.server.test.ts. */}
+              {!demo && <PlanBadge plan={plan} />}
             </div>
 
             {demo ? (
@@ -85,13 +96,7 @@ export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
                 product will never charge you to leave. */}
             {current.planned.length > 0 && (
               <div className={styles.plannedBlock}>
-                {current.planned.map((item) => (
-                  <p key={item.name} className={styles.plannedRow}>
-                    <span className={styles.plannedName}>{item.name}</span>
-                    <span className={settings.soon}>Coming soon</span>
-                    {item.detail}
-                  </p>
-                ))}
+                <PlannedRows items={current.planned} />
               </div>
             )}
 
@@ -134,13 +139,16 @@ function ProBand({ tier }: { tier: PlanTier }) {
   if (price === null) return null
 
   const monthsFree = annualMonthsFree(price)
+  // Through the exhaustive switch, so a third purchase state is a compile error here rather
+  // than a tag that silently keeps saying "Coming soon" about something you can now buy.
+  const label = purchaseLabel(tier.purchase)
 
   return (
     <>
       <section className={settings.band}>
         <div className={settings.panelHead}>
           <h2 className={settings.panelTitle}>{tier.name}</h2>
-          <span className={settings.soon}>Coming soon</span>
+          {label !== null && <span className={settings.soon}>{label}</span>}
         </div>
 
         <p className={settings.sectionLede}>
@@ -192,21 +200,34 @@ function ProBand({ tier }: { tier: PlanTier }) {
           </span>
         </div>
 
-        {/* The roadmap grammar the settings footer already speaks: named, because an honest
-            roadmap is worth something, and quiet, because none of it works. */}
-        {tier.planned.map((item) => (
-          <p key={item.name} className={styles.plannedRow}>
-            <span className={styles.plannedName}>{item.name}</span>
-            <span className={settings.soon}>Coming soon</span>
-            {item.detail}
-          </p>
-        ))}
+        <PlannedRows items={tier.planned} />
 
         <p className={styles.note}>
           None of these exist yet. This is what {tier.name} is for, not a date. Basic privacy
           is never paywalled: cloaking an event stays on the free plan.
         </p>
       </section>
+    </>
+  )
+}
+
+/**
+ * The roadmap rows, in the grammar the /settings footer already speaks: named, because an
+ * honest roadmap is worth something, and quiet, because none of it works yet.
+ *
+ * One component, two callers — Free's block and Pro's band. It was the same six lines twice,
+ * and in this repo the second copy is where divergence starts.
+ */
+function PlannedRows({ items }: { items: PlanTier['planned'] }) {
+  return (
+    <>
+      {items.map((item) => (
+        <p key={item.name} className={styles.plannedRow}>
+          <span className={styles.plannedName}>{item.name}</span>
+          <span className={settings.soon}>Coming soon</span>
+          {item.detail}
+        </p>
+      ))}
     </>
   )
 }
