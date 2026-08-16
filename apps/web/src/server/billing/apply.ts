@@ -72,10 +72,41 @@ function planFor(status: Stripe.Subscription.Status): PlanId {
   return status === 'active' || status === 'trialing' ? 'pro' : 'free'
 }
 
+/** The four `pnpm billing:setup` registers. Anything else is not ours to act on. */
+const HANDLED = new Set([
+  'checkout.session.completed',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+])
+
 export async function applyBillingEvent(
   event: Stripe.Event,
   config: BillingConfig,
 ): Promise<ApplyOutcome> {
+  /*
+   * THE TYPE CHECK COMES BEFORE THE DATABASE, and it used to come after.
+   *
+   * Every event opened a connection and a transaction to claim its id, INCLUDING the ones the
+   * switch below was always going to ignore. Found by pointing `stripe listen` at this handler:
+   * the CLI forwards EVERY event on the account, not the four the endpoint subscribes to, so a
+   * single `stripe trigger` produced ten irrelevant deliveries — `plan.created`,
+   * `price.created`, `charge.succeeded`, `payment_method.attached` — each of which took a
+   * pooler connection to write a row nothing would ever read. With `max: 1` they queued behind
+   * each other until `connect_timeout` fired, and the responses took thirty seconds.
+   *
+   * In production the shape is different (one invocation per event, its own pool of one) but
+   * the waste is the same, and `connection limit 5` on the role means a burst of unhandled
+   * events can crowd out the handled ones. Claiming an event id for an event we will never act
+   * on also fills `billing_events`, which has no DELETE grant and can never be pruned.
+   *
+   * Returning early is safe: there is nothing to be idempotent ABOUT. Re-delivering an ignored
+   * event ignores it again.
+   */
+  if (!HANDLED.has(event.type)) {
+    return { kind: 'ignored', reason: `unregistered event type ${event.type}` }
+  }
+
   const stripe = stripeClient(config)
   const sql = billingDb(config.databaseUrl)
 

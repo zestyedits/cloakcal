@@ -664,6 +664,18 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **`stripe listen` forwards EVERY event on the account, not the ones your endpoint
+  subscribes to.** One `stripe trigger customer.subscription.updated` produced ten deliveries —
+  `plan.created`, `price.created`, `charge.succeeded`, `payment_method.attached`,
+  `invoice.*` — and the handler was claiming an event id for each, taking a pooler connection
+  to write a row nothing would ever read. With `max: 1` they queued until `connect_timeout`
+  fired and responses took **thirty seconds**. The type check now runs BEFORE the database and
+  the noise costs 8ms. It also stops `billing_events`, which has no DELETE grant and can never
+  be pruned, filling up with events nobody handles.
+- **`stripe listen` mints its OWN signing secret**, different from the registered endpoint's.
+  An app configured with the endpoint's `whsec_` rejects every forwarded event with a 400 that
+  looks exactly like a wrong secret. Start the dev server with the CLI's secret for local
+  webhook work, and put the endpoint's back afterwards.
 - **A closed union is only closed if one function owns it.** `lib/billing-error.ts` calls
   itself "a closed union mapped to sentences", and fifteen of seventeen error responses
   hand-rolled `Response.json({ error: '…' })` with a bare string literal. One of them emitted

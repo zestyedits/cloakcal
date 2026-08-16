@@ -247,6 +247,32 @@ describe('the subscription branch', () => {
   })
 })
 
+describe('an unregistered event type', () => {
+  /**
+   * IT MUST NOT REACH THE DATABASE AT ALL. `stripe listen` forwards every event on the
+   * account, not the four the endpoint subscribes to, so one `stripe trigger` produced ten
+   * irrelevant deliveries — and each one opened a pooler connection to claim an id nothing
+   * would ever read. With `max: 1` they queued until `connect_timeout` fired and the
+   * responses took thirty seconds. It also fills `billing_events`, which has no DELETE grant.
+   */
+  it('never opens a connection or claims an id', async () => {
+    for (const type of [
+      'plan.created',
+      'price.created',
+      'charge.succeeded',
+      'payment_method.attached',
+      'invoice.finalized',
+    ]) {
+      reset()
+      const outcome = await applyBillingEvent(event(type, { id: 'x' }), CONFIG)
+      expect(outcome.kind, type).toBe('ignored')
+      // Not one statement, not even the claim.
+      expect(issued, type).toEqual([])
+      expect(retrieved, type).toEqual([])
+    }
+  })
+})
+
 describe('the plan decision', () => {
   it('grants Pro only for a healthy subscription', async () => {
     for (const [status, plan] of [
