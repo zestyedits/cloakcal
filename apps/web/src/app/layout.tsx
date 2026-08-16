@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { dmMono, inter, marcellus } from './fonts'
+import { NONCE_HEADER } from '@/lib/csp'
 import { THEME_BOOTSTRAP } from '@/lib/theme'
 import { OfflineBanner } from '@/components/ui/offline-banner'
 import './globals.css'
@@ -57,7 +59,28 @@ export const viewport: Viewport = {
  * Root layout — a Server Component, and deliberately incapable of decryption.
  * It never imports the crypto or cloak-store packages; the static rule enforces that.
  */
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Reading a header here opts the ENTIRE APP out of static generation, and that is accepted
+ * rather than overlooked.
+ *
+ * A per-request nonce cannot exist in a page rendered once at build time, so static rendering
+ * and a nonce-based CSP are mutually exclusive — there is no arrangement that keeps both.
+ * The cost is `/sign-in`, `/sign-up`, `/recover` and `/robots.txt`, which were the only
+ * prerendered routes left; everything else already reads a session or searchParams. For a
+ * private calendar with sign-ups closed that is a rounding error, and the alternative is
+ * serving the weakest policy on the three pages that handle passwords.
+ *
+ * The visible consequence: `build-output.leak.test.ts` can no longer scan prerendered HTML or
+ * RSC payloads, because none are emitted. Those assertions moved to `e2e/leak.spec.ts`, which
+ * reads what is actually rendered. They were written to FAIL rather than skip on missing
+ * input, which is why this change announced itself instead of quietly gutting a privacy gate.
+ */
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Undefined when middleware did not run — nothing serves this app that way today, but a
+  // missing nonce must degrade to "no nonce attribute" rather than to the string
+  // "undefined", which would be a nonce the CSP does not name and therefore a blocked script.
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined
+
   return (
     /* The font variables go on <html>, and that placement is load-bearing.
        `globals.css` styles `html, body { font-family: var(--font-sans) }`, and `--font-sans`
@@ -79,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             On a calendar of pastel blocks that is a full-screen white flash on every
             navigation, which is worse than not offering the choice at all.
             Inline and synchronous by necessity: anything deferred loses the race to paint. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
         <a className="skip-link" href="#main">

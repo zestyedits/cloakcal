@@ -1,12 +1,21 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Runtime privacy-leakage suite — the two surfaces the build-output scan cannot reach.
+ * Runtime privacy-leakage suite.
  *
- * apps/web/test/build-output.leak.test.ts already covers initial HTML, the RSC/Flight
- * payload and every emitted chunk. What it cannot see is what happens once a browser is
- * actually running: what lands in storage, what a network response carries, and what an
- * error reporter would capture. Those need a real page, so they live here.
+ * IT NOW OWNS THE SERVER-RENDER SURFACES TOO, and that is a recent change worth knowing
+ * about. `apps/web/test/build-output.leak.test.ts` used to scan the prerendered HTML and the
+ * RSC/Flight payload straight off disk. The CSP nonce made every app route dynamic — a
+ * per-request nonce cannot exist in a page rendered once at build time — so the build emits
+ * no `.rsc` and one framework `500.html`, and there is nothing on disk left to read.
+ *
+ * The half of that change worth remembering: one of those two assertions kept PASSING after
+ * its input disappeared, because `500.html` still matched its filter. Green, scanning a page
+ * that could never hold user content. So the surfaces moved here, where they are read from a
+ * live server, and the build-output file now asserts that no app route prerenders at all —
+ * which is what fails if anyone makes one static again without restoring a scan.
+ *
+ * What is left there: every emitted chunk, the caches, and the fixture itself.
  *
  * Plaintext IS expected in the DOM after hydration — that is what a calendar is, and it
  * sits inside the stated client-compromise boundary (ADR 0002). Every assertion below is
@@ -52,6 +61,58 @@ test.describe('decryption actually happens', () => {
 
     // ...and none of it came from the server.
     expect(findCanaries(responses.join('\n'))).toEqual([])
+  })
+
+  /**
+   * The server-render scans, rehomed from build-output.leak.test.ts.
+   *
+   * Every route the app serves, not just the calendar: making them dynamic means each one is
+   * rendered per request now, and a Server Component that accidentally awaited a decrypted
+   * value would put it in that route's HTML and in its Flight payload. The build scan used to
+   * catch that for the prerendered ones; nothing did once they stopped being prerendered.
+   */
+  test('no route serves plaintext in its HTML or its Flight payload', async ({ page }) => {
+    const ROUTES = ['/', '/settings', '/settings/plan', '/settings/availability', '/people']
+
+    // Fetched directly rather than collected from a `response` listener. Reading bodies
+    // asynchronously inside that event races navigation — the page can close underneath the
+    // await — and the first version of this test failed that way rather than on its subject.
+    const bodies: string[] = []
+
+    for (const path of ROUTES) {
+      const html = await page.request.get(path).then((r) => r.text())
+      // `RSC: 1` is how Next is asked for the Flight payload of a route. Deterministic, and
+      // it needs no client navigation to provoke — which is the other thing that made the
+      // first version flaky.
+      const flight = await page.request
+        .get(path, { headers: { RSC: '1' } })
+        .then((r) => r.text())
+      bodies.push(html, flight)
+    }
+
+    // THE GUARD, and it is the whole reason these assertions were rehomed rather than
+    // deleted. Without it this passes vacuously the day the routes move — which is exactly
+    // how the assertion it replaced ended up green while reading a framework error page.
+    expect(bodies.length).toBe(ROUTES.length * 2)
+    for (const [index, body] of bodies.entries()) {
+      expect(body.length, `empty response for ${ROUTES[Math.floor(index / 2)]}`).toBeGreaterThan(
+        500,
+      )
+    }
+
+    expect(findCanaries(bodies.join('\n'))).toEqual([])
+  })
+
+  test('serves ciphertext, proving there was content to leak', async ({ page }) => {
+    // The other half of the guard above: no canaries is only meaningful if the sealed values
+    // were actually present in what the server sent. Mirrors the build scan's
+    // "ships ciphertext in the build" assertion, which covered this before the routes went
+    // dynamic.
+    const html = await page.goto('/').then((r) => r?.text() ?? '')
+    // Base64 GCM payloads from the fixture. Their presence means the page really did carry
+    // this account's event content, sealed.
+    expect(html).toMatch(/"ciphertext":"[A-Za-z0-9+/=]{16,}"|\\"ciphertext\\":\\"[A-Za-z0-9+/=]{16,}/)
+    expect(findCanaries(html)).toEqual([])
   })
 
   test('shows placeholders before the store unlocks', async ({ page }) => {

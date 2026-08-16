@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { NONCE_HEADER, SECURITY_HEADERS, buildCsp, createNonce } from '@/lib/csp'
 
 /**
  * Session refresh, and the route guard.
@@ -42,7 +43,37 @@ export const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/recover', '/auth/cal
 export const SIGNED_IN_ELSEWHERE = ['/sign-in', '/sign-up']
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  /*
+   * THE CSP IS BUILT FIRST, ABOVE THE DEV-UNLOCK RETURN, AND THAT ORDER IS THE POINT.
+   *
+   * Every Playwright project runs with NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1, which takes the
+   * early return below. A policy applied after it would be a policy no test ever sees, on a
+   * header whose entire job is to be present — and it would be absent in dev, so a browser
+   * pass could not see it either. That is exactly the shape of the /opengraph-image bug,
+   * where the one environment nothing runs in was the only one that behaved differently.
+   *
+   * So: nonce and headers on EVERY response this matcher catches, signed in or out, dev or
+   * production. Only the policy's contents differ by environment, and buildCsp owns that.
+   */
+  const nonce = createNonce()
+  const csp = buildCsp(nonce, {
+    dev: process.env.NODE_ENV !== 'production',
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  })
+
+  // The nonce reaches the root layout on the REQUEST, because a Server Component cannot read
+  // the response it is in the middle of producing. `layout.tsx` reads it with headers().
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(NONCE_HEADER, nonce)
+
+  /** Every response below is built through here, so none can escape without the policy. */
+  const withSecurity = (res: NextResponse): NextResponse => {
+    res.headers.set('Content-Security-Policy', csp)
+    for (const [name, value] of SECURITY_HEADERS) res.headers.set(name, value)
+    return res
+  }
+
+  let response = withSecurity(NextResponse.next({ request: { headers: requestHeaders } }))
 
   // Development fixture mode: there is no account to sign in to, so guarding would lock the
   // app out of its own test data. Gated identically to the dev key — NODE_ENV plus an
@@ -63,7 +94,10 @@ export async function middleware(request: NextRequest) {
       getAll: () => request.cookies.getAll(),
       setAll: (toSet) => {
         for (const { name, value } of toSet) request.cookies.set(name, value)
-        response = NextResponse.next({ request })
+        // Rebuilt from `requestHeaders`, not `request`, or the nonce would be dropped for
+        // every user whose token happened to refresh on this request — an intermittent
+        // blank page on roughly one navigation an hour, which is the worst kind.
+        response = withSecurity(NextResponse.next({ request: { headers: requestHeaders } }))
         for (const { name, value, options } of toSet) response.cookies.set(name, value, options)
       },
     },
@@ -81,7 +115,7 @@ export async function middleware(request: NextRequest) {
     // The path only. Never the query string: View As audiences and future booking tokens
     // live there, and a redirect target is one of the easiest things to end up in a log.
     redirect.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`
-    return NextResponse.redirect(redirect)
+    return withSecurity(NextResponse.redirect(redirect))
   }
 
   const bouncesWhenSignedIn = SIGNED_IN_ELSEWHERE.some(
@@ -91,7 +125,7 @@ export async function middleware(request: NextRequest) {
     const redirect = request.nextUrl.clone()
     redirect.pathname = '/'
     redirect.search = ''
-    return NextResponse.redirect(redirect)
+    return withSecurity(NextResponse.redirect(redirect))
   }
 
   return response

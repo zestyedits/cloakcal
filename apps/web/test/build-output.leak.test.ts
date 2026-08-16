@@ -90,14 +90,6 @@ describe('the server emits no Tier B plaintext', () => {
     expect(files.length).toBeGreaterThan(10)
   })
 
-  it('keeps plaintext out of the prerendered HTML', async () => {
-    const html = files.filter((f) => f.endsWith('.html'))
-    expect(html.length).toBeGreaterThan(0)
-
-    const content = await readAll(html)
-    expect(CANARIES.filter((c) => content.includes(c))).toEqual([])
-  })
-
   it('emits server code for the calendar route', async () => {
     // The route became DYNAMIC when it started reading searchParams for View As, so there
     // is no prerendered index.html to scan any more. The equivalent assertions moved to
@@ -107,15 +99,40 @@ describe('the server emits no Tier B plaintext', () => {
     expect(serverChunks.length).toBeGreaterThan(0)
   })
 
-  it('keeps plaintext out of the RSC / Flight payload', async () => {
-    // The subtlest surface: Flight serializes props across the server/client boundary, so
-    // a decrypted value reaching a Server Component's output would land here even though
-    // it never appears in the visible HTML.
+  /**
+   * PRERENDER SCANNING MOVED TO THE E2E SUITE, AND THIS TEST IS WHY IT CANNOT MOVE BACK
+   * BY ACCIDENT.
+   *
+   * The CSP nonce made every app route dynamic — a per-request nonce cannot exist in a page
+   * rendered once at build time — so the build emits no `.rsc` at all and exactly one `.html`,
+   * Next's framework 500 page.
+   *
+   * The two assertions that used to live here scanned those surfaces. One of them failed
+   * loudly when its input vanished, which is what they were designed to do. **The other one
+   * did not**: `keeps plaintext out of the prerendered HTML` kept passing, because
+   * `500.html` still matched its filter — a fixture canary could never appear in a framework
+   * error page, so it was green while checking nothing. That is precisely the failure this
+   * file's header calls worse than having no gate, and it is the reason for the assertion
+   * below rather than a quiet deletion.
+   *
+   * If a route is ever made static again, this fails and tells you to restore a real scan of
+   * it. Runtime coverage of both surfaces now lives in `e2e/leak.spec.ts`, which reads what
+   * the server actually sends.
+   */
+  it('prerenders no app route, so there is no HTML or Flight payload to scan here', async () => {
     const rsc = files.filter((f) => f.endsWith('.rsc'))
-    expect(rsc.length).toBeGreaterThan(0)
+    expect(rsc).toEqual([])
 
-    const content = await readAll(rsc)
-    expect(CANARIES.filter((c) => content.includes(c))).toEqual([])
+    // `pages/500.html` and `pages/404.html` are framework chrome, built by Next regardless
+    // and incapable of holding user content. Anything else is an app route that went static.
+    const appHtml = files
+      .map((f) => relative(BUILD, f))
+      .filter((f) => f.endsWith('.html'))
+      .filter((f) => !/pages[\\/](?:404|500)\.html$/.test(f))
+    expect(
+      appHtml,
+      'a route became static again — restore a canary scan of its prerendered HTML',
+    ).toEqual([])
   })
 
   it('keeps plaintext out of every client bundle', async () => {

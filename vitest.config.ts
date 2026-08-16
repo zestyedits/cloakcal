@@ -1,4 +1,16 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+
+/**
+ * The `@/…` alias, which vitest does not get from tsconfig on its own.
+ *
+ * Needed once `middleware.ts` imported `@/lib/csp`: the middleware path tests import the
+ * module itself, so an unresolvable alias inside it fails the whole file. Test files here
+ * still import relatively — this exists for the SOURCE modules they pull in, which use the
+ * app's own convention and should not be rewritten to suit the runner.
+ */
+const webSrc = fileURLToPath(new URL('./apps/web/src/', import.meta.url))
+const webAlias = { resolve: { alias: { '@/': webSrc } } }
 
 /**
  * Every declared project MUST contain tests.
@@ -84,6 +96,7 @@ export default defineConfig({
         },
       },
       {
+        ...webAlias,
         test: {
           name: 'web-client',
           include: ['apps/web/test/**/*.client.test.ts'],
@@ -91,6 +104,7 @@ export default defineConfig({
         },
       },
       {
+        ...webAlias,
         test: {
           // The server half of apps/web — redaction, ranges, the read path. Node, not jsdom,
           // so a test cannot accidentally lean on a browser global the real server lacks.
