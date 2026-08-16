@@ -128,6 +128,7 @@ const MIGRATIONS = [
   '0025_revoke_truncate.sql',
   '0026_holiday_prefs.sql',
   '0027_availability.sql',
+  '0028_billing_writer.sql',
 ] as const
 
 export interface QueryResult {
@@ -151,6 +152,18 @@ export interface TestDb {
    * nobody is signed in, and it carries its own grants. Privilege assertions belong here.
    */
   asUnauthenticated(sql: string, params?: unknown[]): Promise<QueryResult>
+  /**
+   * Run SQL as an arbitrary Postgres ROLE, with RLS enforced.
+   *
+   * Added for `billing_writer` (0028), which is neither a signed-in user nor `anon` — it is a
+   * service role that connects directly rather than through PostgREST, so none of the helpers
+   * above can stand in for it. Asserting its grants as the superuser would prove nothing,
+   * because the superuser bypasses RLS.
+   *
+   * Takes a role NAME and interpolates it, which is safe only because every caller is a
+   * literal in a test file. Do not hand it user input.
+   */
+  asRole(role: string, sql: string, params?: unknown[]): Promise<QueryResult>
   /**
    * Run a callback inside a real transaction, as a signed-in user.
    *
@@ -206,6 +219,19 @@ export async function createTestDb(): Promise<TestDb> {
     },
 
     asAnon: (sql, params) => runAs(null, sql, params),
+
+    async asRole(role, sql, params = []) {
+      // No JWT subject: this role does not arrive through PostgREST and auth.uid() is null
+      // for it, which is exactly the condition its policies have to hold under.
+      await pg.query(`select set_config('request.jwt.claim.sub', '', false)`)
+      await pg.exec(`set role ${role}`)
+      try {
+        const result = await pg.query<Record<string, unknown>>(sql, params)
+        return { rows: result.rows }
+      } finally {
+        await pg.exec('reset role')
+      }
+    },
 
     async asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T> {
       const result = await pg.transaction(async (tx) => {

@@ -215,20 +215,83 @@ describe('the plan a workspace is on', () => {
       expect(rows).toEqual([])
     })
 
-    it('has exactly one policy on it, and its verb is SELECT', async () => {
+    it('gives authenticated exactly one policy, and its verb is SELECT', async () => {
       // The structural statement, which fails the day anyone adds `for all` even if the
       // runtime tests above were somehow satisfied. `cmd` is 'r' for SELECT in pg_policy;
       // pg_policies spells it out.
       // `roles` as well as `cmd`: the house rule is always `to authenticated`, and a policy
       // accidentally written `to public` would keep a cmd-only assertion green.
+      //
+      // SCOPED TO `authenticated` SINCE 0028, which added a `billing_writer` role with write
+      // policies of its own. This assertion used to say "exactly one policy on the table" and
+      // it CAUGHT that change, which is the reason it was written — but the guarantee it
+      // exists to protect was never "one policy", it was "the account holder cannot write
+      // their own plan". So it now names the role it is about, and the full set including
+      // billing_writer is pinned separately below rather than left unstated.
+      const { rows } = await db.raw(`
+        select policyname, cmd, roles::text as roles from pg_policies
+        where schemaname = 'public' and tablename = 'subscriptions'
+          and roles::text like '%authenticated%'
+        order by policyname
+      `)
+      expect(rows).toEqual([
+        { policyname: 'subscriptions_select', cmd: 'SELECT', roles: '{authenticated}' },
+      ])
+    })
+
+    it('gives the billing writer named verbs, and never DELETE', async () => {
+      // The whole policy set, declared. Anything added to this table has to be written down
+      // here, which is what the old "exactly one policy" assertion bought and what a
+      // role-scoped filter would otherwise give away.
       const { rows } = await db.raw(`
         select policyname, cmd, roles::text as roles from pg_policies
         where schemaname = 'public' and tablename = 'subscriptions'
         order by policyname
       `)
       expect(rows).toEqual([
+        { policyname: 'subscriptions_amend', cmd: 'UPDATE', roles: '{billing_writer}' },
+        { policyname: 'subscriptions_read_own_writes', cmd: 'SELECT', roles: '{billing_writer}' },
         { policyname: 'subscriptions_select', cmd: 'SELECT', roles: '{authenticated}' },
+        { policyname: 'subscriptions_write', cmd: 'INSERT', roles: '{billing_writer}' },
       ])
+
+      // No DELETE policy AND no DELETE grant. A writer that can delete can cover its tracks,
+      // and a cancellation is an UPDATE to plan = 'free', never a removal.
+      const { rows: grants } = await db.raw(`
+        select privilege_type from information_schema.table_privileges
+        where table_schema = 'public' and table_name = 'subscriptions'
+          and grantee = 'billing_writer'
+        order by privilege_type
+      `)
+      expect(grants).toEqual([
+        { privilege_type: 'INSERT' },
+        { privilege_type: 'SELECT' },
+        { privilege_type: 'UPDATE' },
+      ])
+    })
+
+    it('keeps the billing writer out of every table but its own two', async () => {
+      // ADR 0007's central claim, as a test rather than a paragraph: the role cannot resolve
+      // a customer to a workspace by reading `workspaces`, which is why the mapping lives in
+      // `subscriptions` itself. The natural fix under time pressure is to widen this role —
+      // this is what fails when someone does.
+      const { rows } = await db.raw(`
+        select table_name, privilege_type from information_schema.table_privileges
+        where table_schema = 'public' and grantee = 'billing_writer'
+          and table_name not in ('subscriptions', 'billing_events')
+      `)
+      expect(rows).toEqual([])
+    })
+
+    it('cannot log in until a password is set out of band', async () => {
+      // The migration creates the role NOLOGIN and with no password, because a password in a
+      // committed migration is a password in the git history forever. Until the out-of-band
+      // `alter role ... login password` runs, the role exists and cannot connect — the right
+      // default for a role that ships before its handler.
+      const { rows } = await db.raw(`
+        select rolcanlogin from pg_roles where rolname = 'billing_writer'
+      `)
+      expect(rows).toEqual([{ rolcanlogin: false }])
     })
 
     it('adds no function, so the anon sweep has nothing new to carry', async () => {
