@@ -263,9 +263,9 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
             {working}
           </p>
         ) : (
-          <button type="submit" className={styles.submit} disabled={disabled}>
+          <Button type="submit" className={styles.fullWidth} disabled={disabled}>
             Add a passkey
-          </button>
+          </Button>
         )}
       </div>
     </form>

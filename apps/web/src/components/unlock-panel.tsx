@@ -17,6 +17,7 @@ import {
   isPasskeySupported,
 } from '@/lib/passkey'
 import { InlineError } from './ui/inline-error'
+import { Button } from './ui/button'
 import styles from './auth.module.css'
 
 /**
@@ -131,14 +132,13 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
 
         {passkeyOffered && (
           <>
-            <button
-              type="button"
-              className={styles.submit}
+            <Button
+              className={styles.fullWidth}
               disabled={busy}
               onClick={() => void runPasskey()}
             >
               Unlock with a passkey
-            </button>
+            </Button>
             <p className={styles.switch} aria-hidden="true">
               or
             </p>
@@ -188,15 +188,16 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
               {working}
             </p>
           ) : (
-            <button type="submit" className={styles.submit}>
+            <Button type="submit" className={styles.fullWidth}>
               Unlock
-            </button>
+            </Button>
           )}
         </div>
 
-        <button
-          type="button"
-          className={styles.secondary}
+        {/* A mode switch, not an action: ghost so it cannot compete with Unlock above it. */}
+        <Button
+          variant="ghost"
+          className={styles.fullWidth}
           disabled={busy}
           onClick={() => {
             setError(null)
@@ -204,7 +205,7 @@ export function UnlockPanel({ email, onUnlocked }: { email: string; onUnlocked: 
           }}
         >
           {mode === 'password' ? 'Use my recovery phrase instead' : 'Use my password instead'}
-        </button>
+        </Button>
 
         <p className={styles.switch}>
           <a

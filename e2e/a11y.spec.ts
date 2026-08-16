@@ -191,14 +191,32 @@ test.describe('landing', () => {
     expect(tooSmall).toEqual([])
   })
 
-  test('the demo scans clean in every audience state', async ({ page }) => {
-    // A control behind a click is a control nobody tested: axe runs against each state
-    // the tabs can produce, not only the server-rendered one.
+  test('the hero week scans clean in every audience state', async ({ page }) => {
+    // A control behind a click is a control nobody tested: axe runs against each state the
+    // person buttons can produce, not only the server-rendered one. Four states now rather
+    // than three, and the fourth is the one worth having — `public` is the only state where
+    // several blocks are ABSENT rather than merely quieter, so it is the only one that
+    // exercises the grid with holes in it.
     await page.goto('/?landing=1')
-    // exact: true — "You" is a substring of "Your client" under the default name match.
-    for (const tab of ['Your client', 'Everyone else', 'You']) {
-      await page.getByRole('button', { name: tab, exact: true }).click()
-      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+    for (const person of ['Priya', 'Marcus', 'Everyone else', 'You']) {
+      await page.getByRole('button', { name: new RegExp(person) }).click()
+      /*
+       * Bounded, for the three reasons the light sweep below documents in full: `a.finished`
+       * resolves with the Animation object, an infinite animation never settles, and a
+       * cancelled one rejects. Clicking a person cancels the reseal mid-flight by design, so
+       * this call site can genuinely hit the third case — the old spelling here survived only
+       * because the previous demo's animation was shorter than the click that followed it.
+       */
+      await page.evaluate(async () => {
+        const settled = new Promise<void>((resolve) => setTimeout(resolve, 2_000))
+        const painted = Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => undefined)),
+        ).then(() => undefined)
+        await Promise.race([painted, settled])
+      })
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze()
@@ -228,6 +246,22 @@ for (const [label, path] of [
   ['settings', '/settings'],
   ['security', '/settings/security'],
   ['people', '/people'],
+  /*
+   * THE AUTH SCREENS HAD NEVER BEEN SCANNED, in either theme, by anything.
+   *
+   * Found while restyling them. Every axe run in this file covered the calendar, its views,
+   * settings, security, people and the landing — and never `/sign-in`, `/sign-up` or
+   * `/recover`, which are the first pages a stranger sees and the ones asking for a
+   * password. The control pass replaced a transparent field with a filled one, which is
+   * precisely the change that moves a contrast ratio without moving anything a human would
+   * notice in review, so the gap and the change arrived together.
+   *
+   * They also matter more in LIGHT than the app does: --surface-raised is #ffffff there, so
+   * the old field was white on white plus a 1.6:1 hairline.
+   */
+  ['sign in', '/sign-in'],
+  ['sign up', '/sign-up'],
+  ['recover', '/recover'],
 ] as const) {
   test(`the ${label} page scans clean in the LIGHT theme`, async ({ page }) => {
     await page.goto(path)

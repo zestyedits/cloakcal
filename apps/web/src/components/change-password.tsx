@@ -12,6 +12,7 @@ import {
 } from '@/lib/cloak-session'
 import { ProofFieldset, type Proof } from './proof-fieldset'
 import { InlineError } from './ui/inline-error'
+import { Button } from './ui/button'
 import styles from './auth.module.css'
 import panel from './panel.module.css'
 
@@ -154,9 +155,9 @@ export function ChangePassword({ email }: { email: string }) {
             stolen database expensive to attack.
           </p>
         ) : (
-          <button type="submit" className={styles.submit}>
+          <Button type="submit" className={styles.fullWidth}>
             Change password
-          </button>
+          </Button>
         )}
       </div>
 

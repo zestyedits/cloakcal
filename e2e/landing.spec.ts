@@ -6,58 +6,80 @@ import { expect, test } from '@playwright/test'
  * session-branch landing is otherwise reachable by no test. Production ignores the
  * param; the session decides there.
  *
- * The hero demo is the page's one interactive piece, so it gets the coverage: audience
- * tabs re-render the card, a manual choice cancels the auto-advance, and the withheld
- * fields are ABSENT from the DOM in the redacted states, not hidden by CSS.
+ * The hero WEEK is the page's one interactive piece, so it gets the coverage: choosing a
+ * person reseals the week, a manual choice cancels the auto-advance, and withheld events are
+ * ABSENT from the DOM rather than hidden by CSS.
+ *
+ * The last one is the assertion worth having. "Hidden" in this product means the row is not
+ * there at all, the way the dates under the cloak in the mark are missing rather than greyed
+ * — a block dimmed to invisibility would still tell a reader that SOMETHING is scheduled,
+ * which is the exact leak the whole product exists to close. A CSS-based hide would look
+ * identical in a screenshot and be wrong.
  */
 
-test('the audience tabs re-render the demo card', async ({ page }) => {
+test('choosing a person reseals the whole week', async ({ page }) => {
   await page.goto('/?landing=1')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Not everything')
 
-  // Server-rendered initial state: the owner's view, everything readable.
-  await expect(page.getByText('Legal call, custody')).toBeVisible()
-  await expect(page.getByText('Conference Rm B')).toBeVisible()
+  // Server-rendered initial state: the owner's own view, everything readable.
+  await expect(page.getByText('Discovery call, Novaline')).toBeVisible()
+  await expect(page.getByText('Therapy')).toBeVisible()
+  await expect(page.getByText('Lunch with Sam')).toBeVisible()
 
-  const clientTab = page.getByRole('button', { name: 'Your client' })
-  await clientTab.click()
-  await expect(clientTab).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByText('Legal call', { exact: true })).toBeVisible()
-  // Limited hides the location and the sensitive half of the title, as absence.
-  await expect(page.getByText('Legal call, custody')).toHaveCount(0)
-  await expect(page.getByText('Conference Rm B')).toHaveCount(0)
+  const priya = page.getByRole('button', { name: /Priya/ })
+  await priya.click()
+  await expect(priya).toHaveAttribute('aria-pressed', 'true')
+
+  // Her OWN meetings stay in full. A demo where every audience simply sees less would be a
+  // brightness slider; the point is that the rules are per person.
+  await expect(page.getByText('Discovery call, Novaline')).toBeVisible()
+  await expect(page.getByText('Novaline, contract')).toBeVisible()
+
+  // The private ones are gone from the DOM entirely, not dimmed.
+  await expect(page.getByText('Therapy')).toHaveCount(0)
+  await expect(page.getByText('Lunch with Sam')).toHaveCount(0)
+  await expect(page.getByText('Dr. Okafor')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Everyone else' }).click()
-  // "Busy" appears twice on purpose: the redacted title AND the chip's label. Two, not
-  // one, is the assertion — it pins that the title really did collapse to the level name.
-  await expect(page.getByText('Busy', { exact: true })).toHaveCount(2)
-  await expect(page.getByText('Legal call')).toHaveCount(0)
-})
-
-test('the time never changes, whoever is looking', async ({ page }) => {
-  await page.goto('/?landing=1')
-  const time = page.getByText('2:00 PM')
-  await expect(time).toBeVisible()
-  // exact: true, because Playwright's name option is a substring match and "You" is a
-  // prefix of "Your client".
-  for (const tab of ['Your client', 'Everyone else', 'You']) {
-    await page.getByRole('button', { name: tab, exact: true }).click()
-    await expect(time).toBeVisible()
-    await expect(page.getByText('2:00 PM')).toHaveCount(1)
+  // A wall of Busy and nothing else. No title from any calendar survives.
+  await expect(page.getByText('Busy').first()).toBeVisible()
+  for (const title of ['Discovery call, Novaline', 'Novaline, contract', 'Therapy', 'Team standup']) {
+    await expect(page.getByText(title)).toHaveCount(0)
   }
 })
 
-test('choosing a tab cancels the auto-advance', async ({ page }) => {
+test('the grid never moves, whoever is looking', async ({ page }) => {
   await page.goto('/?landing=1')
-  await page.getByRole('button', { name: 'Everyone else' }).click()
-  await expect(page.getByText('Busy', { exact: true }).first()).toBeVisible()
-  // Longer than one auto-advance hold: if the timer were still running, the card would
-  // have moved on from "Busy" by now.
-  await page.waitForTimeout(3600)
-  await expect(page.getByText('Busy', { exact: true }).first()).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Everyone else' }),
-  ).toHaveAttribute('aria-pressed', 'true')
+
+  // THE test on this page. The hero's whole argument is that times, durations and repeats
+  // stay readable to everyone while content does not, so a block that moved or resized when
+  // the audience changed would be drawing a claim the product does not make.
+  const box = async () => {
+    const el = page.locator('[class*="landing-calendar_column"]').first()
+    const rect = await el.boundingBox()
+    return { w: Math.round(rect?.width ?? 0), h: Math.round(rect?.height ?? 0) }
+  }
+  const before = await box()
+
+  for (const person of ['Priya', 'Marcus', 'Everyone else', 'You']) {
+    await page.getByRole('button', { name: new RegExp(person) }).click()
+    expect(await box()).toEqual(before)
+  }
+
+  // The hour gutter is the other half of the same promise: same labels, every state.
+  await expect(page.getByText('noon', { exact: true })).toBeVisible()
+})
+
+test('choosing a person cancels the auto-advance', async ({ page }) => {
+  await page.goto('/?landing=1')
+  const chosen = page.getByRole('button', { name: 'Everyone else' })
+  await chosen.click()
+  await expect(chosen).toHaveAttribute('aria-pressed', 'true')
+  // Longer than one auto-advance hold (HOLD_MS is 3800): if the timer were still running,
+  // the week would have moved on to another person by now. WCAG 2.2.2 - the buttons are the
+  // manual control, and a manual choice has to stick.
+  await page.waitForTimeout(4200)
+  await expect(chosen).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('the page says it is not open, and offers no action that is not', async ({ page }) => {

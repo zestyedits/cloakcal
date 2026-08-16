@@ -11,6 +11,7 @@ import {
 import { RecoveryPhrase } from './recovery-phrase'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
 import { InlineError } from './ui/inline-error'
+import { Button } from './ui/button'
 import styles from './auth.module.css'
 import panel from './panel.module.css'
 
@@ -115,9 +116,9 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
           Lost the 24 words, or think someone else has seen them? Get a new set. The old ones
           stop working immediately.
         </p>
-        <button type="button" className={styles.submit} onClick={() => setOpen(true)}>
+        <Button variant="outline" className={styles.fullWidth} onClick={() => setOpen(true)}>
           Get a new recovery phrase
-        </button>
+        </Button>
       </div>
     )
   }
@@ -184,12 +185,12 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
 
       <InlineError>{error}</InlineError>
 
-      <button type="submit" className={styles.submit} disabled={working !== null}>
+      <Button type="submit" className={styles.fullWidth} busy={working !== null}>
         {working ?? 'Issue a new phrase'}
-      </button>
-      <button
-        type="button"
-        className={styles.secondary}
+      </Button>
+      <Button
+        variant="ghost"
+        className={styles.fullWidth}
         disabled={working !== null}
         onClick={() => {
           setOpen(false)
@@ -199,7 +200,7 @@ export function ReissueRecoveryPhrase({ email }: { email: string }) {
         }}
       >
         Cancel
-      </button>
+      </Button>
     </form>
   )
 }

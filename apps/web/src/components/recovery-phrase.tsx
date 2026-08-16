@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { normalizeRecoveryPhrase } from '@cloakcal/crypto'
 import { InlineError } from './ui/inline-error'
+import { Button } from './ui/button'
 import styles from './auth.module.css'
 
 /**
@@ -153,13 +154,16 @@ export function RecoveryPhrase({
           phrase on paper and keep it somewhere you would keep a passport.
         </p>
 
-        <button type="button" className={styles.secondary} onClick={downloadKit}>
+        {/* Order follows importance, not the DOM habit of primary-first: writing the
+            phrase down is the step that matters, so it takes the solid button and the
+            copy download stays quiet beside it. */}
+        <Button variant="outline" className={styles.fullWidth} onClick={downloadKit}>
           Download a copy
-        </button>
+        </Button>
 
-        <button type="button" className={styles.submit} onClick={() => setStage('confirm')}>
+        <Button className={styles.fullWidth} onClick={() => setStage('confirm')}>
           I have written it down
-        </button>
+        </Button>
       </div>
     )
   }
@@ -194,12 +198,12 @@ export function RecoveryPhrase({
         ))}
       </div>
 
-      <button type="submit" className={styles.submit}>
+      <Button type="submit" className={styles.fullWidth}>
         Confirm and open my calendar
-      </button>
-      <button type="button" className={styles.secondary} onClick={() => setStage('read')}>
+      </Button>
+      <Button variant="ghost" className={styles.fullWidth} onClick={() => setStage('read')}>
         Show me the phrase again
-      </button>
+      </Button>
     </form>
   )
 }

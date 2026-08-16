@@ -91,6 +91,36 @@ const DARK = {
   textPrimaryOnSunken: '#f5f6fa',
   textSecondaryOnSunken: '#b2b4b8', // rgba(245,246,250,0.72) over #070910
   surfaceSunken: '#070910',
+  /* The filled form field. Ink composited over --field-bg, not over a surface: a field is
+   * its own ground, and checking its label against the card behind it measures a pairing
+   * that never appears on screen. */
+  fieldBg: '#10131d',
+  textPrimaryOnField: '#f5f6fa',
+  textSecondaryOnField: '#b5b6bc', // rgba(245,246,250,0.72) over #10131d
+  /* The PLACEHOLDER, which is text and owes 4.5 like any other text. Tertiary is what a
+   * placeholder normally borrows and it is the ink this project has already dimmed into
+   * an AA failure twice. */
+  textTertiaryOnField: '#83858c', // rgba(245,246,250,0.5) over #10131d
+  fieldBorder: '#60626a', // rgba(245,246,250,0.35) over #10131d
+  focusRing: '#b8b0ff',
+  /*
+   * The landing hero's event blocks. Each is a calendar colour at low alpha over
+   * --surface-raised, exactly like the privacy chips, so the ink is measured against the
+   * COMPOSITE and never against the raw wash.
+   *
+   * Teal is why these exist: --text-tertiary lands at 4.28:1 there, an AA failure, and on
+   * the other three grounds at 4.55/4.55/4.77 — passing by a rounding error on the one ink
+   * this project has already dimmed into a failure twice. The secondary values below are
+   * what the second line actually uses.
+   */
+  landingBlockIndigo: '#242548', // rgba(109,92,255,0.16) over #161a25
+  landingBlockTeal: '#183437', // rgba(34,211,166,0.14) over #161a25
+  landingBlockRose: '#352331', // rgba(244,87,123,0.14) over #161a25
+  textSecondaryOnBlockIndigo: '#babbc8',
+  textSecondaryOnBlockTeal: '#b7c0c3',
+  textSecondaryOnBlockRose: '#bfbbc2',
+  textSecondaryOnOverlay: '#b8bac1', // rgba(245,246,250,0.72) over #1c2130
+  surfaceOverlay: '#1c2130',
   accent: '#6152e6',
   accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
@@ -158,6 +188,14 @@ const LIGHT = {
   /* Success as TEXT. The shape colour (#0f9c78) is 3.47:1 and fails as a 12px label. */
   statusSuccessText: '#0a7357',
   surfaceSunken: '#e9ebf2',
+  /* The filled form field. See the dark block for why these are composited over the field
+   * rather than over a surface. */
+  fieldBg: '#f2f4f9',
+  textPrimaryOnField: '#0b0d14',
+  textSecondaryOnField: '#55575d', // rgba(11,13,20,0.68) over #f2f4f9
+  textTertiaryOnField: '#676970', // rgba(11,13,20,0.60) over #f2f4f9
+  fieldBorder: '#8a8c92', // rgba(11,13,20,0.45) over #f2f4f9
+  focusRing: '#4a3ac9',
   accent: '#5847e0',
   accentHover: '#4a3ac9',
   accentText: '#4a3ac9',
@@ -199,6 +237,50 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/body on sunken', foreground: LIGHT.textPrimaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'light/secondary on sunken', foreground: LIGHT.textSecondaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'light/numeral ink on sunken', foreground: LIGHT.numeralInk, background: LIGHT.surfaceSunken, minimum: 4.5 },
+
+  /*
+   * The filled form field, new in the control pass.
+   *
+   * Four pairs per theme, and the two that matter are the last two. The PLACEHOLDER is
+   * text and owes 4.5, which is the pair that stops the usual mistake of reaching for
+   * tertiary ink — this project has already dimmed into an AA failure twice that way. The
+   * BORDER owes 3:1 because it is the boundary that identifies the control (WCAG 1.4.11),
+   * and it is measured against the field's own fill rather than against the page: the
+   * intended borderless design is not reachable on this palette, since a fill 3:1 above
+   * --surface-base lands near #5a5d65 and reads as a disabled slab. The border does the
+   * identifying, so the border is what gets held to the number.
+   *
+   * The FOCUS RING is checked here too, and it was checked nowhere before. globals.css has
+   * shipped a global :focus-visible outline since launch and no pair ever measured it
+   * against anything — which was survivable while every field was transparent and the ring
+   * sat on a page ground already pinned, and stops being survivable the moment fields get
+   * a ground of their own.
+   */
+  { name: 'dark/body on field', foreground: DARK.textPrimaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/secondary on field', foreground: DARK.textSecondaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/placeholder on field', foreground: DARK.textTertiaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/field border on field', foreground: DARK.fieldBorder, background: DARK.fieldBg, minimum: 3 },
+  { name: 'dark/focus ring on field', foreground: DARK.focusRing, background: DARK.fieldBg, minimum: 3 },
+  { name: 'light/body on field', foreground: LIGHT.textPrimaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/secondary on field', foreground: LIGHT.textSecondaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/placeholder on field', foreground: LIGHT.textTertiaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/field border on field', foreground: LIGHT.fieldBorder, background: LIGHT.fieldBg, minimum: 3 },
+  { name: 'light/focus ring on field', foreground: LIGHT.focusRing, background: LIGHT.fieldBg, minimum: 3 },
+
+  /*
+   * The landing hero's event blocks, dark only — the landing is data-theme="dark" committed.
+   *
+   * The block's SECOND LINE (a place, or the word "Busy") is the pairing that matters, and it
+   * was a live AA failure until the hero shipped: tertiary ink on the teal wash is 4.28:1.
+   * Nothing here could have caught it, because the landing's axe run only sees a violation
+   * once the animation that reveals the text actually runs — and it did not, for a while, due
+   * to an undefined easing token. Two bugs hiding one another.
+   */
+  { name: 'dark/place on indigo block', foreground: DARK.textSecondaryOnBlockIndigo, background: DARK.landingBlockIndigo, minimum: 4.5 },
+  { name: 'dark/place on teal block', foreground: DARK.textSecondaryOnBlockTeal, background: DARK.landingBlockTeal, minimum: 4.5 },
+  { name: 'dark/place on rose block', foreground: DARK.textSecondaryOnBlockRose, background: DARK.landingBlockRose, minimum: 4.5 },
+  { name: 'dark/busy label on overlay block', foreground: DARK.textSecondaryOnOverlay, background: DARK.surfaceOverlay, minimum: 4.5 },
+  { name: 'dark/title on teal block', foreground: DARK.textPrimary, background: DARK.landingBlockTeal, minimum: 4.5 },
   { name: 'dark/body on base', foreground: DARK.textPrimary, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/body on raised', foreground: DARK.textPrimary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },

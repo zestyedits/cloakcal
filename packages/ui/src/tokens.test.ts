@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   CONTRAST_PAIRS,
@@ -6,6 +8,12 @@ import {
   contrastRatio,
   relativeLuminance,
 } from './tokens.js'
+
+/** The field values the CONTRAST_PAIRS entries are built on, named once. */
+const FIELD_BG_DARK = '#10131d'
+const FIELD_BG_LIGHT = '#f2f4f9'
+const FIELD_BORDER_DARK = '#60626a'
+const FIELD_BORDER_LIGHT = '#8a8c92'
 
 /**
  * Accessibility is a launch requirement (spec §2), so contrast is asserted rather than
@@ -70,5 +78,66 @@ describe('privacy levels', () => {
   it('covers every level exactly once, in order', () => {
     expect([...PRIVACY_ORDER].sort()).toEqual(Object.keys(PRIVACY_LEVELS).sort())
     expect(PRIVACY_ORDER).toHaveLength(new Set(PRIVACY_ORDER).size)
+  })
+})
+
+/**
+ * The composited hexes in tokens.ts actually match what tokens.css declares.
+ *
+ * Every alpha ink in CONTRAST_PAIRS is a HAND-COMPUTED mirror of a rule in tokens.css —
+ * `rgba(245,246,250,0.72) over #10131d` is a comment, not a calculation, and nothing has
+ * ever checked that the comment is true. That is a real gap rather than a hypothetical: the
+ * pairs are the only thing standing between this palette and the AA failures it has shipped
+ * four times, and a pair measuring a colour the stylesheet no longer uses passes while
+ * checking nothing.
+ *
+ * Scoped to the field tokens, which are the ones introduced with this test and the ones
+ * whose numbers were worked out by hand. Extending it to the privacy chip composites is
+ * worth doing and is deliberately not smuggled in here.
+ */
+describe('the field tokens in tokens.ts match tokens.css', () => {
+  const css = readFileSync(fileURLToPath(new URL('./tokens.css', import.meta.url)), 'utf8')
+
+  /** Strip comments first: several of them contain example values in token syntax. */
+  const rules = css.replace(/\/\*[\s\S]*?\*\//gu, '')
+
+  /** Both declarations of a custom property, in source order: dark block, then light. */
+  const declarations = (name: string): string[] =>
+    [...rules.matchAll(new RegExp(`${name}:\\s*([^;]+);`, 'gu'))].map((m) => m[1]!.trim())
+
+  const composite = (rgba: string, background: string): string => {
+    const parts = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/u.exec(rgba)
+    if (parts === null) throw new Error(`not an rgba value: ${rgba}`)
+    const alpha = Number(parts[4])
+    const back = [1, 3, 5].map((i) => parseInt(background.slice(i, i + 2), 16))
+    return `#${[1, 2, 3]
+      .map((c, i) => Math.round(Number(parts[c]) * alpha + back[i]! * (1 - alpha)))
+      .map((v) => v.toString(16).padStart(2, '0'))
+      .join('')}`
+  }
+
+  it('found exactly one dark and one light declaration of each', () => {
+    // Guards the assertions below from passing vacuously if a token is renamed.
+    expect(declarations('--field-bg')).toHaveLength(2)
+    expect(declarations('--field-border')).toHaveLength(2)
+  })
+
+  it('uses the fill the pairs are measured against', () => {
+    const [dark, light] = declarations('--field-bg')
+    expect(dark).toBe(FIELD_BG_DARK)
+    expect(light).toBe(FIELD_BG_LIGHT)
+  })
+
+  it('composites the border to the hex the 3:1 pair claims', () => {
+    const [dark, light] = declarations('--field-border')
+    expect(composite(dark!, FIELD_BG_DARK)).toBe(FIELD_BORDER_DARK)
+    expect(composite(light!, FIELD_BG_LIGHT)).toBe(FIELD_BORDER_LIGHT)
+  })
+
+  it('keeps the border above 3:1 on its own fill, which is why it is not a hairline', () => {
+    // The number that made the border 0.35/0.45 instead of the 0.14 it replaced. If someone
+    // softens it back for looks, this is what says no.
+    expect(contrastRatio(FIELD_BORDER_DARK, FIELD_BG_DARK)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(FIELD_BORDER_LIGHT, FIELD_BG_LIGHT)).toBeGreaterThanOrEqual(3)
   })
 })

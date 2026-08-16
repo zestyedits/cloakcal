@@ -165,6 +165,15 @@
   --radius-xl: 20px;
   --radius-full: 999px;
 
+  /* The radius a thing you TYPE IN or PRESS gets, one step tighter than --radius-md.
+   *
+   * It exists because "controls read as machined rectangles" above was true of the tokens
+   * and not of the screens: buttons, inputs, selects, cards and chips had all landed on
+   * --radius-md, so every rectangle on a form was the same rectangle and nothing had a
+   * shape of its own. 6px against the 14px of the card holding it is the contrast the
+   * comment above is describing; 8px against 14px is not enough to read as intentional. */
+  --radius-control: 6px;
+
   /* ---------------------------------------------------------------------
    * Motion. Durations are short enough to feel immediate; the spec requires
    * motion to be quality, not decoration. Every one of these is overridden
@@ -219,6 +228,31 @@
   --surface-raised: var(--brand-charcoal);
   --surface-overlay: #1c2130;
   --surface-sunken: #070910;
+
+  /* The ground a field is TYPED INTO.
+   *
+   * Its own token rather than a --surface-* reuse, and light theme is why: there
+   * --surface-raised and --surface-overlay are BOTH #ffffff, so a field built on either
+   * one is invisible against a white card in exactly one theme and perfect in the other.
+   * That is the kind of bug that ships, because whoever builds it is looking at dark.
+   *
+   * THE BORDER STAYS, and that is a measured decision rather than a compromise. The
+   * intended design was a filled field with no outline at all, which WCAG 1.4.11 permits
+   * only when the fill itself clears 3:1 against the page around it. On this palette it
+   * cannot: --surface-base is #0b0d14, so a fill 3:1 above it lands near #5a5d65 — a
+   * mid-grey slab on a near-black page, which reads as a disabled control, not a field.
+   * So the fill says "type here" and the BORDER is the identifying boundary, pinned at
+   * 3:1 against the fill (0.35 composites to #60626a, 3.05:1). What actually changes from
+   * before is that the old border was rgba(...,0.14) — 1.6:1, decorative, and doing the
+   * identification job it was too faint to do.
+   *
+   * The fill is DARKER than both --surface-base and --surface-raised, so a field reads as
+   * sunken into whatever it sits on rather than floating above one and vanishing into the
+   * other. #151a27 was tried first and is within 1.07:1 of --surface-raised (#161a25),
+   * which would have made every settings field invisible on its own card. */
+  --field-bg: #10131d;
+  --field-bg-hover: #151926;
+  --field-border: rgba(245, 246, 250, 0.35);
 
   --border-subtle: rgba(245, 246, 250, 0.08);
   --border-default: rgba(245, 246, 250, 0.14);
@@ -348,6 +382,14 @@
   --surface-raised: #ffffff;
   --surface-overlay: #ffffff;
   --surface-sunken: #e9ebf2;
+
+  /* Lighter than --surface-sunken (#e9ebf2), which is a PANEL ground and reads as a slab
+     when a 44px field wears it. This is a tint off white: enough to separate the field
+     from the card behind it, not enough to look like a disabled control. The border
+     carries the same 3:1 obligation as dark — 0.45 composites to #8a8c92, 3.05:1. */
+  --field-bg: #f2f4f9;
+  --field-bg-hover: #eaedf5;
+  --field-border: rgba(11, 13, 20, 0.45);
 
   --border-subtle: rgba(11, 13, 20, 0.08);
   --border-default: rgba(11, 13, 20, 0.14);

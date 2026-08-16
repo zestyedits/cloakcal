@@ -16,6 +16,7 @@ import { signupsOpen } from '@/lib/signups'
 import { RecoveryPhrase } from './recovery-phrase'
 import { CloakHomeLink } from './cloak-logo'
 import { InlineError } from './ui/inline-error'
+import { Button, ButtonLink } from './ui/button'
 import styles from './auth.module.css'
 
 /**
@@ -185,13 +186,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
           say which, deliberately: if it did, anyone could use it to find out who has a CloakCal
           account. Try signing in, or reset your password.
         </p>
-        <Link
-          href="/sign-in"
-          className={styles.submit}
-          style={{ textAlign: 'center', lineHeight: '44px', textDecoration: 'none' }}
-        >
+        {/* ButtonLink, which is what the inline textAlign/lineHeight/textDecoration
+            overrides here were reimplementing badly: a 44px line-height is not a 44px
+            target, and it broke the moment the label wrapped. */}
+        <ButtonLink href="/sign-in" className={styles.fullWidth}>
           Go to sign in
-        </Link>
+        </ButtonLink>
         <p className={styles.hint} style={{ textAlign: 'center' }}>
           <Link href="/recover">Reset your password</Link>
         </p>
@@ -270,9 +270,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
             stolen database expensive to attack.
           </p>
         ) : (
-          <button type="submit" className={styles.submit}>
+          <Button type="submit" className={styles.fullWidth}>
             {mode === 'sign-up' ? 'Create account' : 'Sign in'}
-          </button>
+          </Button>
         )}
       </div>
 

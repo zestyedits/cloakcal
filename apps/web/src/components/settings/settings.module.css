@@ -435,17 +435,45 @@
   line-height: var(--leading-relaxed);
 }
 
+/*
+ * The same filled field as the auth screens. See auth.module.css for the full reasoning and
+ * tokens.css for why the border stays.
+ *
+ * `background-color`, NOT the `background` shorthand: `.select` below paints its chevron
+ * with `background-image`, and the shorthand resets it. That works today only because the
+ * shorthand happens to come first in source order, which is a dependency on the order of
+ * two rules in one file and exactly the kind of thing a refactor breaks silently.
+ */
 .select,
 .input {
   width: 100%;
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--surface-overlay);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--field-border);
+  background-color: var(--field-bg);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-sm);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.select:hover:not(:disabled),
+.input:hover:not(:disabled) {
+  background-color: var(--field-bg-hover);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select,
+  .input {
+    transition: none;
+  }
 }
 
 /* The selects were left to the platform, so a 420-entry timezone list rendered with
