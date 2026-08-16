@@ -61,6 +61,24 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
+  /* ON THE GRID ITEM, and it has to be here rather than on .navLink, which is where it used
+     to be and where it did the opposite of its job.
+
+     `.nav` is a grid item in `.layout`, and a grid item's default min-width is its CONTENT —
+     so the rail sized itself to all seven labels laid end to end and `overflow-x: auto` never
+     engaged, because there was nothing to overflow. `min-width: 0` on the flex CHILDREN then
+     let each label shrink below its own text instead, and with `white-space: nowrap` the seven
+     labels simply printed on top of each other: at 390px the rail read
+     "Appearance/Time & region/Calendars" overlapping in one illegible smear on /settings,
+     /settings/plan, /settings/security and /settings/availability.
+
+     Exactly the trap CLAUDE.md records about the settings summary titles, one level over:
+     min-width: 0 on the CONTAINER is what a content-sized track needs, and putting it on the
+     item is a different fix to a different problem. Nothing here could see it — axe does not
+     measure legibility, the 44px sweep passed because the touch targets were the right height,
+     and `never scrolls sideways` passed because the squashing is precisely what stopped the
+     page scrolling sideways. It took opening a screenshot. */
+  min-width: 0;
 }
 
 @media (min-width: 860px) {
@@ -119,9 +137,10 @@
   text-decoration: none;
   font-size: var(--text-sm);
   white-space: nowrap;
-  /* A rail item is a flex child in a scroller; without this its content width wins and the
-     track pushes the page sideways at 390px. */
-  min-width: 0;
+  /* `flex: none`, NOT `min-width: 0`, which is what stood here and which squashed every label
+     into the one beside it. A nowrap item that may not shrink is what gives the scroller
+     something to scroll; the room to scroll in comes from `min-width: 0` on `.nav` above. */
+  flex: none;
 }
 
 @media (min-width: 860px) {

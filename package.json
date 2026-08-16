@@ -21,6 +21,7 @@
     "test:a11y": "playwright test --project=a11y",
     "test:visual": "playwright test --project=visual",
     "email:setup": "tsx --env-file-if-exists=.env.email-setup tools/email-setup.ts",
+    "billing:setup": "tsx --env-file-if-exists=.env.stripe-setup tools/stripe-setup.ts",
     "brand:assets": "tsx tools/render-brand-assets.ts",
     "email:templates": "tsx tools/render-email-templates.ts"
   },
@@ -39,6 +40,7 @@
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.1",
     "next": "15.5.23",
+    "stripe": "22.5.0",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

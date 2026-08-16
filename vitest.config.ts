@@ -10,7 +10,21 @@ import { defineConfig } from 'vitest/config'
  * app's own convention and should not be rewritten to suit the runner.
  */
 const webSrc = fileURLToPath(new URL('./apps/web/src/', import.meta.url))
-const webAlias = { resolve: { alias: { '@/': webSrc } } }
+
+/**
+ * `server-only` is not a dependency of this workspace — Next aliases the bare specifier to
+ * its own compiled copy during a build, so it resolves inside `next build` and nowhere else.
+ * Without this stub, importing anything from `apps/web/src/server/` that carries the
+ * directive fails to resolve, which is why no test did until billing. See the stub's header
+ * for why this does not weaken the boundary it stands in for.
+ */
+const serverOnlyStub = fileURLToPath(
+  new URL('./apps/web/test/stubs/server-only.ts', import.meta.url),
+)
+
+const webAlias = {
+  resolve: { alias: { '@/': webSrc, 'server-only': serverOnlyStub } },
+}
 
 /**
  * Every declared project MUST contain tests.

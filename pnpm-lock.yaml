@@ -35,6 +35,9 @@ importers:
       next:
         specifier: 15.5.23
         version: 15.5.23(@playwright/test@1.62.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      stripe:
+        specifier: 22.5.0
+        version: 22.5.0(@types/node@24.13.3)
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
@@ -53,6 +56,9 @@ importers:
       '@cloakcal/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
+      '@cloakcal/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@cloakcal/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -74,12 +80,18 @@ importers:
       next:
         specifier: ^15.5.4
         version: 15.5.23(@playwright/test@1.62.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      postgres:
+        specifier: 3.4.9
+        version: 3.4.9
       react:
         specifier: ^19.1.1
         version: 19.2.8
       react-dom:
         specifier: ^19.1.1
         version: 19.2.8(react@19.2.8)
+      stripe:
+        specifier: 22.5.0
+        version: 22.5.0(@types/node@24.13.3)
     devDependencies:
       '@types/react':
         specifier: ^19.1.9
@@ -1013,6 +1025,10 @@ packages:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
 
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
+
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
@@ -1080,6 +1096,15 @@ packages:
 
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
+
+  stripe@22.5.0:
+    resolution: {integrity: sha512-QVwMwriC0bbySx6R4dpsvJ0W//GojC1kwWVS6rPSoVqDUIZX4Hy3TaUrd2AZeXEAaKbfWIjQjvo3vKAReHZ0vQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
@@ -1957,6 +1982,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  postgres@3.4.9: {}
+
   punycode@2.3.1: {}
 
   pure-rand@8.4.2: {}
@@ -2064,6 +2091,10 @@ snapshots:
   strip-literal@3.1.0:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@22.5.0(@types/node@24.13.3):
+    optionalDependencies:
+      '@types/node': 24.13.3
 
   styled-jsx@5.1.6(react@19.2.8):
     dependencies:

@@ -12,6 +12,7 @@
   "dependencies": {
     "@cloakcal/cloak-store": "workspace:*",
     "@cloakcal/crypto": "workspace:*",
+    "@cloakcal/db": "workspace:*",
     "@cloakcal/domain": "workspace:*",
     "@cloakcal/policy": "workspace:*",
     "@cloakcal/ui": "workspace:*",
@@ -19,8 +20,10 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
     "next": "^15.5.4",
+    "postgres": "3.4.9",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "stripe": "22.5.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.9",

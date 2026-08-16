@@ -551,7 +551,7 @@ export function SettingsScreen({
             >
               <p className={styles.sectionLede}>
                 Free covers everything CloakCal does today. Pro is named and priced on the
-                plan page, and cannot be bought yet: billing opens when sign-ups do.
+                plan page, along with anything on file about how you pay for it.
               </p>
               {/* Unlike Security, this link is offered in the demo too. The plan page reads
                   no account state and renders the same either way, so pointing at it is not

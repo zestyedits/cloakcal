@@ -197,3 +197,28 @@ export function annualMonthsFree(price: PlanPrice): number {
   if (price.monthlyCents === 0) return 0
   return Math.floor((price.monthlyCents * 12 - price.annualCents) / price.monthlyCents)
 }
+
+/**
+ * An amount in a provider's minor units, in a provider's currency.
+ *
+ * BESIDE `formatPlanPrice` because the "$8, not $8.00" rule is theirs jointly and a second
+ * home for it is a second answer. It lived in `server/billing/view.ts`, which meant a route
+ * handler imported a module that pulls in the whole Stripe SDK in order to format a number.
+ *
+ * Unlike `formatPlanPrice` this takes the currency as data rather than as a literal type,
+ * because the caller is Stripe: an invoice or a proration comes back in whatever currency the
+ * subscription was created in, which is not necessarily one this catalog knows about.
+ */
+export function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: amount % 100 === 0 ? 0 : 2,
+    }).format(amount / 100)
+  } catch {
+    // An unrecognised currency code throws rather than falling back, and a billing page must
+    // not 500 over a number. The code beside the figure beats no figure.
+    return `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`
+  }
+}

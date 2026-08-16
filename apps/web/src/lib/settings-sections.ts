@@ -64,6 +64,8 @@ export const SECTIONS = [
   {
     id: 'plan',
     label: 'Plan',
-    description: 'What your account includes, and what Pro will cost when billing opens.',
+    // A claim with an expiry date on it. It said "when billing opens" for as long as billing
+    // could not open, and the page beneath it now sometimes takes a payment.
+    description: 'What your account includes, and what Pro costs.',
   },
 ] as const

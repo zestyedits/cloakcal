@@ -9,7 +9,7 @@ const config: NextConfig = {
   // privacy, purely because E2E ran first.
   distDir: process.env['NEXT_DIST_DIR'] ?? '.next',
   // Workspace packages ship TypeScript source; Next must compile them.
-  transpilePackages: ['@cloakcal/ui', '@cloakcal/domain', '@cloakcal/crypto', '@cloakcal/cloak-store', '@cloakcal/policy'],
+  transpilePackages: ['@cloakcal/db', '@cloakcal/ui', '@cloakcal/domain', '@cloakcal/crypto', '@cloakcal/cloak-store', '@cloakcal/policy'],
   typedRoutes: true,
 
   // The dev-mode indicator badge renders on top of the page and would be baked into every

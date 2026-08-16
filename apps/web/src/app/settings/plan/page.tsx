@@ -1,7 +1,11 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
+import { billingEnabled } from '@/server/billing/config'
+import { FIXTURE_BILLING, isBillingState } from '@/server/billing/fixture'
+import { loadBillingView } from '@/server/billing/view'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
 import { loadPlan } from '@/server/plan'
+import { DISPLAY_TIMEZONE } from '@/server/range'
 import { loadWorkspacePrefs } from '@/server/settings'
 import { PlanScreen } from '@/components/settings/plan-screen'
 
@@ -20,14 +24,44 @@ export const metadata = { title: 'Plan · CloakCal' }
  */
 export const dynamic = 'force-dynamic'
 
-export default async function PlanPage() {
+export default async function PlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const fixtureMode = isDevFixtureEnabled()
 
   // The demo renders the whole page, honestly: the catalog, plus a note saying there is no
   // account here. That is what puts the price cards, the roadmap rows and their tokens in
   // front of the axe scan and the 44px sweep at all, since every Playwright project runs in
   // fixture mode. loadPlan handles this branch itself and never touches Supabase.
-  if (fixtureMode) return <PlanScreen demo plan={await loadPlan(null)} />
+  if (fixtureMode) {
+    /*
+     * THE BILLING PREVIEW, and it is gated by `fixtureMode` rather than by a check of its own.
+     *
+     * `isDevFixtureEnabled()` is `NODE_ENV !== 'production'` AND an explicit flag, and Next
+     * inlines NODE_ENV at build time, so a production bundle cannot reach this branch at all —
+     * the query parameter is not merely ignored in production, the code that reads it is gone.
+     * That is deliberately the SAME gate as the fixture calendar and the published seed key
+     * rather than a fourth one, per CLAUDE.md: those three move together, and a preview of a
+     * purchase screen belongs with them.
+     *
+     * It is also the only way the billing controls are ever measured. See
+     * `server/billing/fixture.ts` for why a flag-on Playwright project cannot substitute.
+     */
+    const params = await searchParams
+    const requested = params.billing
+    const state = Array.isArray(requested) ? requested[0] : requested
+
+    return (
+      <PlanScreen
+        demo
+        plan={await loadPlan(null)}
+        billing={isBillingState(state) ? FIXTURE_BILLING[state] : null}
+        billingPreview={isBillingState(state)}
+      />
+    )
+  }
 
   const supabase = await supabaseServer()
   const { data } = await supabase.auth.getUser()
@@ -40,7 +74,32 @@ export default async function PlanPage() {
   const prefs = await loadWorkspacePrefs()
   const plan = await loadPlan(prefs?.workspaceId ?? null)
 
+  /*
+   * NULL WHEN BILLING IS OFF, which is every environment today, and the screen's null branch
+   * is the page exactly as it was before this feature existed.
+   *
+   * The timezone is the workspace's, because `loadBillingView` formats the renewal date on the
+   * SERVER. Formatting it in the browser would guess the zone from the host and risk a
+   * hydration mismatch on the one line in this product that says when money moves.
+   */
+  const billing = billingEnabled()
+    ? await loadBillingView(prefs?.workspaceId ?? null, prefs?.timezone ?? DISPLAY_TIMEZONE)
+    : null
+
+  /*
+   * WHERE STRIPE SENT THEM BACK TO, and reading it closes a real double-purchase window.
+   *
+   * `success_url` has been `?checkout=done` since the checkout route was written and NOTHING
+   * READ IT, so a customer returning before the webhook landed saw the ordinary Free screen
+   * with a live "Continue to Stripe" button — and our own row is written by `billing_writer`
+   * in the webhook, so it cannot possibly be current at that moment. The band suppresses the
+   * purchase control while this is set. It never grants anything.
+   */
+  const params = await searchParams
+  const returned = Array.isArray(params.checkout) ? params.checkout[0] : params.checkout
+  const checkout = returned === 'done' || returned === 'cancelled' ? returned : null
+
   // `demo` passed explicitly, never inferred from an empty email: a signed-in user whose
   // email is null is not demoing, and would otherwise be told they have no account.
-  return <PlanScreen demo={false} plan={plan} />
+  return <PlanScreen demo={false} plan={plan} billing={billing} checkout={checkout} />
 }

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_PLAN_ID,
@@ -29,11 +31,39 @@ describe('what the catalog may claim', () => {
      * THE tripwire. `PlanPurchase` is a union precisely so a third member ('available')
      * makes this fail rather than compile: enabling purchase must be a deliberate act that
      * walks somebody through every place a tier is rendered, not a boolean flipping true.
+     *
+     * PURCHASABILITY TURNED OUT NOT TO BE A CATALOG FACT, and this comment used to imply it
+     * was. The plan for the billing work said `PlanPurchase` would gain `'available'`; it did
+     * not, because `PLANS` is a static constant and cannot know whether THIS DEPLOYMENT has
+     * six billing variables set. A catalog that claimed Pro was purchasable would be wrong on
+     * every environment where it is not — which is all of them today, and would still be some
+     * of them afterwards.
+     *
+     * So `purchase` stays a fact about the CATALOG ("we have not launched this tier"), and
+     * `billingEnabled()` is the fact about the DEPLOYMENT. The screen branches on the second,
+     * and `plan-screen.tsx` renders this field only in the billing-off branch — where "Coming
+     * soon" is exactly right.
      */
     expect(PLANS.filter((tier) => tier.purchase === 'coming-soon').map((t) => t.id)).toEqual([
       'pro',
     ])
     expect(PLANS.filter((tier) => tier.purchase === 'included').map((t) => t.id)).toEqual(['free'])
+  })
+
+  /**
+   * The catalog's "Coming soon" tag and a live purchase control must never be on screen
+   * together, and the way that is guaranteed is structural: the tag lives inside `ProBand`'s
+   * price section, which `plan-screen.tsx` renders only when `billing === null`. Asserted
+   * against the source because no rendered test can hold both branches at once.
+   */
+  it('renders its purchase state only where billing is switched off', () => {
+    const screen = readFileSync(
+      fileURLToPath(new URL('../src/components/settings/plan-screen.tsx', import.meta.url)),
+      'utf8',
+    )
+    // ProBand is what renders `purchaseLabel`, and it is told which branch it is in.
+    expect(screen).toMatch(/purchaseLabel\(tier\.purchase\)/)
+    expect(screen).toMatch(/<ProBand tier=\{pro\} showPricing=\{billing === null\} \/>/)
   })
 
   it('puts everything shipped on the free tier and nothing on Pro', () => {

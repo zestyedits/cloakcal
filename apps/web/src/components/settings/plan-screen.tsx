@@ -8,9 +8,13 @@ import {
   type PlanId,
   type PlanTier,
 } from '@/lib/plans'
+import { describeBilling } from '@/lib/billing-copy'
+import type { BillingView } from '@/server/billing/view'
+import type { CheckoutReturn } from './billing-band'
 import { PageMasthead, PageShell } from '../page-shell'
 import { Button } from '../ui/button'
 import { PlanBadge } from '../ui/plan-badge'
+import { BillingBand } from './billing-band'
 import { SettingsNav } from './settings-nav'
 import settings from './settings.module.css'
 import styles from './plan.module.css'
@@ -37,7 +41,27 @@ import styles from './plan.module.css'
  * cannot have a plan. The "you are on Free" sentence becomes a note saying so, and the badge
  * is not rendered at all.
  */
-export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
+export function PlanScreen({
+  demo,
+  plan,
+  billing = null,
+  billingPreview = false,
+  checkout = null,
+}: {
+  demo: boolean
+  plan: PlanId
+  /**
+   * Null means billing is not switched on for this deployment, which is the state of every
+   * environment today. THE NULL BRANCH BELOW IS UNTOUCHED JSX, so "the page is byte-identical
+   * when billing is off" is a property of the diff rather than a claim, and `e2e/plan.spec.ts`
+   * keeps proving it in a real browser at both breakpoints.
+   */
+  billing?: BillingView | null
+  /** The `?billing=` preview. Inert controls, and they say so. Fixture-gated by the caller. */
+  billingPreview?: boolean
+  /** Where Stripe sent the user back to. Suppresses the purchase control while it settles. */
+  checkout?: CheckoutReturn
+}) {
   const current = planById(plan)
   // By id, NOT by `purchase === 'coming-soon'`. Selecting on the purchase state would make
   // this whole section disappear the day Pro becomes buyable — silently, with no type error
@@ -46,9 +70,13 @@ export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
 
   return (
     <PageShell back={{ href: '/settings', label: 'Settings' }}>
+      {/* The lede said "what Pro will cost when billing opens" for as long as it could not be
+          bought. That is a claim with an expiry date on a page that now sometimes takes a
+          payment, so it states the durable fact instead and lets the bands say which case
+          this account is in. */}
       <PageMasthead
         title="Plan"
-        lede="What your account includes today, and what Pro will cost when billing opens."
+        lede="What your account includes today, and what Pro costs."
       />
 
       <div className={settings.layout}>
@@ -70,7 +98,16 @@ export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
               {!demo && <PlanBadge plan={plan} />}
             </div>
 
-            {demo ? (
+            {/* ONE summary sentence, never two. The state-aware version wins whenever billing
+                is live, because "You are on Free. Everything CloakCal does today, for one
+                person." beside "Your Pro subscription ended on 3 March" is one surface
+                contradicting another in the same view — the same reason the badge is
+                suppressed in the demo. */}
+            {billing !== null ? (
+              <p className={settings.sectionLede}>
+                {describeBilling(billing.state, billing.renewsOn).summary}
+              </p>
+            ) : demo ? (
               <p className={settings.lockedNote}>
                 Demo. There is no account here, so there is no plan on file. What follows is
                 what a real account gets.
@@ -112,29 +149,50 @@ export function PlanScreen({ demo, plan }: { demo: boolean; plan: PlanId }) {
               Free, and it stays true on Pro.
             </p>
 
-            <div className={styles.billingRow}>
-              {/* Disabled AND the page says why, per the rule the passkeys card states.
-                  Rendered rather than omitted so the 44px sweep and the axe scan have a real
-                  control to measure, and so "where do I cancel" is answered on screen
-                  instead of being missing. */}
-              <Button variant="outline" disabled>
-                Manage billing
-              </Button>
-              <p className={styles.note}>
-                Billing opens when sign-ups do. There is no card on file, no payment company
-                connected to this account, and nothing to cancel.
-              </p>
-            </div>
+            {billing === null && (
+              <div className={styles.billingRow}>
+                {/* Disabled AND the page says why, per the rule the passkeys card states.
+                    Rendered rather than omitted so the 44px sweep and the axe scan have a real
+                    control to measure, and so "where do I cancel" is answered on screen
+                    instead of being missing. */}
+                <Button variant="outline" disabled>
+                  Manage billing
+                </Button>
+                <p className={styles.note}>
+                  Billing opens when sign-ups do. There is no card on file, no payment company
+                  connected to this account, and nothing to cancel.
+                </p>
+              </div>
+            )}
           </section>
 
-          <ProBand tier={pro} />
+          {/* ITS OWN BAND, not a row at the foot of "Your plan". Everything above is a
+              description of a tier; everything in here can spend money. Burying a purchase
+              control under a features list and a privacy paragraph means the two banners that
+              say "test mode" and "nothing here is real" arrive after a screen of scrolling,
+              which is exactly where a warning stops being read. */}
+          {billing !== null && (
+            <section className={settings.band}>
+              <div className={settings.panelHead}>
+                <h2 className={settings.panelTitle}>Billing</h2>
+              </div>
+              <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
+            </section>
+          )}
+
+          {/* Pro's own price band is suppressed once billing is live, because the band above
+              has already drawn the price cards as a CONTROL. Two copies of $8 and $72 on one
+              page, one pressable and one not, is a page where somebody presses the wrong one.
+              The "what Pro will add" roadmap survives either way — it is the disclosure the
+              entitlement map is checked against. */}
+          <ProBand tier={pro} showPricing={billing === null} />
         </main>
       </div>
     </PageShell>
   )
 }
 
-function ProBand({ tier }: { tier: PlanTier }) {
+function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }) {
   const price = tier.price
   if (price === null) return null
 
@@ -145,6 +203,7 @@ function ProBand({ tier }: { tier: PlanTier }) {
 
   return (
     <>
+      {showPricing && (
       <section className={settings.band}>
         <div className={settings.panelHead}>
           <h2 className={settings.panelTitle}>{tier.name}</h2>
@@ -191,6 +250,7 @@ function ProBand({ tier }: { tier: PlanTier }) {
           changes with them.
         </p>
       </section>
+      )}
 
       <section className={settings.band}>
         <div className={settings.panelHead}>
