@@ -1,0 +1,434 @@
+/*
+ * The hero week, and the motion that reseals it.
+ *
+ * THE ONE RULE THIS FILE EXISTS TO KEEP: the grid never moves. Column widths, hour rules and
+ * every block's `top` and `height` are computed from --from/--span, which do not change when
+ * the audience does. Only the CONTENTS of a block change, and a hidden block leaves clean
+ * grid. That is rule 1 drawn rather than stated — the server keeps times, durations and
+ * repeats readable, and no audience setting hides them.
+ *
+ * It is why the reseal animation is a `clip-path` wipe and NOT a scale or a slide. A
+ * transform on a block would move the thing whose fixity is the entire argument, and it
+ * would do it in the exact moment the visitor is being asked to notice that nothing moved.
+ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* --------------------------------------------------------------------------
+   Who is looking
+   -------------------------------------------------------------------------- */
+
+.chrome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.chromeLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/*
+ * A scrolling rail on a phone rather than a wrapping grid: four people on two ragged rows
+ * reads as a form, and the horizontal rail is the same gesture the mobile week strip already
+ * teaches. `min-width: 0` on the rail plus `flex: none` on each person is what keeps the
+ * cards their own size instead of squeezing to fit.
+ */
+.people {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-1);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.people::-webkit-scrollbar {
+  display: none;
+}
+
+.person {
+  flex: none;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+
+.person:hover {
+  background: var(--surface-overlay);
+}
+
+/*
+ * Selected is a BORDER and a ground, not a colour swap on the label.
+ *
+ * The accent is doing work elsewhere on this page and the privacy inks are spoken for, so
+ * the state is carried by weight and edge — which also means it survives being screenshotted
+ * in greyscale, and does not lean on a hue anyone has to distinguish.
+ */
+.person[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
+  color: var(--text-primary);
+}
+
+.personMark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: var(--surface-overlay);
+  font-family: var(--font-numeral);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* The owner reads as the owner: a filled mark against four outlined ones. */
+.personMark[data-self] {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--brand-white);
+}
+
+.personText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--leading-tight);
+}
+
+.personName {
+  font-size: var(--text-sm);
+}
+
+.personRole {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   The week
+   -------------------------------------------------------------------------- */
+
+.grid {
+  --row-h: 2.5rem;
+  --rows: 8;
+  position: relative;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg), var(--edge-highlight);
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    --row-h: 3rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    padding: var(--space-5);
+  }
+}
+
+/*
+ * The sweep: one band crossing the week, so a change reads as a single motion rather than
+ * seven unrelated flickers. Pure decoration over the top, `pointer-events: none`, and it
+ * cannot affect layout because it is positioned out of flow.
+ */
+.sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 42%,
+    rgba(184, 176, 255, 0.13) 50%,
+    transparent 58%
+  );
+  animation: sweep 900ms var(--ease-decelerate) both;
+}
+
+@keyframes sweep {
+  from {
+    transform: translate3d(-115%, 0, 0);
+  }
+  to {
+    transform: translate3d(115%, 0, 0);
+  }
+}
+
+.gutter {
+  position: relative;
+  /* Clears the day-name row so hour labels line up with the rules beside them. */
+  margin-top: 1.65rem;
+  height: calc(var(--rows) * var(--row-h));
+}
+
+.hour {
+  position: absolute;
+  right: 0;
+  top: calc(var(--h) * var(--row-h));
+  transform: translateY(-0.45em);
+  font-family: var(--font-numeral);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/*
+ * The days scroll sideways when five readable columns do not fit; the hour gutter stays put
+ * because it is the other grid column and lives outside this element.
+ *
+ * `min-width: 0` on the scroller is load-bearing: it is a grid item, a grid item's automatic
+ * minimum size is its content, and without it the track would size to the full 5 × 7rem and
+ * push the whole page sideways instead of scrolling inside itself. That is the same trap
+ * `.hero` hit one file over, and the reason both carry a comment.
+ */
+.daysScroller {
+  min-width: 0;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.daysScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.days {
+  display: grid;
+  /* A floor, not a fixed width: below it the week scrolls, above it the columns share the
+     space. 7rem is where "Discovery call, Nova..." still reads as a sentence. */
+  grid-template-columns: repeat(5, minmax(7rem, 1fr));
+  gap: 1px;
+}
+
+.day {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.dayName {
+  display: block;
+  height: 1.65rem;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: var(--tracking-engraved-caps);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.column {
+  position: relative;
+  height: calc(var(--rows) * var(--row-h));
+  border-left: 1px solid var(--border-subtle);
+}
+
+.rule {
+  display: block;
+  height: var(--row-h);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* --------------------------------------------------------------------------
+   Blocks
+   -------------------------------------------------------------------------- */
+
+/*
+ * `top` and `height` come from --from and --span, which are properties of the EVENT and not
+ * of the audience. Nothing in the level rules below may touch either.
+ */
+.block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: calc(var(--from) * var(--row-h));
+  height: calc(var(--span) * var(--row-h));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+  padding: 2px var(--space-2);
+  border-left: 2px solid var(--brand-indigo);
+  border-radius: var(--radius-sm);
+  background: rgba(109, 92, 255, 0.16);
+  animation: reseal var(--duration-cloak) var(--ease-decelerate) both;
+  animation-delay: calc(var(--col) * 70ms);
+}
+
+/*
+ * A WIPE, not a fade-and-scale. The block's box is fixed by the rules above and the clip
+ * reveals its contents inside that box, so the thing whose stillness is the argument stays
+ * still while its contents change.
+ */
+@keyframes reseal {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.block[data-color='teal'] {
+  border-left-color: var(--brand-teal);
+  background: rgba(34, 211, 166, 0.14);
+}
+
+.block[data-color='rose'] {
+  border-left-color: var(--brand-rose);
+  background: rgba(244, 87, 123, 0.14);
+}
+
+/*
+ * `limited` keeps the calendar's colour but loses the wash, and `busy` loses the colour
+ * entirely. That is the level ladder drawn: one step is "less detail about the same thing",
+ * the next is "a shape where a thing used to be".
+ */
+.block[data-level='limited'] {
+  background: var(--surface-overlay);
+}
+
+.block[data-level='busy'] {
+  border-left-color: var(--border-strong);
+  background: var(--surface-overlay);
+}
+
+.blockTitle {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Secondary, not tertiary, and the reason is measured. Tertiary ink composites to 4.28:1 on
+ * the teal wash — an AA failure axe caught the moment the reseal animation started working —
+ * and to 4.55/4.55/4.77 on the other three grounds, which is passing by a rounding error on
+ * ink this project has already dimmed into a failure twice. Secondary is 7.15:1 at worst and
+ * still a clear step below the title's primary, which is all the hierarchy this needs.
+ */
+.block[data-level='busy'] .blockTitle {
+  color: var(--text-secondary);
+}
+
+.blockPlace {
+  font-size: 10px;
+  line-height: 1.2;
+  /* See the note on the busy title above: tertiary fails on the teal wash. */
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * A half-hour block is one row tall at most — 1.25rem of usable height — and a second line
+ * inside it does not get clipped so much as sliced, leaving a band of half-letters under the
+ * title. The 09:00 standup showed exactly that. Hide the second line rather than shrink the
+ * block: the block's height is the event's DURATION and is not ours to adjust.
+ */
+.block[data-short] .blockPlace {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .blockTitle {
+    font-size: var(--text-xs);
+  }
+
+  .blockPlace {
+    font-size: 11px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Copy under the grid
+   -------------------------------------------------------------------------- */
+
+.summary {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.summary strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.caption {
+  margin: 0;
+  max-width: 46ch;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-tertiary);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Reduced motion removes the MOTION, not the information. The audience still changes and the
+ * blocks still reseal — they simply arrive rather than wipe, and the sweep does not run at
+ * all, because a band travelling across the viewport is the part that causes trouble.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .sweep {
+    display: none;
+  }
+
+  .block {
+    animation: none;
+  }
+
+  .person {
+    transition: none;
+  }
+}

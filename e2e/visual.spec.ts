@@ -29,11 +29,12 @@ test('agenda view — mobile', async ({ page }) => {
 
 test('landing — desktop', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
-  // Reduced motion BEFORE navigation: the demo's auto-advance timer never starts, so the
-  // card sits deterministically on the server-rendered "You" state.
+  // Reduced motion BEFORE navigation: the hero's auto-advance timer never starts and the
+  // reseal animation is off, so the week sits deterministically on the server-rendered
+  // "You" state with every block already painted.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?landing=1')
-  await expect(page.getByText('Legal call, custody')).toBeVisible()
+  await expect(page.getByText('Discovery call, Novaline')).toBeVisible()
   await expect(page).toHaveScreenshot('landing-desktop.png', { fullPage: true })
 })
 
@@ -41,7 +42,7 @@ test('landing — mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/?landing=1')
-  await expect(page.getByText('Legal call, custody')).toBeVisible()
+  await expect(page.getByText('Discovery call, Novaline')).toBeVisible()
   await expect(page).toHaveScreenshot('landing-mobile.png', { fullPage: true })
 })
 

@@ -1,7 +1,7 @@
 import { CloakLockup } from './cloak-logo'
 import { ButtonLink } from './ui/button'
 import { Icon } from './ui/icons'
-import { LandingDemo } from './landing-demo'
+import { LandingCalendar } from './landing-calendar'
 import { LandingReveal } from './landing-reveal'
 import styles from './landing.module.css'
 
@@ -52,18 +52,19 @@ export function Landing() {
               Everyone else sees nothing.
             </p>
             <div className={styles.ctaRow}>
-              <ButtonLink variant="outline" href="/sign-in">
-                Sign in
-              </ButtonLink>
+              {/* ONE solid button on the page. The hero and the header both used to render
+                  an outline "Sign in", so the landing had two identical grey boxes and no
+                  anchor anywhere — every element competing at the same weight is most of
+                  what made this page read as generic. The header keeps its outline; this
+                  one is the action. */}
+              <ButtonLink href="/sign-in">Sign in</ButtonLink>
             </div>
           </div>
 
-          <div className={styles.heroDemo}>
-            {/* No backdrop motif, deliberately: an oversized faded mark behind the card
-                read as an accidental blob, and a watermark is its own kind of slop. The
-                demo card carries this column alone. */}
-            <LandingDemo />
-          </div>
+          {/* Full width, under the copy rather than beside it. See .heroCopy in
+              landing.module.css: a week squeezed into a half column can only be a card, and
+              a card cannot show four people reading the same week differently. */}
+          <LandingCalendar />
         </section>
 
         <LandingReveal>

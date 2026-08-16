@@ -103,6 +103,24 @@ const DARK = {
   textTertiaryOnField: '#83858c', // rgba(245,246,250,0.5) over #10131d
   fieldBorder: '#60626a', // rgba(245,246,250,0.35) over #10131d
   focusRing: '#b8b0ff',
+  /*
+   * The landing hero's event blocks. Each is a calendar colour at low alpha over
+   * --surface-raised, exactly like the privacy chips, so the ink is measured against the
+   * COMPOSITE and never against the raw wash.
+   *
+   * Teal is why these exist: --text-tertiary lands at 4.28:1 there, an AA failure, and on
+   * the other three grounds at 4.55/4.55/4.77 — passing by a rounding error on the one ink
+   * this project has already dimmed into a failure twice. The secondary values below are
+   * what the second line actually uses.
+   */
+  landingBlockIndigo: '#242548', // rgba(109,92,255,0.16) over #161a25
+  landingBlockTeal: '#183437', // rgba(34,211,166,0.14) over #161a25
+  landingBlockRose: '#352331', // rgba(244,87,123,0.14) over #161a25
+  textSecondaryOnBlockIndigo: '#babbc8',
+  textSecondaryOnBlockTeal: '#b7c0c3',
+  textSecondaryOnBlockRose: '#bfbbc2',
+  textSecondaryOnOverlay: '#b8bac1', // rgba(245,246,250,0.72) over #1c2130
+  surfaceOverlay: '#1c2130',
   accent: '#6152e6',
   accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
@@ -248,6 +266,21 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/placeholder on field', foreground: LIGHT.textTertiaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
   { name: 'light/field border on field', foreground: LIGHT.fieldBorder, background: LIGHT.fieldBg, minimum: 3 },
   { name: 'light/focus ring on field', foreground: LIGHT.focusRing, background: LIGHT.fieldBg, minimum: 3 },
+
+  /*
+   * The landing hero's event blocks, dark only — the landing is data-theme="dark" committed.
+   *
+   * The block's SECOND LINE (a place, or the word "Busy") is the pairing that matters, and it
+   * was a live AA failure until the hero shipped: tertiary ink on the teal wash is 4.28:1.
+   * Nothing here could have caught it, because the landing's axe run only sees a violation
+   * once the animation that reveals the text actually runs — and it did not, for a while, due
+   * to an undefined easing token. Two bugs hiding one another.
+   */
+  { name: 'dark/place on indigo block', foreground: DARK.textSecondaryOnBlockIndigo, background: DARK.landingBlockIndigo, minimum: 4.5 },
+  { name: 'dark/place on teal block', foreground: DARK.textSecondaryOnBlockTeal, background: DARK.landingBlockTeal, minimum: 4.5 },
+  { name: 'dark/place on rose block', foreground: DARK.textSecondaryOnBlockRose, background: DARK.landingBlockRose, minimum: 4.5 },
+  { name: 'dark/busy label on overlay block', foreground: DARK.textSecondaryOnOverlay, background: DARK.surfaceOverlay, minimum: 4.5 },
+  { name: 'dark/title on teal block', foreground: DARK.textPrimary, background: DARK.landingBlockTeal, minimum: 4.5 },
   { name: 'dark/body on base', foreground: DARK.textPrimary, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/body on raised', foreground: DARK.textPrimary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },

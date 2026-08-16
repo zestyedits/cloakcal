@@ -25,6 +25,10 @@
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   cursor: pointer;
+  /* ButtonLink renders an <a>, and globals.css underlines anchors. Without this every
+     link-shaped button wore an underline through its label — which is why the one call
+     site that noticed carried an inline `textDecoration: 'none'` of its own. */
+  text-decoration: none;
   transition:
     background var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),

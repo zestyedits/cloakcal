@@ -191,14 +191,32 @@ test.describe('landing', () => {
     expect(tooSmall).toEqual([])
   })
 
-  test('the demo scans clean in every audience state', async ({ page }) => {
-    // A control behind a click is a control nobody tested: axe runs against each state
-    // the tabs can produce, not only the server-rendered one.
+  test('the hero week scans clean in every audience state', async ({ page }) => {
+    // A control behind a click is a control nobody tested: axe runs against each state the
+    // person buttons can produce, not only the server-rendered one. Four states now rather
+    // than three, and the fourth is the one worth having — `public` is the only state where
+    // several blocks are ABSENT rather than merely quieter, so it is the only one that
+    // exercises the grid with holes in it.
     await page.goto('/?landing=1')
-    // exact: true — "You" is a substring of "Your client" under the default name match.
-    for (const tab of ['Your client', 'Everyone else', 'You']) {
-      await page.getByRole('button', { name: tab, exact: true }).click()
-      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+    for (const person of ['Priya', 'Marcus', 'Everyone else', 'You']) {
+      await page.getByRole('button', { name: new RegExp(person) }).click()
+      /*
+       * Bounded, for the three reasons the light sweep below documents in full: `a.finished`
+       * resolves with the Animation object, an infinite animation never settles, and a
+       * cancelled one rejects. Clicking a person cancels the reseal mid-flight by design, so
+       * this call site can genuinely hit the third case — the old spelling here survived only
+       * because the previous demo's animation was shorter than the click that followed it.
+       */
+      await page.evaluate(async () => {
+        const settled = new Promise<void>((resolve) => setTimeout(resolve, 2_000))
+        const painted = Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => undefined)),
+        ).then(() => undefined)
+        await Promise.race([painted, settled])
+      })
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze()

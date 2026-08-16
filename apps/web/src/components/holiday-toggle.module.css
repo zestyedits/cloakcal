@@ -53,9 +53,9 @@
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border-strong);
   color: transparent;
-  transition: background-color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .mark[data-on] {
@@ -84,7 +84,7 @@
 
 .name {
   color: var(--text-secondary);
-  transition: color var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
 /*
