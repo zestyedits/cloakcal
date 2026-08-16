@@ -351,10 +351,53 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-3);
+  /* WRAPS, because this row now carries five items including two links. Without it the
+     footer is the widest element on the page at 390px and takes the whole document into
+     horizontal overflow — the trap `never scrolls sideways` exists to catch, and the one
+     that put /settings sideways once already. */
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   padding: var(--space-8) var(--space-5);
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+/* The separator dots are decoration; hide them once the row wraps and they land at the
+   start of a line, where they read as a bullet nobody asked for. */
+@media (max-width: 30rem) {
+  .footer > span[aria-hidden='true'] {
+    display: none;
+  }
+}
+
+.footerLink {
+  /* Secondary rather than tertiary ink: these are the only interactive things in the footer,
+     and a link the same weight as the copy beside it is a link nobody sees. */
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+
+  /* THE 44px FLOOR, and this comment used to argue for an exception.
+     It said a 44px target here would "open a gap in the middle of a sentence-height row",
+     which was a preference dressed up as a reason — and the landing a11y sweep failed it
+     immediately, which is the sweep doing exactly its job. These are the only two links a
+     signed-out visitor has besides Sign in, they are the ones a regulator and an app store
+     follow, and there is no version of "too small to tap" that is acceptable on them. The
+     footer wraps, so the row simply gets taller. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+}
+
+.footerLink:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.footerLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ---------------------------------------------------------------- reveal */

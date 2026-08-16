@@ -650,6 +650,30 @@
   font-size: var(--text-sm);
 }
 
+/* The legal links, below the roadmap rows. Quiet, but a real 44px target each: unlike the
+   landing footer these sit in a settings list where every other row honours the floor. */
+.legalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.legalRow a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.legalRow a:hover {
+  text-decoration: underline;
+}
+
 .deferredRow:first-of-type {
   border-top: 0;
 }

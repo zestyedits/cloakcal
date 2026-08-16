@@ -26,7 +26,19 @@ import { NONCE_HEADER, SECURITY_HEADERS, buildCsp, createNonce } from '@/lib/csp
  * for a signed-in one — page.tsx branches on the session. The prefix check appends a
  * slash before matching, so listing '/' makes exactly the root public, nothing else.
  */
-export const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/recover', '/auth/callback']
+export const PUBLIC_PATHS = [
+  '/',
+  '/sign-in',
+  '/sign-up',
+  '/recover',
+  '/auth/callback',
+  // A legal page behind the auth guard is a legal page nobody can read, and the people most
+  // likely to want these are strangers deciding whether to sign up at all. They are also what
+  // an app store, a payment processor and a regulator ask for by URL — none of which have a
+  // session either.
+  '/privacy',
+  '/terms',
+]
 
 /**
  * Public paths a signed-in user has no business on, and gets bounced home from.

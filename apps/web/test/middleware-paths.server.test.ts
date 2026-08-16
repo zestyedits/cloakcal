@@ -22,6 +22,22 @@ describe('middleware path lists', () => {
     expect(PUBLIC_PATHS).toContain('/recover')
   })
 
+  it('serves the legal pages to people with no account', () => {
+    // The whole audience for these is strangers deciding whether to trust the product, plus
+    // app stores, payment processors and regulators — none of which have a session. Behind
+    // the guard they would 307 to /sign-in, which is the same failure `/auth/callback` and
+    // the generated `/opengraph-image` route each shipped once.
+    expect(PUBLIC_PATHS).toContain('/privacy')
+    expect(PUBLIC_PATHS).toContain('/terms')
+  })
+
+  it('does not bounce a signed-in user off the legal pages', () => {
+    // They are public AND useful once you have an account — Settings links to both. This is
+    // the /recover distinction restated: public does not imply "pointless once signed in".
+    expect(SIGNED_IN_ELSEWHERE).not.toContain('/privacy')
+    expect(SIGNED_IN_ELSEWHERE).not.toContain('/terms')
+  })
+
   it('serves the landing page at the root without a session', () => {
     // `/` is the landing for a signed-out visitor and the calendar for a signed-in one;
     // page.tsx branches on the session. The prefix check appends a slash before matching,

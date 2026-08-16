@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import Link from 'next/link'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
 import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
@@ -594,6 +595,15 @@ export function SettingsScreen({
               <span className={styles.soon}>Coming soon</span>
               Deleting a calendar needs an answer for the events it holds. Creating one
               works now, from the sidebar or the Calendars card above.
+            </p>
+
+            {/* Reachable from inside the account as well as from the landing footer. Someone
+                deciding whether to trust the product reads these before signing up; someone
+                deciding whether to keep trusting it reads them after, and should not have to
+                sign out to find them. */}
+            <p className={styles.legalRow}>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
             </p>
           </footer>
         </div>

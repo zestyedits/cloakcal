@@ -1,0 +1,104 @@
+/*
+ * Privacy and terms.
+ *
+ * A reading measure, not an app screen. The only job here is that a long document stays
+ * legible on a phone and does not read as fine print — which is what most policy pages
+ * quietly are, and which would be a strange thing to ship on the one page whose whole purpose
+ * is being believed.
+ *
+ * Body text is --text-base rather than --text-sm for exactly that reason. This is the page
+ * where shrinking the type to fit more in would undercut the content.
+ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  /* ~68 characters. Longer lines are measurably harder to track back from on a return
+     sweep, and this document is ten sections long. */
+  max-width: 38rem;
+}
+
+.updated {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   Contents
+   -------------------------------------------------------------------------- */
+
+.contents {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.contents ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.contents li {
+  font-size: var(--text-sm);
+}
+
+.contents a {
+  /* 44px on a list of ten links would turn the contents into a full screen of its own, so
+     this one deliberately does NOT take the touch floor — it is a shortcut to something
+     already on the page, not a control, and every target it offers is also reachable by
+     scrolling. Stated because the a11y sweep measures `a[href]` and someone will ask. */
+  display: inline-block;
+  padding: var(--space-1) 0;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+.contents a:hover {
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   Sections
+   -------------------------------------------------------------------------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Clears the sticky top bar when an anchor link lands here. Without it a jump puts the
+     heading underneath the chrome, which reads as the link going to the wrong place. */
+  scroll-margin-top: var(--space-16);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+  color: var(--text-primary);
+}
+
+.paragraph {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}

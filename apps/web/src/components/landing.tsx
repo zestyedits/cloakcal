@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { CloakLockup } from './cloak-logo'
 import { ButtonLink } from './ui/button'
 import { Icon } from './ui/icons'
@@ -187,10 +188,20 @@ export function Landing() {
         </LandingReveal>
       </main>
 
+      {/* The legal links live here rather than in the nav, which is the convention people
+          actually scan for them in. They are the last thing a cautious reader checks before
+          deciding whether the honesty ledger above was marketing or a commitment. */}
       <footer className={styles.footer}>
         <span>CloakCal</span>
         <span aria-hidden="true">·</span>
         <span>Encrypted on your device. Shared on your terms.</span>
+        <span aria-hidden="true">·</span>
+        <Link className={styles.footerLink} href="/privacy">
+          Privacy
+        </Link>
+        <Link className={styles.footerLink} href="/terms">
+          Terms
+        </Link>
       </footer>
     </div>
   )
