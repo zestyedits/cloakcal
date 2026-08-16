@@ -1,7 +1,10 @@
 import type Stripe from 'stripe'
 import { stripeClient } from '@/server/billing/stripe'
-import { formatMoney } from '@/server/billing/view'
+import { customerIdOf, ourItem } from '@/server/billing/subscription-item'
+import { formatMoney } from '@/lib/plans'
 import {
+  billingFailure,
+  billingOk,
   billingResponse,
   isFailure,
   prepareBillingRequest,
@@ -40,12 +43,12 @@ export async function POST(request: Request): Promise<Response> {
   const body = await readJson(request)
 
   const intent = body['intent']
-  if (!isIntent(intent)) return Response.json({ error: 'bad_request' }, { status: 400 })
+  if (!isIntent(intent)) return billingFailure('bad_request', 400)
 
   const current = subscription.providerSubscriptionId
   // A `pro` row with no subscription id is an account granted Pro by hand. The screen never
   // draws these controls for it; this is the second gate, for a caller that is not the screen.
-  if (current === null) return Response.json({ error: 'no_subscription' }, { status: 409 })
+  if (current === null) return billingFailure('no_subscription', 409)
 
   /*
    * THE VERSION GUARD, in the house RPC shape: an expected value in, a distinguishable slug
@@ -55,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
    * wrong object with money attached.
    */
   if (body['subscriptionId'] !== current) {
-    return Response.json({ error: 'stale_subscription' }, { status: 409 })
+    return billingFailure('stale_subscription', 409)
   }
 
   const stripe = stripeClient(config)
@@ -65,26 +68,25 @@ export async function POST(request: Request): Promise<Response> {
       await stripe.subscriptions.update(current, {
         cancel_at_period_end: intent === 'cancel',
       })
-      return Response.json({ ok: true })
+      return billingOk()
     }
 
     const cadence = body['cadence']
     if (cadence !== 'monthly' && cadence !== 'annual') {
-      return Response.json({ error: 'bad_request' }, { status: 400 })
+      return billingFailure('bad_request', 400)
     }
     const target = cadence === 'monthly' ? config.priceMonthly : config.priceAnnual
 
     const live = await stripe.subscriptions.retrieve(current)
-    const item = live.items.data.find(
-      (candidate) =>
-        candidate.price.id === config.priceMonthly || candidate.price.id === config.priceAnnual,
-    )
-    if (item === undefined) {
+    // NO FALLBACK HERE, unlike the two read paths. Swapping an item we do not recognise is
+    // how somebody ends up subscribed to two things at once, so this refuses instead.
+    const item = ourItem(live, config)
+    if (item === null) {
       // A subscription carrying neither of our prices is not something this route can reason
       // about, and swapping an item we do not recognise is how somebody ends up on two plans.
-      return Response.json({ error: 'no_subscription' }, { status: 409 })
+      return billingFailure('no_subscription', 409)
     }
-    if (item.price.id === target) return Response.json({ ok: true })
+    if (item.price.id === target) return billingOk()
 
     /*
      * `items[0].id` IS REQUIRED, and omitting it is the single most common way to break a plan
@@ -116,7 +118,7 @@ export async function POST(request: Request): Promise<Response> {
      */
     if (body['confirm'] !== true) {
       const preview = await stripe.invoices.createPreview({
-        customer: typeof live.customer === 'string' ? live.customer : live.customer.id,
+        customer: customerIdOf(live.customer) ?? '',
         subscription: current,
         subscription_details: { items, proration_behavior: proration },
       })
@@ -136,7 +138,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     await stripe.subscriptions.update(current, { items, proration_behavior: proration })
-    return Response.json({ ok: true })
+    return billingOk()
   } catch (error) {
     /*
      * 3DS. An immediate proration charge can need the cardholder's bank to confirm it, and
@@ -145,13 +147,13 @@ export async function POST(request: Request): Promise<Response> {
      * `subscription_update_confirm`, which is precisely what Stripe provides it for.
      */
     if (isStripeCode(error, 'authentication_required')) {
-      return Response.json({ error: 'needs_confirmation' }, { status: 409 })
+      return billingFailure('needs_confirmation', 409)
     }
     if (isStripeCode(error, 'card_declined')) {
-      return Response.json({ error: 'card_declined' }, { status: 402 })
+      return billingFailure('card_declined', 402)
     }
     if (isStripeType(error, 'StripeRateLimitError')) {
-      return Response.json({ error: 'rate_limited' }, { status: 429 })
+      return billingFailure('rate_limited', 429)
     }
 
     // Never Stripe's own message. A decline reason can carry information the issuer gave us
@@ -160,7 +162,7 @@ export async function POST(request: Request): Promise<Response> {
       `[billing] ${intent} failed:`,
       error instanceof Error ? error.message : String(error),
     )
-    return Response.json({ error: 'provider_unavailable' }, { status: 502 })
+    return billingFailure('provider_unavailable', 502)
   }
 }
 

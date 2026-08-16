@@ -1,5 +1,7 @@
 import { stripeClient } from '@/server/billing/stripe'
 import {
+  billingFailure,
+  billingOk,
   billingResponse,
   isFailure,
   prepareBillingRequest,
@@ -36,13 +38,13 @@ export async function POST(request: Request): Promise<Response> {
   // Nothing stops somebody POSTing here with a subscription already live. Stripe would happily
   // create a second one and charge for both.
   if (subscription.providerSubscriptionId !== null) {
-    return Response.json({ error: 'already_subscribed' }, { status: 409 })
+    return billingFailure('already_subscribed', 409)
   }
 
   const body = await readJson(request)
   const cadence = body['cadence']
   if (cadence !== 'monthly' && cadence !== 'annual') {
-    return Response.json({ error: 'bad_request' }, { status: 400 })
+    return billingFailure('bad_request', 400)
   }
 
   const stripe = stripeClient(config)
@@ -100,9 +102,9 @@ export async function POST(request: Request): Promise<Response> {
     })
 
     if (session.url === null) {
-      return Response.json({ error: 'provider_unavailable' }, { status: 502 })
+      return billingFailure('provider_unavailable', 502)
     }
-    return Response.json({ url: session.url })
+    return billingOk({ url: session.url })
   } catch (error) {
     // Never Stripe's message. Same rule as GoTrue's PKCE prose and the RPC hints: a
     // processor's error string is written for whoever built the app.
@@ -110,6 +112,6 @@ export async function POST(request: Request): Promise<Response> {
       '[billing] checkout failed:',
       error instanceof Error ? error.message : String(error),
     )
-    return Response.json({ error: 'provider_unavailable' }, { status: 502 })
+    return billingFailure('provider_unavailable', 502)
   }
 }

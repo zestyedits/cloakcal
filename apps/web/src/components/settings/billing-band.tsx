@@ -89,25 +89,38 @@ export function BillingBand({
   const [busy, setBusy] = useState<Action | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [confirmingCancel, setConfirmingCancel] = useState(false)
-
   /**
-   * WHAT THE SWITCH WOULD ACTUALLY COST, fetched before anything is charged.
+   * ONE PENDING CONFIRMATION, NEVER TWO, AND THAT IS WHY THIS IS A UNION.
    *
-   * Null means "no switch is being proposed". A cadence switch takes money IMMEDIATELY, for a
-   * prorated amount that is neither $8 nor $72, so a button that posts straight through
-   * charges a card for a figure the user was never shown. The Terms promise we show it first;
-   * this is the state that keeps that promise.
+   * It was `confirmingCancel: boolean` plus `proposal: {…} | null`, two independent pieces of
+   * state — so pressing "Switch to yearly" and then "Cancel Pro" rendered BOTH panels at once:
+   * "This charges you $64.20 today" stacked above "Cancel Pro?", with two live confirm buttons
+   * on a screen about money. Neither e2e test saw it, because each opened one panel alone.
    *
-   * If the preview fails, this stays null and NO confirm button is drawn. Refusing to switch
-   * blind is the point — the error is rendered, the action is not offered.
+   * The same split left a second defect. `post()` never cleared `proposal`, so after a
+   * SUCCESSFUL switch the panel stayed up still offering to make the change that had just been
+   * made — `router.refresh()` re-runs the server component but preserves client state.
+   * Ironically a consequence of this file's own "do not set state from the response" rule,
+   * applied to server state and then forgotten for local UI state.
+   *
+   * As one discriminated union both are unrepresentable rather than merely fixed, and a
+   * boolean disappears.
+   *
+   * The `switch` variant carries WHAT IT WOULD COST, fetched before anything is charged. If the
+   * preview fails this stays null and no confirm button is drawn at all: refusing to switch
+   * blind is the point.
    */
-  const [proposal, setProposal] = useState<{
-    cadence: PlanCadence
-    amount: string
-    charges: boolean
-    credit: string | null
-  } | null>(null)
+  const [pending, setPending] = useState<
+    | { kind: 'cancel' }
+    | {
+        kind: 'switch'
+        cadence: PlanCadence
+        amount: string
+        charges: boolean
+        credit: string | null
+      }
+    | null
+  >(null)
 
   const copy = describeBilling(view.state, view.renewsOn)
 
@@ -181,6 +194,11 @@ export function BillingBand({
 
       // An in-app answer. Re-read rather than patch: the server re-asks Stripe and gets the
       // truth, which our own row does not hold yet.
+      //
+      // The panel is CLOSED here. `router.refresh()` re-runs the server component and preserves
+      // client state, so without this a completed switch leaves its own confirmation up, still
+      // saying "this charges you $64.20 today" with a live button.
+      setPending(null)
       router.refresh()
       setBusy(null)
     } catch {
@@ -207,7 +225,8 @@ export function BillingBand({
     if (preview) {
       setError(null)
       setNotice(null)
-      setProposal({
+      setPending({
+        kind: 'switch',
         cadence: target,
         amount: target === 'annual' ? '$64.20' : '$0',
         charges: target === 'annual',
@@ -218,7 +237,7 @@ export function BillingBand({
     setBusy('switch')
     setError(null)
     setNotice(null)
-    setProposal(null)
+    setPending(null)
     try {
       const response = await fetch('/api/billing/subscription', {
         method: 'POST',
@@ -248,7 +267,8 @@ export function BillingBand({
         return
       }
 
-      setProposal({
+      setPending({
+        kind: 'switch',
         cadence: target,
         amount: String(data.preview.amount ?? ''),
         charges: data.preview.charges === true,
@@ -397,7 +417,7 @@ export function BillingBand({
           </>
         )}
 
-        {manageable && !confirmingCancel && (
+        {manageable && pending === null && (
           <>
             {view.state === 'cancelling' ? (
               <>
@@ -457,7 +477,7 @@ export function BillingBand({
 
                 {/* The TRIGGER is quiet. The filled danger colour is spent on the confirm
                     inside the confirmation, exactly as delete-event.tsx does it. */}
-                <Button variant="outline" onClick={() => setConfirmingCancel(true)}>
+                <Button variant="outline" onClick={() => setPending({ kind: 'cancel' })}>
                   Cancel Pro
                 </Button>
               </>
@@ -470,24 +490,24 @@ export function BillingBand({
         STEP TWO OF THE SWITCH: the actual number, then confirm. It only exists once a preview
         has come back, so a failed preview offers no way to proceed.
       */}
-      {manageable && proposal !== null && (
+      {manageable && pending?.kind === 'switch' && (
         <div
           className={styles.confirm}
           role="group"
-          aria-label={`Confirm switching to ${wordFor(proposal.cadence)} billing`}
+          aria-label={`Confirm switching to ${wordFor(pending.cadence)} billing`}
         >
           <p className={styles.confirmQuestion}>
-            Switch to {wordFor(proposal.cadence)} billing?
+            Switch to {wordFor(pending.cadence)} billing?
           </p>
           <p className={plan.note}>
-            {proposal.charges
-              ? `This charges you ${proposal.amount} today, worked out for the time you have already paid for.`
+            {pending.charges
+              ? `This charges you ${pending.amount} today, worked out for the time you have already paid for.`
               : 'There is nothing to pay today.'}{' '}
-            {proposal.credit !== null &&
-              `The ${proposal.credit} you have already paid for stays on your account as credit against your next invoice, rather than coming back to your card. `}
+            {pending.credit !== null &&
+              `The ${pending.credit} you have already paid for stays on your account as credit against your next invoice, rather than coming back to your card. `}
             After that you are billed{' '}
-            {price !== null && formatPlanPrice(price, proposal.cadence)}{' '}
-            {proposal.cadence === 'annual' ? 'a year' : 'a month'}.
+            {price !== null && formatPlanPrice(price, pending.cadence)}{' '}
+            {pending.cadence === 'annual' ? 'a year' : 'a month'}.
           </p>
           <div className={styles.confirmActions}>
             {/* The safe choice first, same rule as the cancel confirmation. */}
@@ -496,7 +516,7 @@ export function BillingBand({
               size="sm"
               disabled={busy !== null}
               onClick={() => {
-                setProposal(null)
+                setPending(null)
                 setError(null)
               }}
             >
@@ -508,19 +528,19 @@ export function BillingBand({
               onClick={() =>
                 void post('switch', '/api/billing/subscription', {
                   intent: 'switch',
-                  cadence: proposal.cadence,
+                  cadence: pending.cadence,
                   confirm: true,
                   subscriptionId: view.subscriptionId,
                 })
               }
             >
-              {busy === 'switch' ? 'Switching' : `Switch to ${wordFor(proposal.cadence)}`}
+              {busy === 'switch' ? 'Switching' : `Switch to ${wordFor(pending.cadence)}`}
             </Button>
           </div>
         </div>
       )}
 
-      {manageable && view.state !== 'cancelling' && confirmingCancel && (
+      {manageable && view.state !== 'cancelling' && pending?.kind === 'cancel' && (
         <div className={styles.confirm} role="group" aria-label="Confirm cancelling Pro">
           <p className={styles.confirmQuestion}>Cancel Pro?</p>
           <p className={plan.note}>
@@ -537,7 +557,7 @@ export function BillingBand({
               size="sm"
               disabled={busy !== null}
               onClick={() => {
-                setConfirmingCancel(false)
+                setPending(null)
                 setError(null)
               }}
             >

@@ -35,6 +35,27 @@ export function billingResponse(failure: BillingFailure): Response {
   return Response.json({ error: failure.slug }, { status: failure.status })
 }
 
+/**
+ * THE ONLY WAY A ROUTE MAY NAME AN ERROR, and the reason is that the union was not enforced.
+ *
+ * `lib/billing-error.ts`'s header calls itself "a closed union mapped to sentences", and
+ * fifteen of the seventeen error responses across these routes hand-rolled
+ * `Response.json({ error: '…' })` — a bare string literal, checked by nothing. One of them
+ * emitted `no_customer`, which was not in the union, so it fell through to the
+ * `provider_unavailable` sentence and told a user their card action failed because Stripe was
+ * unreachable and to try again in a minute. All false, and the advice was to retry something
+ * that could never succeed.
+ *
+ * The parameter type is what closes it: a slug that is not in the union is now a compile
+ * error at the call site rather than a wrong sentence in production.
+ */
+export const billingFailure = (slug: BillingErrorSlug, status: number): Response =>
+  billingResponse(fail(slug, status))
+
+/** The one success shape, so `{ ok: true }` and `{ url }` cannot drift into three spellings. */
+export const billingOk = (body: Record<string, unknown> = { ok: true }): Response =>
+  Response.json(body)
+
 export async function prepareBillingRequest(
   request: Request,
 ): Promise<BillingRequest | BillingFailure> {

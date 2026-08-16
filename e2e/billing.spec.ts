@@ -292,6 +292,23 @@ test.describe('pro', () => {
     await expect(band.getByRole('button', { name: 'Switch to yearly' })).toBeVisible()
   })
 
+  /**
+   * TWO CONFIRMATIONS COULD RENDER AT ONCE, and neither existing test could see it because
+   * each opened one panel alone. `confirmingCancel: boolean` and `proposal: {…} | null` were
+   * independent state, so switch-then-cancel stacked "This charges you $64.20 today" above
+   * "Cancel Pro?" with two live confirm buttons on a screen about money. One discriminated
+   * union made it unrepresentable; this is what would catch it coming back.
+   */
+  test('never shows two confirmations at once', async ({ page }) => {
+    const band = await open(page, 'active')
+    await band.getByRole('button', { name: 'Switch to yearly' }).click()
+    await expect(page.getByRole('group', { name: /Confirm switching/ })).toBeVisible()
+
+    // The action row is gone while a confirmation is open, so there is nothing to press.
+    await expect(band.getByRole('button', { name: 'Cancel Pro' })).toHaveCount(0)
+    await expect(page.getByRole('group')).toHaveCount(1)
+  })
+
   test('offers to keep Pro while cancelling, and withholds a second cancel', async ({ page }) => {
     const band = await open(page, 'cancelling')
     await expect(page.getByText('You are on Pro until 3 March 2026, and it will not renew.')).toBeVisible()

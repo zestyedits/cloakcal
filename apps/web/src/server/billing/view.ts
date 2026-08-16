@@ -1,9 +1,10 @@
 import 'server-only'
 import type Stripe from 'stripe'
-import { type PlanCadence, type PlanId } from '@/lib/plans'
+import { formatMoney, type PlanCadence, type PlanId } from '@/lib/plans'
 import { loadSubscription, type SubscriptionRow } from '../plan'
-import { billingConfig, type BillingConfig } from './config'
+import { billingConfig } from './config'
 import { stripeClient } from './stripe'
+import { ourItem, periodEnd } from './subscription-item'
 
 /**
  * EVERYTHING THE PLAN SCREEN NEEDS, AND A HARD LINE THROUGH THE MIDDLE OF IT.
@@ -165,57 +166,7 @@ function formatDate(instant: string | null, timezone: string): string | null {
   }
 }
 
-/** Stripe's minor units, in Stripe's currency — which is not necessarily the catalog's. */
-export function formatMoney(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-      // $8 rather than $8.00 where the minor units are zero, matching `formatPlanPrice`.
-      minimumFractionDigits: amount % 100 === 0 ? 0 : 2,
-    }).format(amount / 100)
-  } catch {
-    return `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`
-  }
-}
 
-/**
- * The item this subscription is actually billed on.
- *
- * Prefers an item priced at one of OUR two configured prices, because a subscription can in
- * principle carry more than one item and only ours decides the cadence we render. Falls back
- * to the first item rather than to null: a subscription with items we do not recognise is
- * still a subscription, and showing its date beats showing none.
- */
-function billedItem(
-  subscription: Stripe.Subscription,
-  config: BillingConfig,
-): Stripe.SubscriptionItem | null {
-  const items = subscription.items.data
-  if (items.length === 0) return null
-  const ours = items.find(
-    (item) => item.price.id === config.priceMonthly || item.price.id === config.priceAnnual,
-  )
-  return ours ?? items[0] ?? null
-}
-
-/**
- * WHERE THE PERIOD END LIVES, AND WHY IT IS NOT WHERE YOU EXPECT.
- *
- * `billing_mode: flexible` has been the default since API version 2025-09-30, and under it
- * `current_period_end` moved OFF the Subscription and ONTO its items. Every tutorial written
- * before 2025 reads `subscription.current_period_end`, which is now `undefined`.
- *
- * The failure is silent in both directions: the field is optional in the SDK's types, and
- * `subscriptions.current_period_end` is nullable by design in 0028, so a wrong read produces
- * "renews —" forever with no error anywhere. Same family as the bytea format mismatch — a
- * quiet wrong answer only a live object can show you.
- */
-function periodEnd(item: Stripe.SubscriptionItem | null): string | null {
-  const seconds = item?.current_period_end
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return null
-  return new Date(seconds * 1000).toISOString()
-}
 
 function cadenceOf(item: Stripe.SubscriptionItem | null): PlanCadence | null {
   const interval = item?.price.recurring?.interval
@@ -296,7 +247,9 @@ export async function loadBillingView(
       expand: ['items.data.price', 'default_payment_method'],
     })
 
-    const item = billedItem(subscription, config)
+    // Falls back to the first item: a subscription carrying prices we do not recognise is
+    // still a subscription, and showing its date beats showing none.
+    const item = ourItem(subscription, config) ?? subscription.items.data[0] ?? null
 
     // Invoices are a separate call and a separate failure. Losing them must not cost the page
     // its renewal date, so this degrades to an empty list on its own rather than through the

@@ -1,6 +1,8 @@
 import type Stripe from 'stripe'
 import { stripeClient } from '@/server/billing/stripe'
 import {
+  billingFailure,
+  billingOk,
   billingResponse,
   isFailure,
   prepareBillingRequest,
@@ -42,15 +44,15 @@ export async function POST(request: Request): Promise<Response> {
   const { config, subscription, origin } = prepared
 
   const customer = subscription.providerCustomerId
-  if (customer === null) return Response.json({ error: 'no_customer' }, { status: 409 })
+  if (customer === null) return billingFailure('no_customer', 409)
 
   const body = await readJson(request)
   const flow = body['flow']
-  if (!isFlow(flow)) return Response.json({ error: 'bad_request' }, { status: 400 })
+  if (!isFlow(flow)) return billingFailure('bad_request', 400)
 
   const current = subscription.providerSubscriptionId
   if (flow === 'update_confirm' && current === null) {
-    return Response.json({ error: 'no_subscription' }, { status: 409 })
+    return billingFailure('no_subscription', 409)
   }
 
   const stripe = stripeClient(config)
@@ -72,13 +74,13 @@ export async function POST(request: Request): Promise<Response> {
       flow_data: flowFor(flow, current),
     })
 
-    return Response.json({ url: session.url })
+    return billingOk({ url: session.url })
   } catch (error) {
     console.error(
       '[billing] portal session failed:',
       error instanceof Error ? error.message : String(error),
     )
-    return Response.json({ error: 'provider_unavailable' }, { status: 502 })
+    return billingFailure('provider_unavailable', 502)
   }
 }
 

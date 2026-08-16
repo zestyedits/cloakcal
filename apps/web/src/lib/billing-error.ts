@@ -26,6 +26,7 @@ export type BillingErrorSlug =
   | 'billing_off'
   | 'no_workspace'
   | 'no_subscription'
+  | 'no_customer'
   | 'already_subscribed'
   | 'stale_subscription'
   | 'bad_request'
@@ -39,6 +40,19 @@ const MESSAGES: Record<BillingErrorSlug, string> = {
   billing_off: 'Billing is not switched on for this account. Nothing was charged.',
   no_workspace: 'We could not find your workspace. Reload the page and try again.',
   no_subscription: 'There is no subscription on this account to change.',
+  /*
+   * THIS SLUG WAS EMITTED BY A ROUTE AND MISSING FROM HERE, so it fell through to the
+   * `provider_unavailable` sentence — "We could not reach Stripe. Nothing was charged. Try
+   * again in a minute." Every clause of that is false, and the last one tells somebody to
+   * retry an action that will fail identically forever.
+   *
+   * The union was never enforced: fifteen of seventeen error responses hand-rolled
+   * `Response.json({ error: '…' })` instead of going through the one typed helper, so
+   * "a closed union mapped to sentences" was a claim nothing checked. `billingFailure()` in
+   * server/billing/request.ts is now the only way a route can name one. Same family as
+   * `--ease-out`: a name that did not exist, silently voiding the thing that read it.
+   */
+  no_customer: 'There is no payment account on file to manage.',
   already_subscribed: 'This account is already on Pro. Reload the page to see it.',
   stale_subscription: 'This page is out of date. Reload it and try again.',
   bad_request: 'That request did not make sense to us. Reload the page and try again.',

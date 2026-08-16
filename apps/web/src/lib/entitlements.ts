@@ -61,14 +61,30 @@ export const isFeature = (value: unknown): value is Feature =>
 /**
  * Would an account on this plan be allowed this feature.
  *
- * Written as an explicit two-case comparison rather than an ordering over plans. A rank
- * function (`rankOf(plan) >= rankOf(required)`) reads as more general and would be a place
- * for a third tier to acquire capabilities nobody granted it — with two tiers there is no
- * ordering to get wrong, and the day a third exists this is a compile error rather than a
- * silent widening.
+ * AN EXHAUSTIVE SWITCH, NOT A COMPARISON, AND THE DIFFERENCE IS THE WHOLE POINT.
+ *
+ * This was `return plan === 'pro'` under a comment claiming that a third tier would be "a
+ * compile error rather than a silent widening". It would not have been. Adding `'team'` to
+ * `PlanId` produced ZERO errors here and `hasEntitlement('team', 'booking')` returned false —
+ * denying a paying tier every Pro feature, silently. A comment promising a guarantee the
+ * compiler does not give is worse than no comment, because the next reader trusts it and does
+ * not look.
+ *
+ * The `never` branch makes the claim true. A rank function (`rankOf(plan) >= rankOf(required)`)
+ * would read as more general and is the wrong shape for the same reason: it is a place for a
+ * new tier to acquire capabilities nobody granted it.
  */
 export function hasEntitlement(plan: PlanId, feature: Feature): boolean {
-  const required = ENTITLEMENTS[feature]
-  if (required === 'free') return true
-  return plan === 'pro'
+  if (ENTITLEMENTS[feature] === 'free') return true
+
+  switch (plan) {
+    case 'pro':
+      return true
+    case 'free':
+      return false
+    default: {
+      const unhandled: never = plan
+      throw new Error(`unhandled plan: ${String(unhandled)}`)
+    }
+  }
 }

@@ -82,7 +82,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
 pnpm test                # 1269 unit tests
-pnpm test:e2e            # 464 Playwright tests, runs its own dev server
+pnpm test:e2e            # 466 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
@@ -592,24 +592,11 @@ availability.** Four things, and three of them found bugs nothing else could see
      no delete flow to hook it to. The legal copy now says deletion is by email, which is
      true; when the flow lands, the upstream cancel is its FIRST step.
 
-   *(The paragraph below is what this slot said before, kept because the schema half it
-   describes is still exactly what is deployed.)*
+   `billing_events` settles the idempotency question ADR 0007 left open: the event id is the
+   primary key, so a replay is a constraint violation the handler reads as "already done".
+   `billing_writer` cannot read `workspaces`, `events` or `auth.users`, which
+   `packages/db/test/billing-writer.test.ts` asserts by running AS the role.
 
-   **The SCHEMA half is live (0028).**
-   `billing_writer` exists with grants and policies on `subscriptions` and `billing_events`
-   only — it cannot read `workspaces`, `events` or `auth.users`, which is asserted rather
-   than asserted-about (`packages/db/test/billing-writer.test.ts` runs AS the role). It is
-   **NOLOGIN with no password**: a password in a committed migration is a password in the git
-   history forever, so the credential is set out of band and the role cannot connect until it
-   is. `billing_events` settles the idempotency question ADR 0007 left open — the event id is
-   the primary key, so a replay is a constraint violation the handler treats as "already
-   done". Still to build: the Stripe SDK, checkout / webhook / portal routes, the connection
-   string, and **cancelling upstream before an account delete** (the cascade on
-   `subscriptions` destroys the local row while the processor keeps charging — 0024's header
-   flags this).
-   Nothing takes real money before the independent security review, which has not started —
-   and that is now ENFORCED rather than promised: `billingConfig()` returns null for any key
-   that is not `sk_test_`, so pasting a live key into Vercel switches billing OFF.
 5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
    it needs an answer for the events first. Calendar-move on edit is the same shape —
    `update_cloaked_event` (0011) takes no calendar id.
@@ -671,6 +658,19 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A closed union is only closed if one function owns it.** `lib/billing-error.ts` calls
+  itself "a closed union mapped to sentences", and fifteen of seventeen error responses
+  hand-rolled `Response.json({ error: '…' })` with a bare string literal. One of them emitted
+  `no_customer`, which was not in the union, so it fell through to "We could not reach Stripe.
+  Nothing was charged. Try again in a minute" — false on every clause, and it told the user to
+  retry something that could never succeed. Routes go through `billingFailure(slug, status)`
+  now, whose parameter type makes an invented slug a compile error. Same family as `--ease-out`.
+- **Two independent pieces of state can render two mutually exclusive panels.** The billing
+  band had `confirmingCancel: boolean` AND `proposal | null`, so switch-then-cancel stacked
+  two confirmations with two live buttons on a screen about money — and neither e2e test saw
+  it, because each opened one panel alone. One discriminated union makes it unrepresentable
+  and deletes a boolean. `router.refresh()` also preserves client state, so a completed action
+  leaves its own confirmation up unless something closes it.
 - **postgres.js defaults `ssl` to FALSE, and the query string is the only other thing that
   sets it.** Options beat the query string, so `ssl: 'require'` in `server/billing/db.ts` is
   what makes TLS unskippable; without it, a `BILLING_DATABASE_URL` retyped without

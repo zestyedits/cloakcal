@@ -160,6 +160,21 @@ redeploy, then `alter role`, then verify. The window between the last two is a m
 which Stripe retries through. Doing it the other way round is a window of 500s that lasts as
 long as the deploy.
 
+### The Stripe MCP server, and what it is not
+
+`.mcp.json` adds Stripe's own hosted MCP server at project scope. It is OAuth-based, so
+provisioning the Product, the Prices and the webhook endpoint can happen without a secret key
+ever being pasted into a file — which is the whole reason it is there.
+
+**It does not replace `STRIPE_SECRET_KEY`.** The MCP is a tool for whoever is setting Stripe
+up; the running application still needs its own credential to make server-to-server calls. And
+unlike the Supabase MCP, whose `execute_sql` and `apply_migration` are denied outright by the
+permission classifier, this one has no equivalent to the one SQL statement `billing_writer`
+still needs by hand.
+
+It requires a one-time authorisation (`/mcp` in an interactive session). Until then it reports
+`Needs authentication` and does nothing.
+
 ## Stripe settings that are not in this repo
 
 Six things live in the Stripe dashboard. `pnpm billing:setup` prints them at the end of every

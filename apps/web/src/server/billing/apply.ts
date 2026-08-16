@@ -10,6 +10,7 @@ import {
 import { type PlanId } from '@/lib/plans'
 import { type BillingConfig } from './config'
 import { billingDb } from './db'
+import { customerIdOf, ourItem, periodEnd } from './subscription-item'
 import { stripeClient } from './stripe'
 
 /**
@@ -56,33 +57,6 @@ export type ApplyOutcome =
 /** Postgres 23505. postgres.js surfaces it as `error.code` on a PostgresError. */
 const isUniqueViolation = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505'
-
-const customerIdOf = (value: string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null => {
-  if (value === null) return null
-  return typeof value === 'string' ? value : value.id
-}
-
-/**
- * WHERE THE PERIOD END LIVES, AND WHY IT IS NOT WHERE YOU EXPECT.
- *
- * `billing_mode: flexible` has been the default since API version 2025-09-30, and it moved
- * `current_period_end` OFF the Subscription and ONTO its items. Every guide written before
- * 2025 reads `subscription.current_period_end`, which is now undefined.
- *
- * The failure is silent in both directions: optional in the SDK's types, and nullable by
- * design in migration 0028. A wrong read stores null forever, no constraint fires, and the
- * plan page says "renews —" for the rest of the account's life. Same family as the bytea
- * format mismatch: a quiet wrong answer that only a live object can show you.
- */
-function periodEnd(subscription: Stripe.Subscription, config: BillingConfig): string | null {
-  const items = subscription.items.data
-  const ours = items.find(
-    (item) => item.price.id === config.priceMonthly || item.price.id === config.priceAnnual,
-  )
-  const seconds = (ours ?? items[0])?.current_period_end
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return null
-  return new Date(seconds * 1000).toISOString()
-}
 
 /**
  * THE ENTITLEMENT DECISION, and the only place in the server that makes it.
@@ -199,7 +173,7 @@ export async function applyBillingEvent(
         customerId,
         subscription.id,
         subscription.status,
-        periodEnd(subscription, config),
+        periodEnd(ourItem(subscription, config) ?? subscription.items.data[0] ?? null),
         subscription.cancel_at_period_end,
       ])
     } catch (error) {
