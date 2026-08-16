@@ -129,29 +129,54 @@ cite them as safety guarantees — a guarantee that lives only in a runbook is a
 nobody has. The password is the one part that genuinely cannot go in a migration, because a
 password in a committed migration is a password in the git history forever.
 
-### Verify the connection string before the first checkout, not after
+### Which pooler, and the IPv6 problem
 
-**This is the highest-risk unverified claim in the whole design.** Supavisor identifies the
-tenant from the last dot-segment of the username, and the documented form for a *custom* role
-is `<role>.<project-ref>`. If that is wrong, every webhook 500s — and by then Checkout has
-already succeeded, so somebody has paid and is sitting on Free. Nothing in this repo can see
-it: PGlite proves the SQL and the e2e suite never opens a socket.
+**Checked 2026-08-16 against the live project, and it went the other way from the design's
+assumption.** Supabase → Connect offers a **dedicated pooler**:
+
+```
+host:     db.bnjbgjzbddypqtoolunz.supabase.co
+port:     6543
+user:     billing_writer          <- the BARE role, no tenant suffix
+```
+
+That is not Supavisor's shared pooler, and the difference matters twice over.
+
+**The username has no `.<project-ref>` suffix.** `billingConfig()` required one, so it would
+have rejected the only correct string for this project — silently, as "billing is not
+configured". Both spellings are accepted now, and `postgres` still is not.
+
+**`db.<ref>.supabase.co` HAS NO A RECORD. It is IPv6 only:**
 
 ```bash
-psql "postgresql://billing_writer.bnjbgjzbddypqtoolunz:<pw>@<pooler-host>:6543/postgres?sslmode=require" \
-     -c "select current_user, current_setting('is_superuser')"
+dig +short A    db.bnjbgjzbddypqtoolunz.supabase.co   # (nothing)
+dig +short AAAA db.bnjbgjzbddypqtoolunz.supabase.co   # 2600:1f16:1482:9402:…
+```
+
+Vercel's functions make outbound connections over IPv4, so **the dedicated pooler is not
+reachable from a Vercel deployment as things stand.** Local development is fine if the machine
+has IPv6. Three ways out, in order of preference:
+
+1. **Use the shared Supavisor pooler instead** — `aws-N-<region>.pooler.supabase.com:6543`,
+   which is IPv4 and takes the `billing_writer.<project-ref>` username. Look for a
+   "Transaction pooler" option in the Connect dialog. Costs nothing.
+2. **Supabase's IPv4 add-on**, which gives the host an A record. Paid, per project.
+3. Run the webhook somewhere with IPv6 egress, which is a deployment change rather than a
+   configuration one.
+
+**Verify before the first checkout, not after.** Whichever host is used, the failure mode is
+that every webhook 500s *after* Checkout has already succeeded — so somebody has paid and is
+sitting on Free. Nothing in this repo can see it: PGlite proves the SQL and the e2e suite never
+opens a socket.
+
+```bash
+psql "$BILLING_DATABASE_URL" -c "select current_user, current_setting('is_superuser')"
 # expect:  billing_writer | off
 ```
 
-Read the pooler host off Supabase → Connect → **Transaction pooler**. It is not derivable and
-it has changed over time. Do **not** use `db.<ref>.supabase.co`: that is the direct connection,
-it is IPv6-only, and a Vercel function cannot reach it.
-
-**If it fails, stop and rethink. Do not fall back to `postgres.<ref>` plus `set role`.** ADR
-0007 spends a paragraph on exactly that: a `reset role` undoes the entire boundary in one
-statement, and the credential in Vercel becomes a service-role key with a politeness step in
-front of it. The honest fallback is the *session* pooler on 5432 with the same custom-role
-username, which trades connection efficiency rather than security.
+**If it fails, stop and rethink. Do not fall back to `postgres` plus `set role`.** ADR 0007
+spends a paragraph on exactly that: a `reset role` undoes the entire boundary in one statement,
+and the credential in Vercel becomes a service-role key with a politeness step in front of it.
 
 ### Rotating the password has an unavoidable window
 

@@ -586,8 +586,14 @@ availability.** Four things, and three of them found bugs nothing else could see
    - **`billing_writer` has no password.** 0028 created it NOLOGIN deliberately; the
      `alter role` block in `docs/deploy.md` has to be run by hand, and until it is, every
      webhook 500s *after* checkout has already succeeded.
-   - **The Supavisor username convention for a CUSTOM role is unverified.** One `psql`
-     command answers it, and it must be run before the first checkout rather than after.
+   - **The pooler question is ANSWERED, and not the way the design assumed.** Supabase offers
+     this project a DEDICATED pooler at `db.<ref>.supabase.co:6543`, whose username is the
+     bare role rather than Supavisor's `billing_writer.<ref>`. `billingConfig()` required the
+     suffix and would have rejected the only correct string, silently, as "not configured".
+     Both spellings pass now. **But that host has no A record — it is IPv6 only, and Vercel
+     functions connect over IPv4, so it works locally and fails in production.** Either find
+     the shared Supavisor pooler (IPv4, takes the suffixed username) or buy the IPv4 add-on.
+     See docs/deploy.md.
    - **Cancelling upstream before an account delete.** Still unbuilt, because there is still
      no delete flow to hook it to. The legal copy now says deletion is by email, which is
      true; when the flow lands, the upstream cancel is its FIRST step.

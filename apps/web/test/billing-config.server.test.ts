@@ -107,9 +107,32 @@ describe('billingConfig', () => {
       'postgresql://postgres.projectref:pw@host:6543/postgres',
       'postgresql://postgres:pw@host:5432/postgres',
       'postgres://billing_writer.projectref:pw@host:6543/postgres',
+      // The near miss. A loose prefix check would take this as the real role.
+      'postgresql://billing_writership:pw@host:6543/postgres',
+      'postgresql://billing_writer_readonly:pw@host:6543/postgres',
     ]) {
       stub({ BILLING_DATABASE_URL: url })
       expect(billingConfig(), `"${url}" must not be accepted`).toBeNull()
+      vi.unstubAllEnvs()
+    }
+  })
+
+  /**
+   * TWO POOLER CONVENTIONS SPELL THE USERNAME DIFFERENTLY, and this check used to know only
+   * one of them. Supavisor's shared pooler puts the tenant in the username
+   * (`billing_writer.<project-ref>`); Supabase's DEDICATED pooler uses the bare role. The
+   * `billing_writer.` prefix was written against the first and would have rejected the only
+   * correct string for a project on the second — silently, as "billing is not configured",
+   * on a deployment where everything else was right.
+   */
+  it('accepts either pooler convention for the username', () => {
+    for (const url of [
+      'postgresql://billing_writer:pw@db.ref.supabase.co:6543/postgres',
+      'postgresql://billing_writer.projectref:pw@aws-1-us-east-2.pooler.supabase.com:6543/postgres',
+      'postgresql://billing_writer@db.ref.supabase.co:6543/postgres',
+    ]) {
+      stub({ BILLING_DATABASE_URL: url })
+      expect(billingConfig(), `"${url}" must be accepted`).not.toBeNull()
       vi.unstubAllEnvs()
     }
   })

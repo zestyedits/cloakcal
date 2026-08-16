@@ -78,10 +78,21 @@ function shaped(value: string | undefined, prefix: string): string | null {
 export function billingConfig(): BillingConfig | null {
   const secretKey = shaped(process.env.STRIPE_SECRET_KEY, 'sk_test_')
   const webhookSecret = shaped(process.env.STRIPE_WEBHOOK_SECRET, 'whsec_')
-  // The role is named in the URL, so a connection string for `postgres` — which on Supabase
-  // is effectively a service-role credential — cannot be pasted here by accident. That is a
-  // shape check standing in for rule 4 at the one place the rule could be broken silently.
-  const databaseUrl = shaped(process.env.BILLING_DATABASE_URL, 'postgresql://billing_writer.')
+  /*
+   * THE ROLE IS NAMED IN THE URL, so a connection string for `postgres` — which on Supabase is
+   * effectively a service-role credential — cannot be pasted here by accident. That shape check
+   * stands in for rule 4 at the one place the rule could be broken silently.
+   *
+   * IT USED TO REQUIRE `billing_writer.`, WITH A DOT, AND THAT WAS WRONG. The dot encodes
+   * Supavisor's shared-pooler convention, where the tenant is the last segment of the username
+   * (`billing_writer.<project-ref>`). Supabase's DEDICATED pooler does not use it — the username
+   * is the bare role — so the check would have rejected the only correct string for a project on
+   * that pooler, and rejected it as "billing is not configured", which is silent.
+   *
+   * Both spellings now pass and `postgres` still does not. `billingUsername()` below is what
+   * actually reads the role, rather than a prefix that has to encode a deployment topology.
+   */
+  const databaseUrl = shaped(process.env.BILLING_DATABASE_URL, 'postgresql://billing_writer')
   const priceMonthly = shaped(process.env.STRIPE_PRICE_PRO_MONTHLY, 'price_')
   const priceAnnual = shaped(process.env.STRIPE_PRICE_PRO_ANNUAL, 'price_')
   const portalConfigurationId = shaped(process.env.STRIPE_PORTAL_CONFIGURATION_ID, 'bpc_')
@@ -94,6 +105,15 @@ export function billingConfig(): BillingConfig | null {
     priceAnnual === null ||
     portalConfigurationId === null
   ) {
+    return null
+  }
+
+  /*
+   * `billing_writer` AND NOT `billing_writerish`. The prefix check above is deliberately loose
+   * about what follows the role name, because two pooler conventions spell it differently — so
+   * this pins that the next character actually ends the username rather than continuing it.
+   */
+  if (databaseUrl !== null && !/^postgresql:\/\/billing_writer[.:@]/.test(databaseUrl)) {
     return null
   }
 
