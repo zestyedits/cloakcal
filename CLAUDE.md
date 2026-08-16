@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 994 unit tests
-pnpm test:e2e            # 323 Playwright tests, runs its own dev server
+pnpm test                # 1074 unit tests
+pnpm test:e2e            # 344 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
@@ -150,9 +150,20 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 *(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
 security is its own route — see the 2026-08-15 pass below.)*
 
-**Migrations 0018–0025 are applied to production** (prefs incl. timezone + week_start,
+**Migrations 0018–0025 are applied to production; 0026 and 0027 are NOT** (prefs incl. timezone + week_start,
 `update_calendar`, the four group RPCs 0017 never had, `create_calendar`, and
-`default_view` + `keyboard_shortcuts`), anon sweep clean. **Keep this line current.** It
+`default_view` + `keyboard_shortcuts`), anon sweep clean.
+
+**0026 (`holiday_region`) and 0027 (`availability_windows` + `set_availability`) are written,
+tested and DEPLOYED IN CODE but NOT APPLIED.** The MCP `apply_migration` call is blocked by
+the permission classifier, so they need Keith. Neither breaks production while it waits:
+`loadWorkspacePrefs` retries without the unknown column on a 42703, and `loadAvailability`
+returns an empty week from its catch. That resilience is itself a lesson worth keeping — the
+prefs read used to destructure `data` and DROP the PostgREST error, so an unknown column
+arrived as "this user has no workspace" and would have silently reset every account's
+timezone, week start and default view.
+
+**Keep this line current.** It
 said "0018–0020" for two migrations longer than it was true, and the cost was real: the
 default-view feature read as unbuilt when it was shipped and deployed, so it got looked for
 in the code rather than in the UI where it was merely hidden. Two real defects
@@ -450,6 +461,39 @@ so `/settings/plan` renders the same component under the demo — that is what p
 of axe at all — and the sidebar composition is pinned by `plan-badge.server.test.ts` instead.
 The one thing no test here can see is a real email beside a real badge in a 300px sidebar;
 that needs the throwaway-account recipe.
+
+**The 2026-08-15 controls pass: filled fields, one button system, a hero that reseals, and
+availability.** Four things, and three of them found bugs nothing else could see.
+
+- **Every rectangle on a form was the same rectangle.** Inputs, buttons, cards and chips all
+  sat at `--radius-md` with a `--border-default` outline. `--radius-control` (6px) is what a
+  thing you type in or press wears now, and fields are FILLED (`--field-bg`, `--field-border`).
+  Their own tokens, not a `--surface-*` reuse, because in LIGHT `--surface-raised` and
+  `--surface-overlay` are both `#ffffff` — the old field was white on white plus a 1.6:1
+  hairline. **The border stays and that is measured**: a borderless filled field only meets
+  WCAG 1.4.11 when the fill clears 3:1 against the page, and on this palette that lands near
+  `#5a5d65`, a slab that reads as disabled. The fill says "type here", the border identifies.
+- **`auth.module.css`'s `.submit`/`.secondary` are gone**, 16 call sites moved to `ui/Button`.
+  That was a second button system with its own radius, a flat accent and `cursor: progress` on
+  every disabled state. `auth-buttons.server.test.ts` is the guard, because a comment did not
+  stop it the first time.
+- **NOTHING HAD EVER SCANNED THE AUTH PAGES.** Every axe run covered the calendar, settings,
+  security, people and the landing, and never `/sign-in`, `/sign-up` or `/recover` — the first
+  pages a stranger sees and the ones asking for a password. All three are in the light sweep.
+- **`--ease-out` DOES NOT EXIST** and was used in two files. An undefined custom property is
+  invalid at computed-value time, which **voids the whole declaration** rather than falling
+  back — so the landing's sweep and reseal were not mistimed, they were absent, and the
+  sweep's gradient sat frozen mid-grid looking like a rendering artefact. Caught by opening a
+  screenshot, not by a test. `design-tokens.server.test.ts` now fails on any bare `var()`
+  naming a property nothing declares.
+- **The landing hero is a WEEK that reseals**, not a card with tabs. The pitch is not "a field
+  can be hidden"; it is that the same week reads differently to four people at once. The grid
+  never moves — every block's top and height come from `--from`/`--span`, properties of the
+  EVENT — which is why the reseal is a `clip-path` wipe and not a scale. Hidden is ABSENT.
+- **Availability (0027)** stores weekly windows in wall-clock minutes and shades the hours
+  outside them on the week and day grids. The overlap rule is **data hygiene, not a security
+  boundary**: the RPC is SECURITY INVOKER, so the caller necessarily holds INSERT and can
+  write overlapping rows directly — `server/availability.ts` MERGES rather than trusting.
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
