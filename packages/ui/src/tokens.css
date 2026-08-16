@@ -311,6 +311,25 @@
    * nothing may rely on them being seen. */
   --engrave-hairline: rgba(205, 195, 165, 0.28);
   --minute-tick: rgba(205, 195, 165, 0.42);
+  /* The same index, QUIETER — for a figure that labels rather than states, like the
+     settings rail's section numbers. A TOKEN, not `opacity` over --numeral-ink, which is
+     the trap this project has now fallen into twice: the rail dimmed with opacity 0.7 and
+     composited to 3.46:1 in the light theme, which no axe run had ever looked at. Both
+     values below are text-grade on base, raised AND sunken, and pinned in CONTRAST_PAIRS.
+     The dark one is exactly what that 0.7 already composited to, so nothing moves here. */
+  --numeral-ink-quiet: #928b78;
+
+  /* The plan badge. OPAQUE, unlike every --privacy-*-quiet above, because this badge
+   * renders on base, raised and sunken and sits under the account row's hover overlay —
+   * four composites to pin, one of them a state nothing screenshots. Opaque means the ink
+   * is checked against its own wash once per theme and no surface can change the answer.
+   * Deliberately NOT the privacy palette: those colours are learned meaning, and a billing
+   * tier in the "Limited details" indigo would look exactly like a privacy chip.
+   * 8.03:1 and 7.93:1 here, both pinned in CONTRAST_PAIRS. */
+  --plan-free-quiet: #1c2130;
+  --plan-free-ink: #b4b7c4;
+  --plan-pro-quiet: #2b2c30;
+  --plan-pro-ink: #cdc3a5;
 }
 
 /* -----------------------------------------------------------------------
@@ -362,6 +381,14 @@
   --numeral-ink: #5c4d2a;
   --engrave-hairline: rgba(92, 77, 42, 0.34);
   --minute-tick: rgba(92, 77, 42, 0.5);
+  /* The light quiet index. 4.88:1 on sunken, where the settings rail draws it. */
+  --numeral-ink-quiet: #756340;
+
+  /* The light plan badge. Same reasoning as the dark block; 5.36:1 and 6.61:1. */
+  --plan-free-quiet: #e6e8f0;
+  --plan-free-ink: #5a5d68;
+  --plan-pro-quiet: #eae6dc;
+  --plan-pro-ink: #5c4d2a;
 }
 
 /* -----------------------------------------------------------------------

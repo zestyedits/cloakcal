@@ -32,6 +32,8 @@ import { VisibilitySheet } from './visibility-sheet'
 import { ButtonLink } from './ui/button'
 import { NavPendingMark } from './ui/nav-pending'
 import { PrivacyChip } from './ui/privacy-chip'
+import { PlanBadge } from './ui/plan-badge'
+import type { PlanId } from '@/lib/plans'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -107,6 +109,7 @@ export function CalendarScreen({
   hotkeysEnabled = false,
   defaultView = 'agenda',
   workspaceId = null,
+  plan = 'free',
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
@@ -143,6 +146,12 @@ export function CalendarScreen({
   defaultView?: CalendarView
   /** Where a preference write goes. Null with demoMode false means it cannot go anywhere. */
   workspaceId?: string | null
+  /**
+   * The tier this account is on, for the badge in the account cluster. Read server-side by
+   * server/plan.ts; absence of a `subscriptions` row means free (migration 0024). Only ever
+   * rendered where there is a real session, since the cluster itself is gated on one.
+   */
+  plan?: PlanId
 }) {
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
@@ -516,9 +525,17 @@ export function CalendarScreen({
               >
                 <span className={styles.accountText}>
                   Settings
-                  <span className={styles.accountEmail}>{email}</span>
+                  {/* Which account, and which plan, on ONE line. The badge is a sibling of
+                      the email rather than a third row: this row owns 44px, and a third
+                      line of 12px type inside it is a cramped row, not a hierarchy. The
+                      badge stays inside the link's accessible name deliberately — marking
+                      it aria-hidden would make the plan visible to sighted users only. */}
+                  <span className={styles.accountMeta}>
+                    <span className={styles.accountEmail}>{email}</span>
+                    <PlanBadge plan={plan} />
+                  </span>
                 </span>
-                {/* Decorative, so the link's accessible name stays "Settings <email>". */}
+                {/* Decorative, so the link's accessible name stays "Settings <email> Free plan". */}
                 <span className={styles.accountChevron} aria-hidden="true">
                   ›
                 </span>

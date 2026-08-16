@@ -131,12 +131,17 @@
 }
 
 /* The figure that ties the rail to the plate: the same index heads its band. Champagne
-   mono, so the rail carries a value rather than only a word. */
+   mono, so the rail carries a value rather than only a word.
+
+   A QUIET TOKEN, not `opacity` over --numeral-ink, which is what this was and which failed
+   AA. 0.7 composited to 5.86:1 on dark sunken and 3.46:1 on LIGHT sunken at 12px, so the
+   rail broke 1.4.3 in the light theme on every page that draws it — unseen, because until
+   e2e/plan.spec.ts every axe run in this repo scanned the dark theme only. Second time here:
+   the mini month dimmed neighbouring dates the same way. Dim with a token that passes. */
 .navIndex {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--numeral-ink);
-  opacity: 0.7;
+  color: var(--numeral-ink-quiet);
 }
 
 .navLink:hover {
@@ -151,8 +156,10 @@
   color: var(--text-primary);
 }
 
+/* The current section's index steps up to the full index ink. Was `opacity: 1` undoing the
+   0.7 above; it is a colour swap now, for the same reason. */
 .navLink[aria-current] .navIndex {
-  opacity: 1;
+  color: var(--numeral-ink);
 }
 
  /* THE PLATE. One machined surface with the sections milled into it, rather than five

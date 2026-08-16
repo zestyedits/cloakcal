@@ -2,6 +2,7 @@ import { Temporal } from '@js-temporal/polyfill'
 import type { AudienceId } from '@/server/audience'
 import { resolveAndRedact } from '@/server/redaction'
 import { getCalendarPage } from '@/server/events'
+import { loadPlan } from '@/server/plan'
 import {
   anchorFromParam,
   dateParam,
@@ -96,6 +97,13 @@ export default async function Page({
   const prefs: CalendarPrefs | null = fixtureMode ? await readDemoPrefs() : workspacePrefs
   const timezone = safeTimezone(prefs?.timezone)
   const weekStart = prefs?.weekStart ?? 0
+
+  // Started HERE and awaited at the very bottom, so it overlaps the events fetch entirely
+  // rather than sitting in front of it. The plan is a badge, not framing: unlike the prefs
+  // above, nothing below needs it to decide what to query. Caught for the same reason
+  // /settings catches its data promise — an early return must not leave a rejection loose.
+  const planPromise = loadPlan(workspacePrefs?.workspaceId ?? null)
+  planPromise.catch(() => undefined)
 
   // The URL always wins so links stay shareable; the STORED default only fills the
   // absent-or-unknown case. Resolved here rather than at the top because the fallback is
@@ -195,6 +203,11 @@ export default async function Page({
       // Only a real workspace can take a preference write; the demo writes its cookie
       // instead and needs no id, which is why these are two props and not one.
       workspaceId={workspacePrefs?.workspaceId ?? null}
+      // The tier, for the badge in the account cluster. That cluster only renders with a
+      // real session, so the demo never shows one: a fixture has no account and therefore
+      // no plan, and inventing a Free chip for it would be the same dishonesty as storing
+      // a plan in a cookie.
+      plan={(await planPromise).planId}
     />
   )
 }

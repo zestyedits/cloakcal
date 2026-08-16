@@ -1,0 +1,183 @@
+import { test, expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+
+/**
+ * /settings/plan — the tier you are on, what Pro will cost, and the plain statement that Pro
+ * cannot be bought yet.
+ *
+ * The load-bearing tests here are the NEGATIVE ones. Anyone can see a price render; the
+ * thing this page has to keep being is honest, so the suite pins that no purchase control
+ * exists, that the demo does not claim an account, and that the privacy promise is not
+ * quietly moved behind the paywall by a later copy edit.
+ *
+ * This file must be named in BOTH testMatch allowlists in playwright.config.ts. A spec named
+ * in one is collected by half the projects and reports as full coverage;
+ * apps/web/test/e2e-registration.server.test.ts now fails if the two ever disagree.
+ */
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/settings/plan')
+  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible()
+})
+
+test('the settings card is a signpost that states the plan', async ({ page }) => {
+  await page.goto('/settings')
+  // Scoped inside the card: the rail also carries a link named "Plan".
+  const card = page.locator('#plan')
+  const heading = card.getByRole('heading', { level: 2, name: 'Plan' })
+  // The h2 lives in the summary, so it is visible while the card is CLOSED — which every
+  // card here is by default. The body, and therefore the link, is not rendered until the
+  // <details> is opened, so the card has to be opened before anything inside it is reachable.
+  await expect(heading).toBeVisible()
+  await heading.click()
+  await expect(card).toHaveAttribute('open', '')
+
+  await card.getByRole('link', { name: 'Open Plan' }).click()
+  await expect(page).toHaveURL(/\/settings\/plan$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible()
+})
+
+test('renders under the demo without inventing an account', async ({ page }) => {
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+  await expect(page.getByText(/There is no account here, so there is no plan on file/)).toBeVisible()
+  // The fixture has no account, so nothing may tell it which plan it is on.
+  await expect(page.getByText(/You are on/)).toHaveCount(0)
+})
+
+test('names Pro’s prices and says plainly that it cannot be bought', async ({ page }) => {
+  await expect(page.getByText('$8', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText('$72', { exact: false }).first()).toBeVisible()
+  await expect(page.getByText(/cannot be bought yet/).first()).toBeVisible()
+  await expect(page.getByText(/Billing opens when sign-ups do/)).toBeVisible()
+
+  /*
+   * THE assertion on this page. It fails the day somebody wires a purchase button in
+   * without wiring a payment processor behind it, which is the one failure this surface
+   * exists to prevent: a page that takes a click and does nothing is worse than a page that
+   * says it is not ready.
+   */
+  await expect(
+    page.getByRole('button', { name: /upgrade|subscribe|buy|checkout|trial|pay/i }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: /upgrade|subscribe|buy|checkout|trial|pay/i }),
+  ).toHaveCount(0)
+})
+
+test('the only billing control is disabled and says why', async ({ page }) => {
+  // Rendered rather than omitted, per the passkeys precedent: it gives the axe scan and the
+  // 44px sweep something real to measure, and it answers "where do I cancel" on screen.
+  await expect(page.getByRole('button', { name: 'Manage billing' })).toBeDisabled()
+  await expect(page.getByText(/no card on file/)).toBeVisible()
+})
+
+test('annual is visibly the better value, and not only in colour', async ({ page }) => {
+  await expect(page.getByText('Better value')).toBeVisible()
+  // The arithmetic, spelled out, so the claim does not rest on an accent border.
+  await expect(page.getByText(/months free/)).toBeVisible()
+  await expect(page.getByText(/works out at \$6 a month/)).toBeVisible()
+})
+
+test('describes what is encrypted without widening it', async ({ page }) => {
+  /*
+   * The feature bullets, not just the honesty paragraph. This is the first thing on the
+   * page and it is what a screenshot captures; the paragraph two blocks down does not
+   * travel with it. It used to read "Your events, encrypted in this browser", which claims
+   * the EVENT is encrypted when times, durations, repeats and calendar membership are all
+   * stored in the clear.
+   */
+  await expect(
+    page.getByText(/Titles, places, notes and guest lists, encrypted in this browser/),
+  ).toBeVisible()
+  await expect(page.getByText(/Your events, encrypted/)).toHaveCount(0)
+
+  // And no bullet may promise link sharing, because nothing can be sent to anyone yet.
+  await expect(page.getByText(/anyone with the link/)).toHaveCount(0)
+})
+
+test('does not move privacy behind the paywall', async ({ page }) => {
+  await expect(page.getByText(/Basic privacy is never paywalled/)).toBeVisible()
+  await expect(page.getByText(/Cloaking is not a paid feature/)).toBeVisible()
+
+  // Rule 1. "zero knowledge" may appear ONLY in the sentence that denies it, and the
+  // hyphenated spelling is the one a marketing edit reaches for, so it is forbidden
+  // outright.
+  await expect(page.getByText(/CloakCal is not zero knowledge/)).toBeVisible()
+  expect(await page.content()).not.toContain('zero-knowledge')
+})
+
+test('carries no em dash', async ({ page }) => {
+  // landing.spec.ts pins this for /, the calendar and /settings, and does not visit here.
+  expect(await page.content()).not.toContain('—')
+})
+
+test('never scrolls sideways at 390px', async ({ page }) => {
+  // An explicit width, so the number is pinned rather than inherited from whichever device
+  // profile runs this. The price cards are the risk: a grid item defaults to a
+  // content-based min-width, and nothing else in this suite would see the overflow.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible()
+
+  const { client, scroll } = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }))
+  expect(scroll).toBeLessThanOrEqual(client + 1)
+})
+
+test('has no detectable WCAG A or AA violations', async ({ page }) => {
+  // Wait on the animations, never sleep: axe measures COMPOSITED colour, and analysing a
+  // band mid-rise reports every label as a contrast failure against a box not yet painted.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+})
+
+test('scans clean in the light theme too', async ({ page }) => {
+  /*
+   * The first axe run in this repo against a non-default theme, and it is here because this
+   * page is where it would bite: --text-tertiary composited in the LIGHT theme measures
+   * about 3.3:1 on every ground, which is under AA for body copy, and every other axe scan
+   * runs in dark where the same ink passes comfortably. This page's roadmap rows take
+   * secondary ink for exactly that reason, and this test is what keeps them there.
+   */
+  await page.getByRole('button', { name: 'Switch to light mode' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+})
+
+test('gives every interactive control a 44px touch target', async ({ page }) => {
+  const measured = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('button, a[href]')).map((el) => ({
+      label: (el.textContent ?? '').trim().slice(0, 30) || el.tagName,
+      height: Math.round(el.getBoundingClientRect().height),
+      hidden: el.getBoundingClientRect().height === 0,
+    })),
+  )
+  expect(measured.length).toBeGreaterThan(0)
+  const tooSmall = measured
+    .filter((m) => !m.hidden)
+    .filter((m) => m.height < 44)
+    .map((m) => `${m.label}: ${m.height}px`)
+  expect(tooSmall).toEqual([])
+})
+
+test('keeps every heading in a sensible order', async ({ page }) => {
+  const levels = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')).map((h) =>
+      Number(h.tagName.slice(1)),
+    ),
+  )
+  expect(levels.length).toBeGreaterThan(0)
+  for (let i = 1; i < levels.length; i += 1) {
+    expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1)
+  }
+})

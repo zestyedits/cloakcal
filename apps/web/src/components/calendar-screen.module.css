@@ -765,11 +765,29 @@
   font-weight: var(--weight-medium);
 }
 
+/* Which account, and which plan, on one line under the word Settings. The email takes the
+   slack and ellipses; the badge is flex:none, so a long address can never squeeze the plan
+   down to "FR…".
+
+   min-width: 0 HERE AND ON THE EMAIL, not on this row alone. A flex item's default
+   min-width is content-based and the CONTAINER's min-width does nothing about it: the same
+   rule that sized the settings summary cards to title-plus-state and pushed /settings into
+   horizontal overflow at 390px. Here it would widen the sidebar's fixed track instead,
+   which is that bug wearing a different column, and no viewport test can look at this row —
+   the fixture has no session, so the cluster never renders. */
+.accountMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 /* The email under the word Settings: which account, without being the label. Secondary
    ink, not tertiary — light-theme tertiary at 12px is under AA, and it only ever passed
    because the fixture has no email so axe never renders this row. Quiet comes from the
    size and weight, not from fading the ink past legibility. */
 .accountEmail {
+  min-width: 0;
   font-size: var(--text-xs);
   font-weight: var(--weight-regular);
   color: var(--text-secondary);

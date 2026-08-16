@@ -19,10 +19,26 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('every section is present, anchored, and in the stated order', async ({ page }) => {
-  // FIVE cards, not seven. Two of the old seven held no settings at all — People was a
-  // lede and a link, "Coming soon" was four rows of things that do not exist — and both
-  // wore the same card and chevron as the cards that work.
-  const sections = ['Appearance', 'Time & region', 'Calendars', 'People & sharing', 'Security']
+  // SIX cards, not seven and no longer five. Two of the original seven held no settings at
+  // all — People was a lede and a link, "Coming soon" was four rows of things that do not
+  // exist — and both wore the same card and chevron as the cards that work. Plan joined
+  // last, as a signpost.
+  const sections = [
+    'Appearance',
+    'Time & region',
+    'Calendars',
+    'People & sharing',
+    'Security',
+    'Plan',
+  ]
+
+  // THE ORDER, read off the DOM — which this test has always claimed in its name and never
+  // actually checked. The body used to loop the list asserting each heading was VISIBLE, so
+  // a section could be inserted anywhere, or two could swap, and the suite stayed green.
+  // Found while adding the sixth card. "What's next" is the footer's h2 and is asserted
+  // here rather than filtered out, so the footer cannot silently vanish either.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText([...sections, "What's next"])
+
   for (const name of sections) {
     // The h2 lives in the summary row, so it stays visible while the card is closed.
     await expect(page.getByRole('heading', { level: 2, name })).toBeVisible()
@@ -40,10 +56,13 @@ test('sections are closed by default with their state on the row', async ({ page
   // The page reads as a table of contents: only Appearance opens by default, and every
   // closed row still says what its current value is.
   await expect(page.locator('#appearance')).toHaveAttribute('open', '')
-  for (const id of ['time-region', 'calendars', 'sharing', 'security']) {
+  for (const id of ['time-region', 'calendars', 'sharing', 'security', 'plan']) {
     await expect(page.locator(`#${id}`)).not.toHaveAttribute('open', '')
   }
   await expect(page.getByText('Password & recovery phrase')).toBeVisible()
+  // "Demo", not "Free". A plan is an account fact and the fixture has no account, so the
+  // closed row must not answer a question nobody can ask here.
+  await expect(page.locator('#plan').getByText('Demo', { exact: true })).toBeVisible()
 
   // Clicking a summary opens the card.
   await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()

@@ -5,6 +5,7 @@ import type { CalendarView } from '@/components/calendar-screen'
 import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
 import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
+import { loadPlan, type AccountPlan } from './plan'
 
 /**
  * Workspace preferences, read server-side because the server needs them BEFORE it can do
@@ -107,15 +108,26 @@ export interface SettingsData {
   readonly prefs: WorkspacePrefs | null
   readonly calendars: readonly SettingsCalendar[]
   readonly visibility: WorkspaceVisibility | null
+  /**
+   * The tier, for the Plan card's closed-row state. It rides in the Promise.all below
+   * rather than as a fifth round trip, and it is the SHORTEST of the four queries — a
+   * primary-key lookup on a table that is empty for every account today.
+   *
+   * The devices note above is the standing warning on this interface: if the Plan card ever
+   * stops rendering the tier, this comes out with it, exactly as devices did.
+   */
+  readonly plan: AccountPlan
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
   const prefs = await loadWorkspacePrefs()
   const supabase = await supabaseServer()
 
-  if (prefs === null) return { prefs: null, calendars: [], visibility: null }
+  if (prefs === null) {
+    return { prefs: null, calendars: [], visibility: null, plan: await loadPlan(null) }
+  }
 
-  const [calendarResult, nameResult, visibility] = await Promise.all([
+  const [calendarResult, nameResult, visibility, plan] = await Promise.all([
     supabase
       .from('calendars')
       .select('id, color_token, is_default')
@@ -128,6 +140,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
       .eq('workspace_id', prefs.workspaceId)
       .eq('subject_type', 'calendar'),
     loadWorkspaceVisibility(prefs.workspaceId),
+    loadPlan(prefs.workspaceId),
   ])
 
   if (calendarResult.error !== null) throw calendarResult.error
@@ -164,7 +177,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
     fields: fieldsByCalendar.get(row.id) ?? [],
   }))
 
-  return { prefs, calendars, visibility }
+  return { prefs, calendars, visibility, plan }
 }
 
 /** Devices, for /settings/security — the only screen that renders them. */

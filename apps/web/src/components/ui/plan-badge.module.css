@@ -1,0 +1,56 @@
+/*
+ * The plan badge — the privacy chip's geometry in its own material.
+ *
+ * WHY THE WASHES ARE OPAQUE, WHERE THE PRIVACY CHIP'S ARE ALPHA. A chip only ever sits on
+ * --surface-raised, so one composited hex per ink is the whole check. This badge renders on
+ * THREE grounds and under a fourth: --surface-base in the sidebar's account cluster,
+ * --surface-raised on the settings plate, --surface-sunken in the price cards, and
+ * --surface-overlay for as long as a pointer rests on the account row. An alpha wash would
+ * need every one of those composited and pinned in CONTRAST_PAIRS, and the hover is a state
+ * nothing screenshots and axe never scans. Opaque means one pair per plan per theme, and a
+ * hover that cannot change what the test checked.
+ *
+ * THE WASH IS A DECORATIVE SHAPE and is deliberately not held to 3:1 against its ground.
+ * Everything this badge means is in its text, exactly as --engrave-hairline and
+ * --minute-tick are shapes nothing may rely on seeing. What IS pinned, at 4.5 because this
+ * renders at --text-xs, is the ink on the wash.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  /* Never shrinks. In the sidebar the email beside it takes the slack and ellipses, so a
+     long address can push this to nothing only if it is allowed to flex. */
+  flex: none;
+  padding: 2px var(--space-2);
+  /* Rectangular, like every chip in this product. Never --radius-full. */
+  border-radius: var(--radius-sm);
+  /* The engraved caps the chrome's smallest labels wear, not a sentence-case pill. */
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge[data-plan='free'] {
+  color: var(--plan-free-ink);
+  background: var(--plan-free-quiet);
+}
+
+.badge[data-plan='pro'] {
+  color: var(--plan-pro-ink);
+  background: var(--plan-pro-quiet);
+}
+
+/* Announced, never shown. */
+.qualifier {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

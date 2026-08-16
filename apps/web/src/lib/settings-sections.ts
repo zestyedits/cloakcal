@@ -17,6 +17,11 @@
  * exist — both wearing the same card, chevron and weight as the cards that work. People
  * merged into the card that decides what people see; the deferred list became a footer that
  * is not a card; Security became a signpost to /settings/security.
+ *
+ * Six now. Plan joined them LAST, and it is a signpost like Security rather than a card
+ * holding controls. The order here is frequency of use first: Plan is the least-used thing
+ * on this page and the only one that cannot yet act, and a settings page whose first row is
+ * a billing tier is a page that opens with an upsell.
  */
 /**
  * Each card carries a DESCRIPTION as well as a name, and that is hierarchy rather than
@@ -50,5 +55,10 @@ export const SECTIONS = [
     id: 'security',
     label: 'Security',
     description: 'Password, passkeys, recovery phrase, and the devices that can open your calendar.',
+  },
+  {
+    id: 'plan',
+    label: 'Plan',
+    description: 'What your account includes, and what Pro will cost when billing opens.',
   },
 ] as const
