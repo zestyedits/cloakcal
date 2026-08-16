@@ -167,3 +167,45 @@ describe('the documents are well formed', () => {
     expect(allProse).toMatch(/@cloakcal\.com/)
   })
 })
+
+describe('the documents are actually reachable', () => {
+  const read = (path: string) =>
+    readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
+
+  /**
+   * The consent line, asserted HERE rather than in e2e, and the reason matters.
+   *
+   * `/sign-up` renders a "not open yet" notice unless NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN=1.
+   * That flag is `NEXT_PUBLIC_`, so it is inlined at BUILD time and Playwright cannot toggle
+   * it — the sign-up form does not exist in any environment the e2e suite can reach. A spec
+   * that skipped when the form was absent would report green forever while checking nothing,
+   * which is exactly the failure mode this repo keeps paying for. So it is checked against
+   * the source, where it runs on every commit.
+   */
+  it('asks for consent on the sign-up form, beside the button', () => {
+    const form = read('../src/components/auth-form.tsx')
+
+    expect(form).toMatch(/By creating an account you agree/)
+    expect(form).toContain('href="/terms"')
+    expect(form).toContain('href="/privacy"')
+    // Gated to sign-up: the same sentence on the sign-in form would be claiming someone
+    // agreed to something by returning to an account they already have.
+    expect(form).toMatch(/mode === 'sign-up' && \(\s*<p className=\{styles\.consent\}/)
+  })
+
+  it('puts the links on all three auth pages, which had no footer at all', () => {
+    for (const route of ['sign-in', 'sign-up', 'recover']) {
+      const page = read(`../src/app/${route}/page.tsx`)
+      expect(page, `${route} has no LegalFooter`).toContain('<LegalFooter />')
+    }
+  })
+
+  it('keeps both documents public in the middleware', () => {
+    // Restated from middleware-paths.server.test.ts on purpose. That file is about the two
+    // path lists; this one is about the legal pages being usable, and losing that guarantee
+    // should fail in the file a reader of the policy would look at.
+    const middleware = read('../src/middleware.ts')
+    expect(middleware).toContain("'/privacy'")
+    expect(middleware).toContain("'/terms'")
+  })
+})

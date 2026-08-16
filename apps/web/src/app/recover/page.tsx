@@ -1,5 +1,6 @@
 import { RecoverForm } from '@/components/recover-form'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LegalFooter } from '@/components/legal-footer'
 import styles from '@/components/auth.module.css'
 
 export const metadata = { title: 'Get back in · CloakCal' }
@@ -13,6 +14,7 @@ export default function RecoverPage() {
         <ThemeToggle />
       </div>
       <RecoverForm />
+      <LegalFooter />
     </main>
   )
 }

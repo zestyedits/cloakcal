@@ -1,0 +1,51 @@
+/*
+ * The legal footer on the auth pages.
+ *
+ * Absolutely positioned at the bottom of the page rather than in flow, because
+ * `auth.module.css`'s `.page` is a `place-items: center` grid built to hold exactly one card.
+ * Adding a second child to that grid would shove the card off centre, which is a worse
+ * outcome than a footer pinned to the bottom edge.
+ *
+ * 44px targets. These are two of the four links a signed-out visitor has, and the landing
+ * footer already learned this lesson the hard way when its versions shipped too small and the
+ * a11y sweep caught them.
+ */
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  /* Clears the home indicator on iOS, where a footer flush to the bottom edge is partly
+     under the system gesture bar. */
+  padding: var(--space-2) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.footer a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

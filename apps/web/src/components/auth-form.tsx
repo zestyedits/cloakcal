@@ -274,6 +274,22 @@ export function AuthForm({ mode }: { mode: Mode }) {
             {mode === 'sign-up' ? 'Create account' : 'Sign in'}
           </Button>
         )}
+
+        {/*
+          THE CONSENT LINE, and it belongs next to the button rather than in a footer.
+          Creating an account IS the act of agreeing, so the agreement has to be legible at
+          the moment of agreeing — a link somewhere further down the page is the pattern that
+          makes consent arguable. Not a checkbox: an unticked box that blocks the button adds
+          friction without adding consent, and this is the plain-language version.
+        */}
+        {mode === 'sign-up' && (
+          <p className={styles.consent}>
+            By creating an account you agree to the{' '}
+            <Link href="/terms">Terms</Link> and the{' '}
+            <Link href="/privacy">Privacy Policy</Link>. The short version: we cannot read your
+            event content, we cannot recover it for you, and we do not track you.
+          </p>
+        )}
       </div>
 
       <p className={styles.switch}>

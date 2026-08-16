@@ -170,6 +170,26 @@
   color: var(--text-secondary);
 }
 
+/*
+ * The consent line under Create account.
+ *
+ * Tertiary ink but NOT small: --text-sm, the same size as the rest of the supporting copy on
+ * this page. Consent text set smaller than everything around it is the visual grammar of
+ * something you are meant to skip, and this is the one sentence on the page that is legally
+ * load-bearing.
+ */
+.consent {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.consent a {
+  color: var(--accent-text);
+}
+
 .switch {
   margin: 0;
   font-size: var(--text-sm);

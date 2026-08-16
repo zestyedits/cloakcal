@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { AuthForm } from '@/components/auth-form'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LegalFooter } from '@/components/legal-footer'
 import styles from '@/components/auth.module.css'
 
 export const metadata = { title: 'Sign in · CloakCal' }
@@ -20,6 +21,7 @@ export default function SignInPage() {
       <Suspense fallback={null}>
         <AuthForm mode="sign-in" />
       </Suspense>
+      <LegalFooter />
     </main>
   )
 }

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { AuthForm } from '@/components/auth-form'
 import { PrelaunchNotice } from '@/components/prelaunch-notice'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LegalFooter } from '@/components/legal-footer'
 import { signupsOpen } from '@/lib/signups'
 import styles from '@/components/auth.module.css'
 
@@ -32,6 +33,7 @@ export default function SignUpPage() {
       ) : (
         <PrelaunchNotice />
       )}
+      <LegalFooter />
     </main>
   )
 }
