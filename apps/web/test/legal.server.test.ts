@@ -152,8 +152,50 @@ describe('the documents are well formed', () => {
     expect(PRIVACY.sections.map((s) => s.id)).toContain('your-rights')
     const rights = PRIVACY.sections.find((s) => s.id === 'your-rights')?.body.join(' ') ?? ''
     expect(rights).toMatch(/export/i)
-    expect(rights).toMatch(/delete your account/i)
+    expect(rights).toMatch(/deleted?/i)
     expect(TERMS.sections.map((s) => s.id)).toContain('ending')
+  })
+
+  /**
+   * BOTH DOCUMENTS CLAIMED YOU COULD DELETE YOUR ACCOUNT FROM SETTINGS, AND YOU NEVER COULD.
+   * There is no such control in `apps/web/src`, and there never has been — so for as long as
+   * those pages have existed they have carried a false statement in the one place a statement
+   * being false actually costs something.
+   *
+   * It is worse now that money is involved: `subscriptions.workspace_id` cascades on a
+   * workspace delete, so a delete flow built without cancelling upstream first would destroy
+   * the local record while Stripe kept charging. 0024's header and ADR 0007 both flag it, and
+   * no database constraint can enforce it.
+   *
+   * So this asserts the copy stays honest until the control exists. When the delete flow
+   * lands — with an upstream cancel as its FIRST step — this test is what walks somebody back
+   * to the two sentences that need to change with it.
+   */
+  it('does not claim a self-serve delete that does not exist', () => {
+    expect(allProse).not.toMatch(/delete your account[^.]*from Settings/i)
+    expect(allProse).toMatch(/emailing us/i)
+  })
+
+  /**
+   * A purchase control with nothing said about refunds is a gap somebody finds at the worst
+   * possible moment. The policy is "ask and we refund it", which is the cheapest promise to
+   * keep at eight dollars a month and the one hardest to argue with.
+   */
+  it('says what happens if somebody is charged by mistake', () => {
+    const payment = TERMS.sections.find((s) => s.id === 'payment')?.body.join(' ') ?? ''
+    expect(payment).toMatch(/refund/i)
+  })
+
+  /**
+   * The payment section used to open with "There is nothing to buy yet", which stops being
+   * true the moment the flag goes on for one account and would then be a false statement in
+   * a document a payment processor reads.
+   */
+  it('makes no claim about buying that turning billing on would falsify', () => {
+    const payment = TERMS.sections.find((s) => s.id === 'payment')?.body.join(' ') ?? ''
+    expect(payment).not.toMatch(/nothing to buy/i)
+    // And it keeps the promise this work actually makes good on.
+    expect(payment).toMatch(/cancel from Settings/i)
   })
 
   it('states the unrecoverable-by-design trade in the terms', () => {

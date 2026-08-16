@@ -81,10 +81,11 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1102 unit tests
-pnpm test:e2e            # 360 Playwright tests, runs its own dev server
+pnpm test                # 1249 unit tests
+pnpm test:e2e            # 460 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
+pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
 pnpm brand:assets        # regenerate every icon from cloak-mark.ts. Commit the output.
 pnpm email:templates     # write the branded emails to .email-preview/ to read or paste
 ```
@@ -117,7 +118,19 @@ update auth.users set email_confirmed_at = now() where email = '<the address>';
 ```
 
 Sign in to run the key ceremony, and keep the 24 words the screen shows — recovery cannot be
-tested without them. Delete the account afterwards with
+tested without them.
+
+**Cancel any Stripe test subscription BEFORE deleting the account.** The cascade on
+`subscriptions.workspace_id` destroys the local record while the processor keeps the
+subscription alive and keeps billing it — 0024's header flags this as an operational
+requirement no database constraint can enforce, and the first place it bites is your own
+test account:
+
+```bash
+stripe subscriptions cancel sub_...      # or the test dashboard
+```
+
+Then delete the account with
 `delete from auth.users where email like '%@cloakcal.test'`; the cascade takes its events,
 wraps and workspace with it. **Do not leave one lying around and do not commit its password.**
 A known credential on the production project is worth less than this recipe.
@@ -565,7 +578,24 @@ availability.** Four things, and three of them found bugs nothing else could see
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
    by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
-4. **Stripe. The SCHEMA half is built and live (0028); the processor half is not.**
+4. **Stripe is BUILT, in test mode, behind a fail-closed flag. It has never met a real
+   Stripe account.** See ADR 0009. Checkout, the webhook, and cancel / resume / switch on our
+   own settings page; `pnpm billing:setup` provisions the Product, both Prices, the portal
+   configuration and the webhook endpoint over the API. Everything below is what remains:
+   - **A `sk_test_…` key.** The one input nothing here can substitute for.
+   - **`billing_writer` has no password.** 0028 created it NOLOGIN deliberately; the
+     `alter role` block in `docs/deploy.md` has to be run by hand, and until it is, every
+     webhook 500s *after* checkout has already succeeded.
+   - **The Supavisor username convention for a CUSTOM role is unverified.** One `psql`
+     command answers it, and it must be run before the first checkout rather than after.
+   - **Cancelling upstream before an account delete.** Still unbuilt, because there is still
+     no delete flow to hook it to. The legal copy now says deletion is by email, which is
+     true; when the flow lands, the upstream cancel is its FIRST step.
+
+   *(The paragraph below is what this slot said before, kept because the schema half it
+   describes is still exactly what is deployed.)*
+
+   **The SCHEMA half is live (0028).**
    `billing_writer` exists with grants and policies on `subscriptions` and `billing_events`
    only — it cannot read `workspaces`, `events` or `auth.users`, which is asserted rather
    than asserted-about (`packages/db/test/billing-writer.test.ts` runs AS the role). It is
@@ -577,9 +607,9 @@ availability.** Four things, and three of them found bugs nothing else could see
    string, and **cancelling upstream before an account delete** (the cascade on
    `subscriptions` destroys the local row while the processor keeps charging — 0024's header
    flags this).
-   Blocked on a `sk_test_…` key. Nothing takes real money before the independent security
-   review, which has not started. *(This slot used to read "a Settings toggle for keyboard
-   shortcuts". That toggle SHIPPED with 0022 and is in Appearance; the line outlived it.)*
+   Nothing takes real money before the independent security review, which has not started —
+   and that is now ENFORCED rather than promised: `billingConfig()` returns null for any key
+   that is not `sk_test_`, so pasting a live key into Vercel switches billing OFF.
 5. Calendar delete, deferred twice now: `events.calendar_id` is `on delete restrict`, so
    it needs an answer for the events first. Calendar-move on edit is the same shape —
    `update_cloaked_event` (0011) takes no calendar id.
@@ -641,6 +671,60 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A wrong `whsec_` disables the webhook endpoint, and the app looks perfectly fine.** Every
+  delivery 400s, Stripe retries for days, then disables the endpoint and emails whoever owns
+  the Stripe account. Meanwhile nothing in the product looks wrong, because 0024 made absence
+  mean Free — a subscription row that was never written is indistinguishable from a free
+  account, and the property that makes a missing row SAFE is the same property that hides
+  this. `pnpm billing:setup` printing `endpoint.status` on every run is the only watchdog in
+  the whole design.
+- **`current_period_end` is on the subscription ITEM, not the subscription.** `billing_mode:
+  flexible` has been the default since API version 2025-09-30 and moved it; every guide
+  written before 2025 reads `subscription.current_period_end`, which is now `undefined`. The
+  failure is silent in both directions — optional in the SDK's types, nullable by design in
+  0028 — so a wrong read stores `null` forever, no constraint fires, and the plan page says
+  "renews —" for the life of the account. Same family as the bytea format mismatch.
+- **Omitting `items[0].id` on a price swap ADDS a second item.** Stripe does not replace the
+  first one, so the customer ends up subscribed to monthly AND yearly simultaneously, and
+  there is no error anywhere. Changing a price also RESETS `quantity` to 1 unless it is
+  carried over.
+- **A redirect is the wrong answer for a JSON endpoint, and it reads as a Stripe bug.**
+  `fetch` follows a 307 while PRESERVING the method, so a signed-out POST to
+  `/api/billing/checkout` was re-POSTed to `/sign-in`, answered with 200 and a page of HTML,
+  and surfaced as `res.json()` throwing a parse error. The user is told something went wrong
+  when the truth is that their session expired. `guardFor()` in `middleware.ts` answers 401
+  for `/api/*` now, and it is a pure function for the same reason `buildCsp` is: every
+  Playwright project takes the dev-unlock early return, so a browser cannot test this at all.
+- **`form-action 'self'` blocks a form POST that redirects to Stripe, in production only.**
+  Whether `form-action` applies to redirect TARGETS is undefined in the CSP spec; Chrome and
+  Safari enforce it, Firefox does not, and the development policy is deliberately looser. So
+  nothing here can see it. Navigate with `window.location.href` after a `fetch`, which is a
+  script-initiated top-level navigation and is governed by no CSP directive at all — and do
+  NOT "fix" a blocked checkout by widening the policy. `security-headers.server.test.ts` pins
+  that the production CSP names no Stripe origin, `form-action` stays `'self'` and `frame-src`
+  stays `'none'`.
+- **`plan-badge.server.test.ts`'s write-grep is BLIND to the billing writer.** It matches
+  `from('subscriptions')…insert|update|upsert|delete`, a PostgREST shape, and the webhook
+  speaks raw SQL over a direct connection. It stays, because it still guards the client path;
+  `billing-boundary.server.test.ts` guards the other one, and asserts that exactly one file
+  imports `server/billing/db` and that the chain to it is one hop deep.
+- **The settings rail was illegible at 390px on four pages, and every gate passed.** `min-width:
+  0` sat on `.navLink` — the flex CHILD — instead of `.nav`, the grid ITEM. A grid item's
+  default min-width is its content, so the rail sized itself to all seven labels laid end to
+  end, `overflow-x: auto` never engaged because there was nothing to overflow, and the children
+  then shrank below their own `nowrap` text and printed on top of each other. axe does not
+  measure legibility, the 44px sweep passed because the heights were right, and `never scrolls
+  sideways` passed because the squashing is precisely what stopped the page scrolling sideways.
+  It took opening a screenshot.
+- **`getByRole(role, { name })` matches the accessible name as a case-insensitive SUBSTRING.**
+  A page-wide `/Switch to/` also matches the theme toggle's "Switch to light mode", which made
+  four "this control must not exist here" assertions pass nothing. Scope a negative assertion
+  to the thing it is denying, or it is asserting about the whole page.
+- **`server-only` is not a dependency of this workspace.** Next aliases the bare specifier to
+  its own compiled copy during a build, so `import 'server-only'` resolves inside `next build`
+  and nowhere else — which is why, until billing, no test had ever imported a module from
+  `src/server/` that carried the directive. `vitest.config.ts` aliases it to a stub; the real
+  enforcement is still the bundler, which is why `pnpm build` runs before `pnpm test`.
 - **A `max-width` hide rule can un-match itself.** The Today button overflowed the header at
   412px, the layout viewport expanded past the 480px threshold, and the rule that would have
   hidden it stopped matching — a feedback loop where the control causes the overflow that

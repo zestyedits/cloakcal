@@ -151,7 +151,7 @@ export const PRIVACY: LegalDocument = {
         'Supabase hosts our database and handles sign-in. They hold the same data we do, in the same form, including the encrypted content they cannot read.',
         'Vercel hosts and serves the site.',
         'Resend sends transactional email: confirmations, password resets, and nothing else.',
-        'If you subscribe in future, Stripe processes the payment. Card details go to Stripe and never to us.',
+        'Stripe processes payments for the Pro plan. If you subscribe, Stripe receives your card details and the email address you give them at checkout, which does not have to be the one you sign in with. We receive an identifier for you at Stripe, whether the subscription is active, and when it renews. Your card number never reaches us.',
       ],
     },
     {
@@ -168,7 +168,7 @@ export const PRIVACY: LegalDocument = {
       heading: 'What you can do',
       body: [
         'You can export your calendar as a standard .ics file at any time, from Settings. It is built in your browser from your own decrypted content, so the file contains things our servers have never seen. Export is free permanently: charging to leave is not something a privacy product gets to do.',
-        'You can delete your account from Settings, which erases every event, calendar, contact, rule and setting we hold for you. Deletion is immediate and cannot be undone.',
+        'You can have your account deleted by emailing us. That erases every event, calendar, contact, rule and setting we hold for you, and it cannot be undone. There is no button for this yet, and we would rather say so than point you at one that is not there.',
         'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. The tools above are how we meet them. For anything they do not cover, contact us.',
       ],
     },
@@ -236,8 +236,11 @@ export const TERMS: LegalDocument = {
       id: 'payment',
       heading: 'Paying',
       body: [
-        'Everything CloakCal does today is free. There is nothing to buy yet, and no card is stored against your account.',
-        'If a paid plan launches, we will publish the price before you can subscribe, charge only what is shown, and let you cancel from Settings. Cancelling stops the next charge and leaves you on the free plan; it never deletes your calendar.',
+        'Everything CloakCal does today is on the free plan, and cloaking an event stays there permanently. Pro is a paid plan for the work that happens around your calendar.',
+        'Where Pro can be bought, the price is shown on the plan page before anything happens, and that is the only amount we charge. If billing is running in test mode, the page says so and no real card is taken.',
+        'Stripe takes the payment and holds the card. Your card number never reaches us.',
+        'You can cancel from Settings, on the plan page, without contacting us and without going to Stripe. Cancelling stops the next payment and leaves you on Pro until the period you have already paid for runs out. It never deletes your calendar. You can switch between monthly and yearly on the same page, and we show you what the change costs before you confirm.',
+        'If you were charged for something you did not mean to buy, email us and we will refund it.',
         'Export stays on the free plan permanently.',
       ],
     },
@@ -245,7 +248,7 @@ export const TERMS: LegalDocument = {
       id: 'ending',
       heading: 'Ending it',
       body: [
-        'You can delete your account at any time from Settings. It takes your data with it and cannot be undone.',
+        'You can have your account deleted at any time by emailing us. It takes your data with it and cannot be undone. There is no self-serve button for this yet.',
         'We may suspend or close an account that is being used to break the law or to attack the service. We will tell you why unless we are legally prevented from doing so.',
       ],
     },

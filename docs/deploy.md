@@ -67,3 +67,116 @@ Two things live in the Supabase dashboard and will bite on a fresh deploy:
    confirmation link bounces the user to `localhost`.
 
 Neither is reachable through the Supabase MCP tools, so both are manual.
+
+## Billing
+
+Nothing here is set today, and billing is therefore off in every environment. The whole
+block is fail-closed as a **set**: `billingConfig()` returns null unless every one of the
+six is present and well-formed, so a half-configured deployment renders no purchase control
+at all rather than a button whose route 500s.
+
+| Variable | Value | Secret |
+|---|---|---|
+| `CLOAKCAL_BILLING` | `1` to open the door. Unset means closed. | no |
+| `STRIPE_SECRET_KEY` | `sk_test_…` | **yes** |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` | **yes** |
+| `BILLING_DATABASE_URL` | `postgresql://billing_writer.…` | **yes** |
+| `STRIPE_PRICE_PRO_MONTHLY` | `price_…` | no |
+| `STRIPE_PRICE_PRO_ANNUAL` | `price_…` | no |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | `bpc_…` | no |
+
+Get all six from `pnpm billing:setup`, which creates the Stripe objects over the API and
+prints them.
+
+**`CLOAKCAL_BILLING` is deliberately NOT `NEXT_PUBLIC_`,** unlike the sign-ups flag. Sign-ups
+had to be public because the browser talks to Supabase directly, so that flag is the door and
+Supabase Auth is the wall. Every billing action goes through one of our own route handlers,
+so here the server *is* the wall — and a server-only variable can be flipped without a
+redeploy, because Next does not inline it.
+
+**A live key disables billing rather than enabling it.** `billingConfig()` refuses anything
+but `sk_test_`. That is how "nothing takes real money before the independent security review"
+is a property of the build instead of a note somebody has to remember. Removing that check is
+a decision with an ADR behind it, not a config change.
+
+**The three secrets must be typed Sensitive,** which means `vercel env pull` returns the
+literal `[SENSITIVE]` for them while still printing a success line and exiting 0.
+`billingConfig()` refuses that string on purpose — the same trap that already cost this
+project once on the Supabase values.
+
+### `billing_writer` needs a password, and it is not in this repo
+
+Migration 0028 creates the role `NOLOGIN` with no password, because a password in a committed
+migration is a password in the git history forever. **Until somebody runs this by hand in the
+Supabase SQL editor, the webhook cannot connect and every delivery 500s — after checkout has
+already succeeded.**
+
+Generate a URL-safe password so there is no percent-encoding step to get wrong:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+Then, in the SQL editor:
+
+```sql
+alter role billing_writer with login password '<generated>';
+alter role billing_writer set search_path = public;
+alter role billing_writer set statement_timeout = '8s';
+alter role billing_writer set idle_in_transaction_session_timeout = '10s';
+alter role billing_writer connection limit 5;
+```
+
+The two timeouts are load-bearing rather than hygiene. The webhook holds a transaction open
+across a Stripe API call — it has to, because the row lock must be taken before the fetch or
+two concurrent deliveries race and the older snapshot wins — and
+`idle_in_transaction_session_timeout` is what stops a Stripe outage pinning a pooler slot.
+The connection limit bounds a retry storm.
+
+### Verify the connection string before the first checkout, not after
+
+**This is the highest-risk unverified claim in the whole design.** Supavisor identifies the
+tenant from the last dot-segment of the username, and the documented form for a *custom* role
+is `<role>.<project-ref>`. If that is wrong, every webhook 500s — and by then Checkout has
+already succeeded, so somebody has paid and is sitting on Free. Nothing in this repo can see
+it: PGlite proves the SQL and the e2e suite never opens a socket.
+
+```bash
+psql "postgresql://billing_writer.bnjbgjzbddypqtoolunz:<pw>@<pooler-host>:6543/postgres?sslmode=require" \
+     -c "select current_user, current_setting('is_superuser')"
+# expect:  billing_writer | off
+```
+
+Read the pooler host off Supabase → Connect → **Transaction pooler**. It is not derivable and
+it has changed over time. Do **not** use `db.<ref>.supabase.co`: that is the direct connection,
+it is IPv6-only, and a Vercel function cannot reach it.
+
+**If it fails, stop and rethink. Do not fall back to `postgres.<ref>` plus `set role`.** ADR
+0007 spends a paragraph on exactly that: a `reset role` undoes the entire boundary in one
+statement, and the credential in Vercel becomes a service-role key with a politeness step in
+front of it. The honest fallback is the *session* pooler on 5432 with the same custom-role
+username, which trades connection efficiency rather than security.
+
+### Rotating the password has an unavoidable window
+
+A role has one password, so there is always a gap. The order is: set the new value in Vercel,
+redeploy, then `alter role`, then verify. The window between the last two is a minute of 500s,
+which Stripe retries through. Doing it the other way round is a window of 500s that lasts as
+long as the deploy.
+
+## Stripe settings that are not in this repo
+
+Six things live in the Stripe dashboard. `pnpm billing:setup` prints them at the end of every
+run rather than silently skipping them.
+
+1. **Receipt emails** (Settings → Customer emails). OFF by default in test mode, so nobody
+   gets a receipt and the integration looks broken.
+2. **Branding** (Settings → Branding) — logo, icon and accent for Checkout and the portal.
+   Not writable over the API for your own account.
+3. **Portal activation**, live mode only. Test mode works without it.
+4. **Retry and dunning schedule** (Settings → Subscriptions and emails → smart retries).
+   Decides how long a `past_due` account stays that way before Stripe gives up.
+5. **Statement descriptor** (Settings → Public business details). This is the text on a
+   cardholder's statement, and an unrecognised one is a chargeback.
+6. **Rolling a webhook signing secret in place.** There is no API call for it; the script can
+   only delete and recreate, with `--recreate-endpoint`, which mints a new secret.
