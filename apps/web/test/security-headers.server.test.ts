@@ -193,3 +193,49 @@ describe('the headers beside it', () => {
     expect(referrer).toBe('strict-origin-when-cross-origin')
   })
 })
+/**
+ * THE PRODUCTION POLICY MUST ACTUALLY LET THIS APP RUN.
+ *
+ * Everything else in this file checks that the policy is TIGHT. These check that it is not so
+ * tight the product stops working — which is the half that was missing, and which cost a
+ * production outage: nobody could sign in, because the Argon2id KDF is WebAssembly and
+ * `script-src` permitted neither `'unsafe-eval'` nor `'wasm-unsafe-eval'`.
+ *
+ * It survived every gate. Playwright runs `next dev`; dev carries `'unsafe-eval'` for React
+ * Refresh; and `'unsafe-eval'` permits WASM as a side effect. So the browser suite exercised a
+ * policy production does not have, and the dev-versus-prod comparison below matched because it
+ * compared directive NAMES while the difference was in a SOURCE LIST.
+ */
+describe('the production policy permits what the product actually needs', () => {
+
+  /**
+   * TIED TO THE DEPENDENCY, NOT TO A STRING. If `hash-wasm` is ever dropped, this stops
+   * demanding the keyword rather than pinning a permission nothing needs any more — and if a
+   * second WASM dependency arrives, it keeps demanding it.
+   */
+  it('allows WebAssembly, because the KDF is WebAssembly', () => {
+    const kdf = readFileSync(
+      fileURLToPath(new URL('../../../packages/crypto/src/kdf.ts', import.meta.url)),
+      'utf8',
+    )
+    const usesWasm = /from ['"]hash-wasm['"]/.test(kdf)
+    expect(usesWasm, 'kdf.ts no longer imports hash-wasm; revisit this rule').toBe(true)
+    expect(directive(prod, 'script-src')).toContain("'wasm-unsafe-eval'")
+  })
+
+  /**
+   * THE NARROW KEYWORD, NEVER THE BROAD ONE. `'wasm-unsafe-eval'` permits compiling a module;
+   * `'unsafe-eval'` additionally re-enables `eval()` of arbitrary strings, in a bundle whose
+   * whole threat model is that XSS equals reading somebody's calendar. The tempting fix for a
+   * future WASM error is to widen this, and that is what this line exists to stop.
+   */
+  it('does not buy WebAssembly with unrestricted eval', () => {
+    expect(directive(prod, 'script-src')).not.toContain("'unsafe-eval'")
+    expect(directive(prod, 'script-src')).not.toContain("'unsafe-inline'")
+  })
+
+  it('keeps the nonce and strict-dynamic that make the rest of it worth having', () => {
+    expect(directive(prod, 'script-src')).toContain("'strict-dynamic'")
+    expect(directive(prod, 'script-src')).toContain("'nonce-TESTNONCE'")
+  })
+})

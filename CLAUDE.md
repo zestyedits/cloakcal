@@ -664,6 +664,19 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **THE KDF IS WEBASSEMBLY, AND THE PRODUCTION CSP BLOCKED IT, SO NOBODY COULD SIGN IN.**
+  `packages/crypto/src/kdf.ts` derives the master secret with Argon2id from `hash-wasm`, which
+  calls `WebAssembly.compile()` — and a `script-src` with neither `'unsafe-eval'` nor
+  `'wasm-unsafe-eval'` refuses to compile it, so the key ceremony throws and the account cannot
+  be opened at all. **Every gate passed**: Playwright runs `next dev`, dev carries
+  `'unsafe-eval'` for React Refresh, and `'unsafe-eval'` permits WASM as a side effect, so the
+  browser suite exercised a policy production does not have. `security-headers.server.test.ts`
+  compared dev and prod by DIRECTIVE NAME, which matched, while the difference lived in a
+  SOURCE LIST. The fix is `'wasm-unsafe-eval'` and **never `'unsafe-eval'`** — the narrow
+  keyword permits compiling a module, the broad one re-enables `eval()` of arbitrary strings in
+  a bundle whose whole threat model is that XSS equals reading somebody's calendar. That file
+  now also asserts the policy lets the product RUN, not only that it is tight; every other
+  assertion in it was one-directional.
 - **`stripe listen` forwards EVERY event on the account, not the ones your endpoint
   subscribes to.** One `stripe trigger customer.subscription.updated` produced ten deliveries —
   `plan.created`, `price.created`, `charge.succeeded`, `payment_method.attached`,

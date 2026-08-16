@@ -74,6 +74,36 @@ export function buildCsp(nonce: string, { dev, supabaseUrl }: CspOptions): strin
       "'self'",
       `'nonce-${nonce}'`,
       "'strict-dynamic'",
+      /*
+       * WITHOUT THIS, NOBODY CAN SIGN IN. THE KDF IS WEBASSEMBLY.
+       *
+       * `packages/crypto/src/kdf.ts` derives the master secret with Argon2id from `hash-wasm`,
+       * which calls `WebAssembly.compile()`. Under a `script-src` that permits neither
+       * `'unsafe-eval'` nor `'wasm-unsafe-eval'` the browser refuses to compile the module, so
+       * the key ceremony throws and the account cannot be opened at all:
+       *
+       *   WebAssembly.compile(): Compiling or instantiating WebAssembly module violates the
+       *   following Content Security policy directive because 'unsafe-eval' is not an allowed
+       *   source of script...
+       *
+       * NOTHING IN THIS REPO COULD SEE IT, and the reason is the one this file already warns
+       * about twice. Playwright runs `next dev`, dev adds `'unsafe-eval'` for React Refresh,
+       * and `'unsafe-eval'` happens to permit WASM as a side effect — so every browser test
+       * passed against a policy that is not production's. `security-headers.server.test.ts`
+       * compared the two policies by DIRECTIVE NAME, which matched, while the SOURCE LIST
+       * differed in exactly the way that mattered. Same family as `/opengraph-image`: the one
+       * environment nothing runs in is the only one that behaves differently.
+       *
+       * `'wasm-unsafe-eval'` AND NOT `'unsafe-eval'`, and the distinction is the whole point.
+       * It permits WebAssembly compilation and nothing else; `'unsafe-eval'` would additionally
+       * re-enable `eval()` of arbitrary strings, in a bundle whose entire threat model is that
+       * XSS equals reading somebody's calendar. Do not "fix" a future WASM error by widening
+       * this to `'unsafe-eval'`.
+       *
+       * Unconditional, so the production policy states it rather than inheriting it from dev's
+       * looser keyword, and so the two lists differ only where they are meant to.
+       */
+      "'wasm-unsafe-eval'",
       // React Refresh compiles with eval. Dev only, asserted absent in production.
       ...(dev ? ["'unsafe-eval'"] : []),
     ],
