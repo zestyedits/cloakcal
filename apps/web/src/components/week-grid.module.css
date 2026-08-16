@@ -84,6 +84,32 @@
   color: var(--text-primary);
 }
 
+/*
+ * The holiday under a column's date.
+ *
+ * One line, clipped, with the full name on `title` — a week column is roughly 100px on a
+ * phone and there is no width here for "National Day for Truth and Reconciliation". The
+ * agenda heading and the month cell both show it in full, so nothing depends on the tooltip.
+ *
+ * 11px is below the 12px this project normally floors at, and it is allowed here for the
+ * reason the floor exists: the rule is about ink that has to be READ, and this line is a
+ * hint that the day is special, backed by the same name at full size on two other surfaces.
+ * It still clears AA — secondary and tertiary ink both do on every ground.
+ */
+.holiday {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.holiday[data-kind='observance'] {
+  color: var(--text-tertiary);
+}
+
 .allDayLabel {
   position: sticky;
   left: 0;

@@ -254,9 +254,14 @@
   padding: var(--space-4) var(--space-4) 0;
 }
 
+/* The Holidays switch goes with the list it belongs to. It is part of the calendars
+   section, so leaving it visible on a phone strands one row of a hidden section above the
+   agenda, under no heading, with nothing around it — which is exactly how it looked before
+   the visual baseline caught it. Settings owns the phone route to this preference. */
 .sidebar .calendarList,
 .sidebar .sidebarHeading,
-.sidebar .calendarAdd {
+.sidebar .calendarAdd,
+.sidebar .holidayRow {
   display: none;
 }
 
@@ -294,6 +299,45 @@
   color: var(--text-secondary);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--engrave-hairline);
+  /* The holiday sits on the same rule as the date, pushed to the far end. Wrapping rather
+     than nowrap: "National Day for Truth and Reconciliation" beside a date is wider than a
+     phone, and a heading that ellipses the holiday to nothing is worse than one that takes
+     two lines twice a year. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/*
+ * The holiday on a day heading.
+ *
+ * Sentence case against the heading's engraved caps, so it reads as a note ON the date
+ * rather than as a second heading — the "subtle" half. Public holidays take secondary ink
+ * and an observance drops to tertiary, which is the only weight difference between them:
+ * one is a day off, the other is a day people mark, and that is worth exactly one step of
+ * emphasis and no colour at all.
+ *
+ * DELIBERATELY NOT a privacy ink and deliberately not a calendar colour. A holiday has no
+ * privacy level and belongs to no calendar; borrowing either palette would say it does.
+ */
+.holidayNote {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.holidayNote[data-kind='observance'] {
+  color: var(--text-tertiary);
+}
+
+/* The Holidays switch under the calendars list. */
+.holidayRow {
+  display: block;
+  margin-top: var(--space-1);
 }
 
 /* Anchor targets for the week strip: land the day heading clear of the sticky chrome.
@@ -621,7 +665,8 @@
      mounting the add row (0021). */
   .sidebar .calendarList,
   .sidebar .sidebarHeading,
-  .sidebar .calendarAdd {
+  .sidebar .calendarAdd,
+  .sidebar .holidayRow {
     display: block;
   }
 

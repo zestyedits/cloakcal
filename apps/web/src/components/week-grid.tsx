@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { PRIVACY_LEVELS } from '@cloakcal/ui'
+import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
@@ -104,6 +105,7 @@ export function WeekGrid({
   audience,
   onOpenVisibility,
   onComposeSlot,
+  holidays = {},
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
@@ -126,6 +128,12 @@ export function WeekGrid({
    * decoration, exactly as before — same present-or-absent grammar as the doors above.
    */
   onComposeSlot?: ((date: string, time: string) => void) | undefined
+  /**
+   * Public holidays by date. Not occurrences: they render in the column HEAD, never in the
+   * grid body, because nothing here is an appointment with a time. Putting one in the
+   * all-day band would make it look like an event that could be opened, moved or hidden.
+   */
+  holidays?: HolidayMap
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -213,6 +221,20 @@ export function WeekGrid({
           <div key={`head-${day}`} className={styles.dayHead} data-today={day === today}>
             <span className={styles.dayName}>{WEEKDAY.format(new Date(`${day}T00:00:00Z`))}</span>
             <span className={styles.dayNumber}>{Number(day.slice(8, 10))}</span>
+            {/* `title` carries the full name a narrow column has to truncate. Not the only
+                route to it: the agenda heading and the month cell both render it in full. */}
+            {(() => {
+              const holiday = primaryHoliday(holidays[day])
+              return holiday === undefined ? null : (
+                <span
+                  className={styles.holiday}
+                  data-kind={holiday.kind}
+                  title={holiday.name}
+                >
+                  {holiday.name}
+                </span>
+              )
+            })()}
           </div>
         ))}
 

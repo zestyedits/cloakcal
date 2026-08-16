@@ -33,6 +33,8 @@ import { ButtonLink } from './ui/button'
 import { NavPendingMark } from './ui/nav-pending'
 import { PrivacyChip } from './ui/privacy-chip'
 import { PlanBadge } from './ui/plan-badge'
+import { HolidayToggle } from './holiday-toggle'
+import { primaryHoliday, type HolidayMap, type HolidayPreference, type HolidayRegion } from '@cloakcal/domain'
 import type { PlanId } from '@/lib/plans'
 import styles from './calendar-screen.module.css'
 
@@ -110,6 +112,9 @@ export function CalendarScreen({
   defaultView = 'agenda',
   workspaceId = null,
   plan = 'free',
+  holidays = {},
+  holidayRegion = null,
+  holidayPreference = 'auto',
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
@@ -152,6 +157,19 @@ export function CalendarScreen({
    * rendered where there is a real session, since the cluster itself is gated on one.
    */
   plan?: PlanId
+  /**
+   * Public holidays for the window around the anchor, keyed `YYYY-MM-DD`.
+   *
+   * NOT events, and the type is separate from RedactedOccurrence to keep it that way. These
+   * are computed from a rule table (packages/domain/src/holidays.ts), never stored, never
+   * owned and never cloaked — so nothing here carries a privacy level, an id, or a door into
+   * an edit sheet. A holiday is public by definition and has nothing to redact.
+   */
+  holidays?: HolidayMap
+  /** The region actually drawn, or null for "none". Labels the sidebar row. */
+  holidayRegion?: HolidayRegion | null
+  /** The stored tri-state, so the row can distinguish "off" from "on, nothing to show". */
+  holidayPreference?: HolidayPreference
 }) {
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
@@ -169,6 +187,36 @@ export function CalendarScreen({
   /** Event id whose visibility sheet is open, or null. */
   const [visibilityFor, setVisibilityFor] = useState<string | null>(null)
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
+
+  /**
+   * What the agenda lists: every day holding an occurrence, PLUS any day in the fetched
+   * week that carries a holiday and nothing else.
+   *
+   * Without the second half the feature is invisible in the default view for most of the
+   * holidays worth having — Christmas Day is a day off precisely because nothing is booked
+   * on it, so grouping strictly by occurrence hides exactly the days people want to see.
+   * Built from the RANGE, the same reasoning as WeekGrid's day columns: an agenda that
+   * silently omits a quiet day is not showing the week.
+   *
+   * The empty-state check below still keys off `days`, deliberately. A week with one
+   * holiday and no events has nothing scheduled, and "Nothing scheduled this week" is
+   * still the true and useful thing to say.
+   */
+  const agendaDays = useMemo(() => {
+    const merged = new Map(days)
+    const labels = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const first = new Date(page.from)
+    for (let index = 0; index < 7; index += 1) {
+      const day = labels.format(new Date(first.getTime() + index * 86_400_000))
+      if (holidays[day] !== undefined && !merged.has(day)) merged.set(day, [])
+    }
+    return [...merged.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [days, holidays, page.from, timezone])
 
   // Running index of each day's first row across the whole agenda, so the entrance
   // stagger flows through the list rather than restarting at every day heading. The cap
@@ -439,6 +487,7 @@ export function CalendarScreen({
               timezone={timezone}
               weekStart={weekStart}
               audience={page.audience}
+              holidays={holidays}
             />
           </span>
 
@@ -505,6 +554,19 @@ export function CalendarScreen({
                   </li>
                 ))}
               </ul>
+              {/* Holidays sit at the FOOT of the list, under the user's own calendars,
+                  because they are the one layer here nobody created. Only for the owner:
+                  a restricted audience is previewing someone else's calendar and this is
+                  not their setting to make. */}
+              {page.audience === 'owner' && (
+                <span className={styles.holidayRow}>
+                  <HolidayToggle
+                    preference={holidayPreference}
+                    region={holidayRegion}
+                    target={{ demo: demoMode, workspaceId }}
+                  />
+                </span>
+              )}
               {!demoMode && canCompose && (
                 <span className={styles.calendarAdd}>
                   <NewCalendarButton />
@@ -602,6 +664,7 @@ export function CalendarScreen({
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
+              holidays={holidays}
             />
           )}
 
@@ -615,6 +678,7 @@ export function CalendarScreen({
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
+              holidays={holidays}
             />
           )}
 
@@ -626,6 +690,7 @@ export function CalendarScreen({
               anchorDate={anchorDate}
               audience={page.audience}
               colorFor={colorFor}
+              holidays={holidays}
             />
           )}
 
@@ -634,12 +699,23 @@ export function CalendarScreen({
               subtree is still text a naive leak scan would find. */}
           {view === 'agenda' && (
           <ol className={styles.agenda}>
-            {days.map(([day, occurrences]) => (
+            {agendaDays.map(([day, occurrences]) => (
               // The id is the week strip's anchor target; scroll-margin in CSS keeps the
               // heading clear of the sticky chrome.
               <li key={day} id={`day-${day}`} className={styles.day}>
                 <h2 className={styles.dayHeading}>
                   {DAY_LABEL.format(new Date(`${day}T00:00:00Z`))}
+                  {/* Inside the heading, not a row of its own: a holiday is a property OF
+                      the day, and an agenda row would put a thing you cannot open, edit or
+                      hide in a list where every other row does all three. */}
+                  {(() => {
+                    const holiday = primaryHoliday(holidays[day])
+                    return holiday === undefined ? null : (
+                      <span className={styles.holidayNote} data-kind={holiday.kind}>
+                        {holiday.name}
+                      </span>
+                    )
+                  })()}
                 </h2>
                 <ul className={styles.events}>
                   {occurrences.map((occurrence, index) => (

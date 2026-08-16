@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
 import { NavPendingMark } from './ui/nav-pending'
@@ -45,6 +46,7 @@ export function MonthGrid({
   anchorDate,
   audience,
   colorFor,
+  holidays = {},
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant of the grid's first day. */
@@ -55,6 +57,12 @@ export function MonthGrid({
   /** Carried into every day link so View As survives the drill-down. */
   audience: string
   colorFor: (calendarId: string | undefined) => string
+  /**
+   * Public holidays by date. They sit on the DATE LINE beside the number, not in the
+   * entries list, and they do not count toward MAX_ENTRIES — a cell showing "+3 more"
+   * because Christmas took an events slot would be lying about how busy the day is.
+   */
+  holidays?: HolidayMap
 }) {
   const { cells, names } = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -124,10 +132,28 @@ export function MonthGrid({
           href={{ pathname: '/', query: queryFor(cell.day) }}
           data-outside={cell.outside || undefined}
           data-today={cell.today || undefined}
-          aria-label={`Open ${cell.day}${cell.entries.length > 0 ? `, ${cell.entries.length} ${cell.entries.length === 1 ? 'event' : 'events'}` : ''}`}
+          aria-label={`Open ${cell.day}${primaryHoliday(holidays[cell.day]) !== undefined ? `, ${primaryHoliday(holidays[cell.day])?.name}` : ''}${cell.entries.length > 0 ? `, ${cell.entries.length} ${cell.entries.length === 1 ? 'event' : 'events'}` : ''}`}
           aria-current={cell.today ? 'date' : undefined}
         >
-          <span className={styles.number}>{cell.number}</span>
+          <span className={styles.dateLine}>
+            <span className={styles.number}>{cell.number}</span>
+            {/* On the date line, so it reads as a property of the date rather than as a
+                fourth event. `aria-hidden` because the cell's own aria-label already names
+                it — otherwise every holiday is announced twice. */}
+            {(() => {
+              const holiday = primaryHoliday(holidays[cell.day])
+              return holiday === undefined ? null : (
+                <span
+                  className={styles.holiday}
+                  data-kind={holiday.kind}
+                  title={holiday.name}
+                  aria-hidden="true"
+                >
+                  {holiday.name}
+                </span>
+              )
+            })()}
+          </span>
           {cell.entries.slice(0, MAX_ENTRIES).map((occurrence) => (
             <span
               key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}

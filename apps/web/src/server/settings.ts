@@ -1,4 +1,5 @@
 import 'server-only'
+import { isHolidayPreference, type HolidayPreference } from '@cloakcal/domain'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isCalendarView } from '@/lib/calendar-views'
 import type { PlanId } from '@/lib/plans'
@@ -36,6 +37,13 @@ export interface CalendarPrefs {
   readonly defaultView: CalendarView
   /** Single-key shortcuts are opt-in (WCAG 2.1.4 route one): off until turned on. */
   readonly keyboardShortcuts: boolean
+  /**
+   * Which country's public holidays the calendar draws. `auto` follows the timezone.
+   *
+   * Framing, like the other four — a country code the server already knows more precisely
+   * from `timezone`. Holidays are never events: nothing here is stored, owned or cloaked.
+   */
+  readonly holidayRegion: HolidayPreference
 }
 
 export interface WorkspacePrefs extends CalendarPrefs {
@@ -47,7 +55,7 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
   const supabase = await supabaseServer()
   const { data } = await supabase
     .from('workspaces')
-    .select('id, timezone, week_start, default_view, keyboard_shortcuts')
+    .select('id, timezone, week_start, default_view, keyboard_shortcuts, holiday_region')
     .eq('lifecycle', 'active')
     .order('created_at', { ascending: true })
     .limit(1)
@@ -57,6 +65,7 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
       week_start: number
       default_view: string
       keyboard_shortcuts: boolean
+      holiday_region: string
     }>()
 
   if (data === null) return null
@@ -74,6 +83,9 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
     // THE one in lib/calendar-views.ts, not a local copy: this used to be one of four.
     defaultView: isCalendarView(data.default_view) ? data.default_view : 'agenda',
     keyboardShortcuts: data.keyboard_shortcuts,
+    // Clamped like the two above, and for the same reason: a CHECK constraint behind the
+    // column is not a reason to trust the string this side of the wire.
+    holidayRegion: isHolidayPreference(data.holiday_region) ? data.holiday_region : 'auto',
   }
 }
 
