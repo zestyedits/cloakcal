@@ -17,6 +17,7 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 import { CloakHomeLink } from './cloak-logo'
 import { RecoveryPhraseInput } from './recovery-phrase-input'
 import { InlineError } from './ui/inline-error'
+import { Button } from './ui/button'
 import styles from './auth.module.css'
 
 /**
@@ -285,9 +286,9 @@ export function RecoverForm() {
               {working}
             </p>
           ) : (
-            <button type="submit" className={styles.submit}>
+            <Button type="submit" className={styles.fullWidth}>
               Email me a link
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -386,9 +387,9 @@ export function RecoverForm() {
                 : `${working}. This takes a moment on purpose. A slow derivation is what makes a stolen database expensive to attack.`}
             </p>
           ) : (
-            <button type="submit" className={styles.submit}>
+            <Button type="submit" className={styles.fullWidth}>
               Set my new password
-            </button>
+            </Button>
           )}
         </div>
       )}

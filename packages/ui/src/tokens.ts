@@ -91,6 +91,18 @@ const DARK = {
   textPrimaryOnSunken: '#f5f6fa',
   textSecondaryOnSunken: '#b2b4b8', // rgba(245,246,250,0.72) over #070910
   surfaceSunken: '#070910',
+  /* The filled form field. Ink composited over --field-bg, not over a surface: a field is
+   * its own ground, and checking its label against the card behind it measures a pairing
+   * that never appears on screen. */
+  fieldBg: '#10131d',
+  textPrimaryOnField: '#f5f6fa',
+  textSecondaryOnField: '#b5b6bc', // rgba(245,246,250,0.72) over #10131d
+  /* The PLACEHOLDER, which is text and owes 4.5 like any other text. Tertiary is what a
+   * placeholder normally borrows and it is the ink this project has already dimmed into
+   * an AA failure twice. */
+  textTertiaryOnField: '#83858c', // rgba(245,246,250,0.5) over #10131d
+  fieldBorder: '#60626a', // rgba(245,246,250,0.35) over #10131d
+  focusRing: '#b8b0ff',
   accent: '#6152e6',
   accentHover: '#5a4cd8',
   accentText: '#b8b0ff',
@@ -158,6 +170,14 @@ const LIGHT = {
   /* Success as TEXT. The shape colour (#0f9c78) is 3.47:1 and fails as a 12px label. */
   statusSuccessText: '#0a7357',
   surfaceSunken: '#e9ebf2',
+  /* The filled form field. See the dark block for why these are composited over the field
+   * rather than over a surface. */
+  fieldBg: '#f2f4f9',
+  textPrimaryOnField: '#0b0d14',
+  textSecondaryOnField: '#55575d', // rgba(11,13,20,0.68) over #f2f4f9
+  textTertiaryOnField: '#676970', // rgba(11,13,20,0.60) over #f2f4f9
+  fieldBorder: '#8a8c92', // rgba(11,13,20,0.45) over #f2f4f9
+  focusRing: '#4a3ac9',
   accent: '#5847e0',
   accentHover: '#4a3ac9',
   accentText: '#4a3ac9',
@@ -199,6 +219,35 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/body on sunken', foreground: LIGHT.textPrimaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'light/secondary on sunken', foreground: LIGHT.textSecondaryOnSunken, background: LIGHT.surfaceSunken, minimum: 4.5 },
   { name: 'light/numeral ink on sunken', foreground: LIGHT.numeralInk, background: LIGHT.surfaceSunken, minimum: 4.5 },
+
+  /*
+   * The filled form field, new in the control pass.
+   *
+   * Four pairs per theme, and the two that matter are the last two. The PLACEHOLDER is
+   * text and owes 4.5, which is the pair that stops the usual mistake of reaching for
+   * tertiary ink — this project has already dimmed into an AA failure twice that way. The
+   * BORDER owes 3:1 because it is the boundary that identifies the control (WCAG 1.4.11),
+   * and it is measured against the field's own fill rather than against the page: the
+   * intended borderless design is not reachable on this palette, since a fill 3:1 above
+   * --surface-base lands near #5a5d65 and reads as a disabled slab. The border does the
+   * identifying, so the border is what gets held to the number.
+   *
+   * The FOCUS RING is checked here too, and it was checked nowhere before. globals.css has
+   * shipped a global :focus-visible outline since launch and no pair ever measured it
+   * against anything — which was survivable while every field was transparent and the ring
+   * sat on a page ground already pinned, and stops being survivable the moment fields get
+   * a ground of their own.
+   */
+  { name: 'dark/body on field', foreground: DARK.textPrimaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/secondary on field', foreground: DARK.textSecondaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/placeholder on field', foreground: DARK.textTertiaryOnField, background: DARK.fieldBg, minimum: 4.5 },
+  { name: 'dark/field border on field', foreground: DARK.fieldBorder, background: DARK.fieldBg, minimum: 3 },
+  { name: 'dark/focus ring on field', foreground: DARK.focusRing, background: DARK.fieldBg, minimum: 3 },
+  { name: 'light/body on field', foreground: LIGHT.textPrimaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/secondary on field', foreground: LIGHT.textSecondaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/placeholder on field', foreground: LIGHT.textTertiaryOnField, background: LIGHT.fieldBg, minimum: 4.5 },
+  { name: 'light/field border on field', foreground: LIGHT.fieldBorder, background: LIGHT.fieldBg, minimum: 3 },
+  { name: 'light/focus ring on field', foreground: LIGHT.focusRing, background: LIGHT.fieldBg, minimum: 3 },
   { name: 'dark/body on base', foreground: DARK.textPrimary, background: DARK.surfaceBase, minimum: 4.5 },
   { name: 'dark/body on raised', foreground: DARK.textPrimary, background: DARK.surfaceRaised, minimum: 4.5 },
   { name: 'dark/secondary on raised', foreground: DARK.textSecondary, background: DARK.surfaceRaised, minimum: 4.5 },

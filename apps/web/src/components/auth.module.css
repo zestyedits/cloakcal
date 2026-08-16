@@ -72,19 +72,52 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * The filled field.
+ *
+ * The fill is what says "type here"; the border is the boundary that IDENTIFIES the control
+ * and is held to 3:1 against that fill (WCAG 1.4.11, pinned in CONTRAST_PAIRS). It replaced
+ * a --border-default outline over a --surface-raised ground, which measured 1.6:1 and was
+ * doing the identification job it was far too faint to do — and on light, where
+ * --surface-raised is #ffffff, the field was white-on-white plus a hairline.
+ *
+ * See tokens.css for why this is not the borderless design it was meant to be: a fill 3:1
+ * above --surface-base lands near #5a5d65 on this palette, which is a disabled-looking slab
+ * rather than a field.
+ */
 .input {
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--surface-raised);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-base);
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.input:hover:not(:disabled) {
+  background: var(--field-bg-hover);
+}
+
+/* The placeholder is TEXT and owes 4.5 like any other text. --text-tertiary is the ink this
+   project has already dimmed into an AA failure twice; on the field ground it composites to
+   #83858c dark and #676970 light, both pinned. */
+.input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .input:disabled {
   opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition: none;
+  }
 }
 
 .textarea {
@@ -97,37 +130,27 @@
   resize: vertical;
 }
 
-.submit {
-  min-height: var(--touch-min);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--brand-white);
-  font: inherit;
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-standard);
-}
+/*
+ * `.submit` and `.secondary` USED TO LIVE HERE, and they are gone on purpose.
+ *
+ * They were a second button system: flat --accent rather than the deep gradient the shared
+ * Button uses, their own radius, their own hover, and `cursor: progress` on EVERY disabled
+ * state rather than only on an in-flight one. Sixteen call sites across seven components
+ * wore them, which is exactly the shape CLAUDE.md names as the reason a 2.99:1 Delete label
+ * shipped twice: every re-declaration is one more place the contrast rules have to be
+ * remembered, and one of them always forgets.
+ *
+ * Everything here now uses `ui/Button`, whose variants sit on the tokens the contrast tests
+ * pin, and whose `busy` prop is the honest version of the progress cursor — "this action is
+ * in flight", not "this button is unavailable for any reason at all".
+ *
+ * `auth-buttons.server.test.ts` fails if either class comes back.
+ */
 
-.submit:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.submit:disabled {
-  opacity: 0.55;
-  cursor: progress;
-}
-
-.secondary {
-  composes: submit;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
-}
-
-.secondary:hover:not(:disabled) {
-  background: var(--surface-overlay);
+/* Layout only. A button does not know where it sits, so full-width lives with the caller,
+   which is the rule ui/button.module.css states in its own header. */
+.fullWidth {
+  width: 100%;
 }
 
 .error {

@@ -228,6 +228,22 @@ for (const [label, path] of [
   ['settings', '/settings'],
   ['security', '/settings/security'],
   ['people', '/people'],
+  /*
+   * THE AUTH SCREENS HAD NEVER BEEN SCANNED, in either theme, by anything.
+   *
+   * Found while restyling them. Every axe run in this file covered the calendar, its views,
+   * settings, security, people and the landing — and never `/sign-in`, `/sign-up` or
+   * `/recover`, which are the first pages a stranger sees and the ones asking for a
+   * password. The control pass replaced a transparent field with a filled one, which is
+   * precisely the change that moves a contrast ratio without moving anything a human would
+   * notice in review, so the gap and the change arrived together.
+   *
+   * They also matter more in LIGHT than the app does: --surface-raised is #ffffff there, so
+   * the old field was white on white plus a 1.6:1 hairline.
+   */
+  ['sign in', '/sign-in'],
+  ['sign up', '/sign-up'],
+  ['recover', '/recover'],
 ] as const) {
   test(`the ${label} page scans clean in the LIGHT theme`, async ({ page }) => {
     await page.goto(path)

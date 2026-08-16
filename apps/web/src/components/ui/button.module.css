@@ -18,7 +18,9 @@
   min-height: var(--touch-min);
   padding: 0 var(--space-4);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  /* One step tighter than the cards around it. See --radius-control in tokens.css: at
+     --radius-md a button, an input and the card holding both were the same rectangle. */
+  border-radius: var(--radius-control);
   font: inherit;
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
