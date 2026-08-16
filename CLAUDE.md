@@ -513,7 +513,13 @@ availability.** Four things, and three of them found bugs nothing else could see
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
-1. Booking + clients — the next dedicated phase, gated on the share-key crypto ADR above.
+1. Booking + per-contact share links — the next dedicated phase, and **NOT gated on the
+   share-key crypto ADR**, which this line claimed for months and which was wrong. See ADR
+   0008: sharing splits by DISCLOSURE LEVEL, and `decisionToLevel`'s `busy` and `hidden`
+   steps emit no ciphertext at all, so there is nothing for a recipient to decrypt. A booking
+   page (free/busy only) and a per-contact share link at busy level need no new crypto. The
+   envelope work gates `limited` and `full` only, and it is a separate ADR that nothing here
+   depends on.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
    by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
