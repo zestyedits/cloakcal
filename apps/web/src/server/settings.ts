@@ -8,6 +8,7 @@ import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
 import { loadWorkspaceVisibility, type WorkspaceVisibility } from './visibility'
 import { loadPlan } from './plan'
+import { describeWeek, loadAvailability } from './availability'
 
 /**
  * Workspace preferences, read server-side because the server needs them BEFORE it can do
@@ -162,6 +163,14 @@ export interface SettingsData {
    * stops rendering the tier, this comes out with it, exactly as devices did.
    */
   readonly plan: PlanId
+  /**
+   * The availability card's closed-row state, e.g. "Mon to Fri, 9:00 AM to 5:00 PM".
+   *
+   * A STRING, not the week: the card shows one line and the editor lives on its own route
+   * that loads its own copy. Shipping the whole schedule to a screen that renders a summary
+   * of it would be the same over-fetch the devices note above records.
+   */
+  readonly availability: string
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
@@ -169,10 +178,16 @@ export async function loadSettingsData(): Promise<SettingsData> {
   const supabase = await supabaseServer()
 
   if (prefs === null) {
-    return { prefs: null, calendars: [], visibility: null, plan: await loadPlan(null) }
+    return {
+      prefs: null,
+      calendars: [],
+      visibility: null,
+      plan: await loadPlan(null),
+      availability: describeWeek(await loadAvailability(null)),
+    }
   }
 
-  const [calendarResult, nameResult, visibility, plan] = await Promise.all([
+  const [calendarResult, nameResult, visibility, plan, availability] = await Promise.all([
     supabase
       .from('calendars')
       .select('id, color_token, is_default')
@@ -186,6 +201,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
       .eq('subject_type', 'calendar'),
     loadWorkspaceVisibility(prefs.workspaceId),
     loadPlan(prefs.workspaceId),
+    loadAvailability(prefs.workspaceId),
   ])
 
   if (calendarResult.error !== null) throw calendarResult.error
@@ -222,7 +238,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
     fields: fieldsByCalendar.get(row.id) ?? [],
   }))
 
-  return { prefs, calendars, visibility, plan }
+  return { prefs, calendars, visibility, plan, availability: describeWeek(availability) }
 }
 
 /** Devices, for /settings/security — the only screen that renders them. */

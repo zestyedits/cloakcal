@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { PRIVACY_LEVELS } from '@cloakcal/ui'
 import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
+import type { AvailabilityWeek } from '@/server/availability'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
@@ -96,6 +97,47 @@ function layout(day: readonly RedactedOccurrence[], startMinute: number, span: n
   }))
 }
 
+/**
+ * The bands of a day that fall OUTSIDE its availability, clipped to the visible span.
+ *
+ * Returns nothing when the day has no windows, and that is the important case: no rows means
+ * NOT SET rather than "unavailable" (0027), so an account that has never opened the settings
+ * page gets a clean grid instead of one shaded end to end.
+ *
+ * The date string is `YYYY-MM-DD` in the display zone and the weekday is derived from it with
+ * Date.UTC, never `new Date(day)` — parsing a bare date as local time is the drift this whole
+ * codebase is careful about, and here it would shade the wrong column.
+ */
+function outsideHours(
+  day: string,
+  availability: AvailabilityWeek,
+  startMinute: number,
+  endMinute: number,
+): { from: number; to: number }[] {
+  const weekday = new Date(
+    Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10))),
+  ).getUTCDay()
+
+  const windows = availability[weekday]
+  if (windows === undefined || windows.length === 0) return []
+
+  // The gaps between (and around) the windows, then clipped to what is on screen.
+  const bands: { from: number; to: number }[] = []
+  let cursor = 0
+  for (const window of [...windows].sort((a, b) => a.startMinute - b.startMinute)) {
+    if (window.startMinute > cursor) bands.push({ from: cursor, to: window.startMinute })
+    cursor = Math.max(cursor, window.endMinute)
+  }
+  if (cursor < 1440) bands.push({ from: cursor, to: 1440 })
+
+  return bands
+    .map((band) => ({
+      from: Math.max(band.from, startMinute),
+      to: Math.min(band.to, endMinute),
+    }))
+    .filter((band) => band.to > band.from)
+}
+
 export function WeekGrid({
   occurrences,
   from,
@@ -106,6 +148,7 @@ export function WeekGrid({
   onOpenVisibility,
   onComposeSlot,
   holidays = {},
+  availability = {},
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
@@ -134,6 +177,14 @@ export function WeekGrid({
    * all-day band would make it look like an event that could be opened, moved or hidden.
    */
   holidays?: HolidayMap
+  /**
+   * Weekly availability, as wall-clock minutes past local midnight (0027).
+   *
+   * Shades the hours OUTSIDE it. Decoration and nothing else: `aria-hidden`, behind every
+   * block, and it never changes the grid's hour span — see the note at the shading below for
+   * why widening the span to cover availability would be the wrong call.
+   */
+  availability?: AvailabilityWeek
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -297,6 +348,32 @@ export function WeekGrid({
 
           return (
             <div key={`col-${day}`} className={styles.column} data-today={day === today}>
+              {/*
+                OUTSIDE your working hours: a quiet wash behind everything.
+
+                THE SPAN IS NOT WIDENED to cover availability, deliberately. The grid's hours
+                come from the events in view (see startMinute/endMinute above), and stretching
+                it to fit a 9-to-5 window would resize every week screenshot in the suite and
+                make a quiet day taller for no information. This shades what is already on
+                screen, so on a default 8-to-18 span you see the 8-9 and 17-18 edges and on a
+                busy day you may see none — which is correct, not a bug.
+
+                Decoration only: aria-hidden, no pointer events, and it must never be mistaken
+                for an event, so it is a flat wash with no border and no colour.
+              */}
+              {outsideHours(day, availability, startMinute, endMinute).map((band, i) => (
+                <div
+                  key={`closed-${i}`}
+                  className={styles.closed}
+                  aria-hidden="true"
+                  style={
+                    {
+                      '--top': (band.from - startMinute) / span,
+                      '--height': (band.to - band.from) / span,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
               {/* Empty grid becomes a compose door when there is somewhere to compose: one
                   button per hour cell, named by day and hour so the accessible name carries
                   exactly what the click will prefill — and, like every constructed name in

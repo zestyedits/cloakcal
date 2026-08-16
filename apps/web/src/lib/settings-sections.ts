@@ -52,6 +52,11 @@ export const SECTIONS = [
     description: 'Your contacts, and what the link and each group see by default.',
   },
   {
+    id: 'availability',
+    label: 'Availability',
+    description: 'The hours you are open, and what the calendar shades outside them.',
+  },
+  {
     id: 'security',
     label: 'Security',
     description: 'Password, passkeys, recovery phrase, and the devices that can open your calendar.',

@@ -1,0 +1,100 @@
+/*
+ * /settings/availability. Layout only — the panel, rail, field labels and selects all come
+ * from settings.module.css, so this page speaks the same room as the rest of Settings and a
+ * change to the field treatment reaches it for free.
+ */
+
+/*
+ * The scope note. A quiet band rather than a warning: nothing is wrong, the page is simply
+ * being precise about what it does and does not do yet. Warning styling here would read as
+ * an error on a page whose whole content is a preference.
+ */
+.scope {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+.days {
+  list-style: none;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.day + .day {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--engrave-hairline);
+}
+
+.dayHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+}
+
+.dayName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+}
+
+/* Takes the slack so "Add hours" stays hard right on every row. */
+.dayState {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/*
+ * One window: From, To, Remove.
+ *
+ * Wraps rather than scrolls at 390px. `minmax(0, 1fr)` on the two selects and `min-width: 0`
+ * on each field, because a grid item's automatic minimum size is its CONTENT — a native
+ * select sized to its longest option would otherwise push this page sideways, which is the
+ * trap that has now cost this repo four separate fixes.
+ */
+.window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * "Saved." as TEXT, not as a colour.
+ *
+ * --status-success is a shape colour and measures 3.47:1 as a 12px label, which is the exact
+ * mistake this project shipped on the plan badge. --status-success-text exists for the case
+ * where the success colour has to be read.
+ */
+.saved {
+  font-size: var(--text-sm);
+  color: var(--status-success-text);
+}

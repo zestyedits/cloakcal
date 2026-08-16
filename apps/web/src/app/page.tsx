@@ -14,6 +14,7 @@ import {
   safeTimezone,
   weekRange,
 } from '@/server/range'
+import { loadAvailability } from '@/server/availability'
 import { resolveHolidays } from '@/server/holidays'
 import { loadWorkspacePrefs, type CalendarPrefs } from '@/server/settings'
 import { readDemoPrefs } from '@/server/demo-prefs'
@@ -150,6 +151,11 @@ export default async function Page({
   // See server/holidays.ts for why this is server-side and why that costs no privacy.
   const holidays = resolveHolidays(prefs?.holidayRegion ?? 'auto', timezone, dateParam(anchor))
 
+  // Started here and awaited with the events fetch. Like the plan, it cannot reject: its
+  // whole body is inside a try/catch, and the degraded answer is "no shading", which is the
+  // same state a brand-new account is in and the UI therefore already handles.
+  const availabilityPromise = loadAvailability(workspacePrefs?.workspaceId ?? null)
+
   const calendarPage = await getCalendarPage(range, timezone)
 
   // Audience resolution and redaction live in ONE function shared with the People
@@ -224,6 +230,10 @@ export default async function Page({
       holidays={holidays.byDate}
       holidayRegion={holidays.region}
       holidayPreference={prefs?.holidayRegion ?? 'auto'}
+      // Shades the hours outside your working day on the week and day grids. Owner only:
+      // it is the owner's own schedule, and a restricted audience previewing the calendar
+      // has no business being told when this person works.
+      availability={audience === 'owner' ? await availabilityPromise : {}}
     />
   )
 }

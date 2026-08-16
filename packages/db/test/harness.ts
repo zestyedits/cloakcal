@@ -127,6 +127,7 @@ const MIGRATIONS = [
   '0024_subscriptions.sql',
   '0025_revoke_truncate.sql',
   '0026_holiday_prefs.sql',
+  '0027_availability.sql',
 ] as const
 
 export interface QueryResult {

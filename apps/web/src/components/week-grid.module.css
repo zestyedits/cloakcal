@@ -339,3 +339,27 @@
     font-size: var(--text-sm);
   }
 }
+
+/*
+ * Hours outside your availability (0027).
+ *
+ * A flat wash behind everything — z-index 0 against the blocks' 1 and 2 — with no border and
+ * no colour, so it can never be mistaken for an event. Positioned as a FRACTION of the
+ * visible span, which is how every block in this grid is positioned, so the two cannot drift
+ * apart when the span changes.
+ *
+ * --surface-sunken rather than an alpha black: the column already sits on a surface and a
+ * second translucent layer over a today-ring or a hover would composite differently in each
+ * state. An opaque token is one appearance everywhere.
+ */
+.closed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--top) * 100%);
+  height: calc(var(--height) * 100%);
+  z-index: 0;
+  background: var(--surface-sunken);
+  opacity: 0.55;
+  pointer-events: none;
+}

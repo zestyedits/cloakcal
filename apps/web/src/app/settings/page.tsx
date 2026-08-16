@@ -4,6 +4,7 @@ import { isDevFixtureEnabled } from '@/server/dev-fixture'
 import { loadPlan } from '@/server/plan'
 import { readDemoPrefs } from '@/server/demo-prefs'
 import { loadSettingsData } from '@/server/settings'
+import { DEFAULT_WEEK, describeWeek } from '@/server/availability'
 import { SettingsScreen, type SettingsProps } from '@/components/settings/settings-screen'
 
 export const metadata = { title: 'Settings · CloakCal' }
@@ -57,6 +58,9 @@ export default async function SettingsPage() {
           // The fixture has no account, so it has no plan on file. loadPlan says so with
           // source 'demo' and still answers 'free', which is what the catalog describes.
           plan: await loadPlan(null),
+          // The demo shows the example week the /settings/availability page renders, so the
+          // card's closed state and the page behind it agree.
+          availability: describeWeek(DEFAULT_WEEK),
         }
       : await dataPromise
 
@@ -78,6 +82,7 @@ export default async function SettingsPage() {
     workspaceRules: data.visibility?.workspaceRules ?? [],
     groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),
     plan: data.plan,
+    availability: data.availability,
   }
 
   return <SettingsScreen {...props} />
