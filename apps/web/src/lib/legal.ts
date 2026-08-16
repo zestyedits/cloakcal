@@ -115,12 +115,21 @@ export const PRIVACY: LegalDocument = {
       list: NEVER_READABLE_TO_US,
     },
     {
+      /*
+       * TONE ONLY. Every fact in this section is unchanged and none may be dropped: times are
+       * plaintext (plan D1), and ciphertext is unpadded today (CLAUDE.md's crypto-agility
+       * note lists length-bucket padding as future work, and `packages/crypto/src/cloak.ts`
+       * has no padding in the seal path). Rewritten to open on what IS protected rather than
+       * on the limit, because the previous order read as a warning label on a product the
+       * reader had not yet decided to trust.
+       */
       id: 'metadata',
-      heading: 'What the readable part still gives away',
+      heading: 'What we protect, and what we cannot',
       body: [
-        'Worth saying out loud, because it is the honest limit of this design. Someone with access to our database could not read a single title, but they could see that you have a recurring hour blocked out every Tuesday morning, that you were busy for three hours on a Friday night, or that your calendar went quiet for two weeks.',
-        'Encrypted content is also stored at its true length, so a very long note is visibly longer than a short one. We plan to pad this, and it is not padded today.',
-        'If that pattern is itself the sensitive thing for you, CloakCal does not solve your problem, and we would rather tell you that here than have you find out later.',
+        'Your content is genuinely safe. Nobody with access to our database can read a title, a location, a note or a guest list. That holds against us, against anyone who copies the whole database, and against anyone who compels us to hand it over.',
+        'The shape of your week is a different matter. Because times stay readable, someone with that access could tell that you keep an hour free every Tuesday morning, that a Friday evening was busy, or that a fortnight was quiet. They would not know what any of it was for, only that something was there.',
+        'One more, while we are being exact: encrypted content is stored at its true length, so a long note is visibly longer than a short one. Padding it to fixed sizes is on our list and is not done yet.',
+        'For almost everyone this is a good trade, and it is the trade that lets reminders, conflict checks and booking work at all. But if the pattern itself is the sensitive part, and when you met someone matters as much as who you met, then CloakCal is not the right tool for that, and we would rather you knew now than later.',
       ],
     },
     {
