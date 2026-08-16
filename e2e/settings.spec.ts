@@ -19,15 +19,18 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('every section is present, anchored, and in the stated order', async ({ page }) => {
-  // SIX cards, not seven and no longer five. Two of the original seven held no settings at
-  // all — People was a lede and a link, "Coming soon" was four rows of things that do not
-  // exist — and both wore the same card and chevron as the cards that work. Plan joined
-  // last, as a signpost.
+  // SEVEN cards, and the count has moved enough that the number is not the point — the
+  // ORDER is. Two of the original seven held no settings at all (People was a lede and a
+  // link, "Coming soon" was four rows of things that do not exist) and both wore the same
+  // card and chevron as the cards that work; those went. Plan joined last as a signpost,
+  // and Availability sits before Security, because the order here is frequency of use and
+  // Plan is the least-used thing on the page.
   const sections = [
     'Appearance',
     'Time & region',
     'Calendars',
     'People & sharing',
+    'Availability',
     'Security',
     'Plan',
   ]
@@ -35,7 +38,7 @@ test('every section is present, anchored, and in the stated order', async ({ pag
   // THE ORDER, read off the DOM — which this test has always claimed in its name and never
   // actually checked. The body used to loop the list asserting each heading was VISIBLE, so
   // a section could be inserted anywhere, or two could swap, and the suite stayed green.
-  // Found while adding the sixth card. "What's next" is the footer's h2 and is asserted
+  // Found while adding the sixth card, and it earned its keep on the seventh. "What's next" is the footer's h2 and is asserted
   // here rather than filtered out, so the footer cannot silently vanish either.
   await expect(page.getByRole('heading', { level: 2 })).toHaveText([...sections, "What's next"])
 

@@ -245,6 +245,7 @@ for (const [label, path] of [
   ['month', '/?view=month'],
   ['settings', '/settings'],
   ['security', '/settings/security'],
+  ['availability', '/settings/availability'],
   ['people', '/people'],
   /*
    * THE AUTH SCREENS HAD NEVER BEEN SCANNED, in either theme, by anything.

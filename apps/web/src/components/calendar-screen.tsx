@@ -35,6 +35,7 @@ import { PrivacyChip } from './ui/privacy-chip'
 import { PlanBadge } from './ui/plan-badge'
 import { HolidayToggle } from './holiday-toggle'
 import { primaryHoliday, type HolidayMap, type HolidayPreference, type HolidayRegion } from '@cloakcal/domain'
+import type { AvailabilityWeek } from '@/server/availability'
 import type { PlanId } from '@/lib/plans'
 import styles from './calendar-screen.module.css'
 
@@ -115,6 +116,7 @@ export function CalendarScreen({
   holidays = {},
   holidayRegion = null,
   holidayPreference = 'auto',
+  availability = {},
 }: {
   page: RedactedPage
   audiences: readonly AudienceOption[]
@@ -170,6 +172,11 @@ export function CalendarScreen({
   holidayRegion?: HolidayRegion | null
   /** The stored tri-state, so the row can distinguish "off" from "on, nothing to show". */
   holidayPreference?: HolidayPreference
+  /**
+   * Weekly availability (0027). Only the week and day grids draw it — the agenda has no
+   * time axis to shade and the month grid is far too dense for another layer.
+   */
+  availability?: AvailabilityWeek
 }) {
   // The client half of the view state: only meaningful while the page holds the week
   // fetch, where agenda <-> week is an instant presentation toggle. On a day or month
@@ -665,6 +672,7 @@ export function CalendarScreen({
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
               holidays={holidays}
+              availability={availability}
             />
           )}
 
@@ -679,6 +687,7 @@ export function CalendarScreen({
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
               holidays={holidays}
+              availability={availability}
             />
           )}
 

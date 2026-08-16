@@ -150,6 +150,8 @@ export interface SettingsProps {
   readonly groupsByContact: Readonly<Record<string, readonly string[]>>
   /** The tier this account is on. Free unless a `subscriptions` row says otherwise (0024). */
   readonly plan: PlanId
+  /** One line for the availability card's closed state, already formatted by the server. */
+  readonly availability: string
 }
 
 export function SettingsScreen({
@@ -162,6 +164,7 @@ export function SettingsScreen({
   workspaceRules,
   groupsByContact,
   plan,
+  availability,
 }: SettingsProps) {
   const hashSection = useOpenOnHash()
   /**
@@ -470,6 +473,32 @@ export function SettingsScreen({
             {/* A signpost, like People. The password and recovery-phrase flows are a page
                 of their own now: they arrived here carrying their own lockup and their own
                 h1, so /settings rendered two h1s and a stray brand mark mid-scroll. */}
+            {/* A signpost, like Security and Plan. Seven days of multi-window rows is a
+                page, not a row inside an accordion that opens one band at a time. */}
+            <SettingsSection
+              id="availability"
+              open={openSectionId === 'availability'}
+              onOpen={(next) => openBand('availability', next)}
+              title="Availability"
+              description={describe('availability')}
+              state={availability}
+            >
+              <p className={styles.sectionLede}>
+                The hours you are open, per weekday. Your calendar shades the hours outside
+                them, so a week at a glance shows when you are actually working.
+              </p>
+              {/* The honest boundary, stated here as well as on the page: someone deciding
+                  whether to open this card deserves to know it does not book anything. */}
+              <p className={styles.sectionLede}>
+                Nothing books itself yet. Booking pages are not built.
+              </p>
+              <div>
+                <ButtonLink variant="outline" href={{ pathname: '/settings/availability' }}>
+                  Open Availability
+                </ButtonLink>
+              </div>
+            </SettingsSection>
+
             <SettingsSection
               id="security"
               open={openSectionId === 'security'}

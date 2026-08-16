@@ -96,6 +96,7 @@ const TIER_A_TABLES = [
   'contact_groups',
   'contact_group_members',
   'subscriptions',
+  'availability_windows',
 ]
 
 beforeAll(async () => {
