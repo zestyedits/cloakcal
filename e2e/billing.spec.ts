@@ -115,6 +115,80 @@ test.describe('the preview itself', () => {
   })
 })
 
+/**
+ * THE ROUTES THEMSELVES, WITH BILLING UNCONFIGURED — which is what every deployment and every
+ * Playwright project is. These are the only tests that touch the endpoints at all, and what
+ * they can prove is narrow: not that a purchase works, but that an unconfigured deployment
+ * cannot be talked into one, and that nothing here answers with a REDIRECT.
+ *
+ * The redirect half is the one worth having. `fetch` follows a 307 while preserving the
+ * method, so a route that redirects instead of answering JSON surfaces to a user as a parse
+ * error rather than as "you are signed out" — and would be diagnosed as a Stripe problem.
+ */
+test.describe('the routes', () => {
+  const PATHS = [
+    '/api/billing/checkout',
+    '/api/billing/portal',
+    '/api/billing/subscription',
+  ] as const
+
+  for (const path of PATHS) {
+    test(`${path} refuses, in JSON, without redirecting`, async ({ request }) => {
+      const response = await request.post(path, {
+        headers: { 'content-type': 'application/json' },
+        data: { cadence: 'monthly', intent: 'cancel', flow: 'payment_method' },
+        maxRedirects: 0,
+      })
+      // 404 because billing is off. Never 200, and never a 3xx.
+      expect(response.status()).toBe(404)
+      expect(response.headers()['content-type']).toContain('application/json')
+      expect(await response.json()).toEqual({ error: 'billing_off' })
+    })
+
+    test(`${path} refuses a request that is not JSON`, async ({ request }) => {
+      // Half the CSRF defence: a cross-site HTML form can POST with the cookie attached but
+      // cannot set this header, since a form may only send form-urlencoded, multipart or
+      // text/plain.
+      const response = await request.post(path, {
+        headers: { 'content-type': 'text/plain' },
+        data: 'intent=cancel',
+        maxRedirects: 0,
+      })
+      expect(response.status()).toBe(400)
+    })
+  }
+
+  test('the webhook takes 400 on a bad signature, never a redirect and never 200', async ({
+    request,
+  }) => {
+    const response = await request.post('/api/billing/webhook', {
+      headers: { 'content-type': 'application/json', 'stripe-signature': 't=1,v1=nonsense' },
+      data: { id: 'evt_1', type: 'ping' },
+      maxRedirects: 0,
+    })
+    /*
+     * 400 (bad signature) or 503 (billing unconfigured), never 404 and never a 3xx.
+     *
+     * 404 in particular would be the failure: Stripe counts it as permanent and disables the
+     * endpoint after a few days, and a disabled endpoint is invisible from inside the app,
+     * because 0024 made absence mean Free.
+     */
+    expect([400, 503]).toContain(response.status())
+  })
+
+  test('the webhook is reachable without a session at all', async ({ request }) => {
+    // Without its PUBLIC_PATHS entry this is a 307 to /sign-in. Nothing else can see that:
+    // dev and every Playwright project take middleware's dev-unlock early return.
+    const response = await request.post('/api/billing/webhook', {
+      headers: { 'content-type': 'application/json' },
+      data: {},
+      maxRedirects: 0,
+    })
+    expect(response.status()).not.toBe(307)
+    expect(response.status()).not.toBe(302)
+  })
+})
+
 test.describe('free', () => {
   test('offers a purchase, names both prices, and says where the card goes', async ({ page }) => {
     const band = await open(page, 'none')

@@ -56,6 +56,9 @@ importers:
       '@cloakcal/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
+      '@cloakcal/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@cloakcal/domain':
         specifier: workspace:*
         version: link:../../packages/domain

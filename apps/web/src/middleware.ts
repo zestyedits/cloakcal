@@ -26,6 +26,12 @@ import { NONCE_HEADER, SECURITY_HEADERS, buildCsp, createNonce } from '@/lib/csp
  * for a signed-in one — page.tsx branches on the session. The prefix check appends a
  * slash before matching, so listing '/' makes exactly the root public, nothing else.
  */
+/**
+ * Named once, and used three times below: in PUBLIC_PATHS, in the early return that keeps a
+ * Supabase outage from becoming a billing outage, and by the test that pins both.
+ */
+export const WEBHOOK_PATH = '/api/billing/webhook'
+
 export const PUBLIC_PATHS = [
   '/',
   '/sign-in',
@@ -38,6 +44,22 @@ export const PUBLIC_PATHS = [
   // session either.
   '/privacy',
   '/terms',
+  /*
+   * THE FOURTH APPEARANCE OF ONE SHAPE: a route that must run for somebody with NO session,
+   * guarded by the thing that checks for a session. `/auth/callback`, `/opengraph-image` and
+   * `/recover` were the first three, and every one of them shipped broken.
+   *
+   * Stripe has no cookies and never will. Without this entry every delivery is answered with
+   * a 307 to /sign-in, Stripe records a failure, and after a few days it DISABLES the
+   * endpoint — while the app keeps looking perfect, because 0024 made absence mean Free and a
+   * subscription row that was never written is indistinguishable from a free account.
+   *
+   * Nothing here would catch it either: dev and every Playwright project run with
+   * NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1, which returns early below before any redirect happens.
+   * `middleware-paths.server.test.ts` is the guard, and it also pins that the two
+   * SESSION-authenticated billing routes are NOT public.
+   */
+  WEBHOOK_PATH,
 ]
 
 /**
@@ -53,6 +75,35 @@ export const PUBLIC_PATHS = [
  * which is precisely the state a half-applied change leaves behind.
  */
 export const SIGNED_IN_ELSEWHERE = ['/sign-in', '/sign-up']
+
+/**
+ * WHAT TO DO WITH A REQUEST, as a pure function.
+ *
+ * Extracted for the reason `buildCsp` is a pure function: it is the only way any middleware
+ * fact in this repo has ever been pinned without a server, and every Playwright project takes
+ * the dev-unlock early return before this logic is reached, so a browser cannot test it either.
+ *
+ * `unauthorized` EXISTS BECAUSE A REDIRECT IS THE WRONG ANSWER FOR A JSON ENDPOINT, and the
+ * bug it fixes would have been diagnosed as a Stripe problem. `fetch` follows a 307 while
+ * PRESERVING the method, so a signed-out POST to /api/billing/checkout would be re-POSTed to
+ * /sign-in, answered with 200 and a page of HTML, and the client's `res.json()` would throw a
+ * parse error. The user is told something went wrong when the truth is that their session
+ * expired — which is a sentence `lib/billing-error.ts` already has.
+ *
+ * Everything that is not under /api keeps today's behaviour byte for byte.
+ */
+export type Guard = 'allow' | 'to-sign-in' | 'to-home' | 'unauthorized'
+
+const matches = (paths: readonly string[], pathname: string): boolean =>
+  paths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+
+export function guardFor(pathname: string, signedIn: boolean): Guard {
+  if (!signedIn && !matches(PUBLIC_PATHS, pathname)) {
+    return pathname.startsWith('/api/') ? 'unauthorized' : 'to-sign-in'
+  }
+  if (signedIn && matches(SIGNED_IN_ELSEWHERE, pathname)) return 'to-home'
+  return 'allow'
+}
 
 export async function middleware(request: NextRequest) {
   /*
@@ -97,6 +148,19 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  /*
+   * THE WEBHOOK SKIPS THE SESSION LOOKUP ENTIRELY, and this is about blast radius rather than
+   * latency. Every request the matcher catches costs a `getClaims()` round trip to Supabase,
+   * including one that can never carry a session. On a Supabase outage that turns a webhook
+   * into a timeout — so a Supabase outage becomes a BILLING outage, for a request that was
+   * never going to consult Supabase for anything.
+   *
+   * The path is still in PUBLIC_PATHS below, so this is the second of two independent gates
+   * for one fact. That is the shape 0024 uses deliberately: the revokes and the missing
+   * policies each stop the same write, so removing either one fails loudly instead of quietly.
+   */
+  if (request.nextUrl.pathname === WEBHOOK_PATH) return response
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   if (url === undefined || key === undefined) return response
@@ -119,28 +183,35 @@ export async function middleware(request: NextRequest) {
   const signedIn = data?.claims !== undefined && data.claims !== null
 
   const { pathname } = request.nextUrl
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 
-  if (!signedIn && !isPublic) {
-    const redirect = request.nextUrl.clone()
-    redirect.pathname = '/sign-in'
-    // The path only. Never the query string: View As audiences and future booking tokens
-    // live there, and a redirect target is one of the easiest things to end up in a log.
-    redirect.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`
-    return withSecurity(NextResponse.redirect(redirect))
+  switch (guardFor(pathname, signedIn)) {
+    case 'unauthorized':
+      // JSON, not a redirect. See guardFor's header: `fetch` follows a 307 preserving the
+      // method, so a redirect here surfaces to the user as a parse error rather than as
+      // "you are signed out". The slug is one lib/billing-error.ts already renders.
+      return withSecurity(
+        NextResponse.json({ error: 'not_signed_in' }, { status: 401 }) as NextResponse,
+      )
+
+    case 'to-sign-in': {
+      const redirect = request.nextUrl.clone()
+      redirect.pathname = '/sign-in'
+      // The path only. Never the query string: View As audiences and future booking tokens
+      // live there, and a redirect target is one of the easiest things to end up in a log.
+      redirect.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname)}`
+      return withSecurity(NextResponse.redirect(redirect))
+    }
+
+    case 'to-home': {
+      const redirect = request.nextUrl.clone()
+      redirect.pathname = '/'
+      redirect.search = ''
+      return withSecurity(NextResponse.redirect(redirect))
+    }
+
+    case 'allow':
+      return response
   }
-
-  const bouncesWhenSignedIn = SIGNED_IN_ELSEWHERE.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  )
-  if (signedIn && bouncesWhenSignedIn) {
-    const redirect = request.nextUrl.clone()
-    redirect.pathname = '/'
-    redirect.search = ''
-    return withSecurity(NextResponse.redirect(redirect))
-  }
-
-  return response
 }
 
 export const config = {

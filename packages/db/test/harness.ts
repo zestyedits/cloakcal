@@ -172,6 +172,8 @@ export interface TestDb {
    * a partial write would look identical to a successful one.
    */
   asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T>
+  /** The same, as a role that arrives without a JWT subject. See the implementation. */
+  asRoleTransaction<T>(role: string, fn: (tx: Executor) => Promise<T>): Promise<T>
   /** Create an auth.users row and return its id. */
   createUser(id: string, email: string): Promise<string>
   close(): Promise<void>
@@ -231,6 +233,29 @@ export async function createTestDb(): Promise<TestDb> {
       } finally {
         await pg.exec('reset role')
       }
+    },
+
+    /**
+     * A transaction as a non-`authenticated` role, which the billing webhook is the first
+     * caller in this project to need.
+     *
+     * `asTransaction` above always sets `role authenticated` and a JWT subject, which is right
+     * for every user-facing test and wrong for `billing_writer`: that role arrives over a
+     * direct connection, has no subject, and `auth.uid()` is null for it — which is exactly the
+     * condition its policies have to hold under. `asRole` gets that right but runs one
+     * statement, and the webhook's whole idempotency argument is about what happens when
+     * several statements share a transaction and it rolls back.
+     */
+    async asRoleTransaction<T>(role: string, fn: (tx: Executor) => Promise<T>): Promise<T> {
+      const result = await pg.transaction(async (tx) => {
+        await tx.query(`select set_config('request.jwt.claim.sub', '', true)`)
+        await tx.exec(`set local role ${role}`)
+        return fn(async (sql, params = []) => {
+          const r = await tx.query<Record<string, unknown>>(sql, params)
+          return { rows: r.rows }
+        })
+      })
+      return result as T
     },
 
     async asTransaction<T>(userId: string, fn: (tx: Executor) => Promise<T>): Promise<T> {

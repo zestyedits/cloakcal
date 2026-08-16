@@ -12,6 +12,7 @@
   "dependencies": {
     "@cloakcal/cloak-store": "workspace:*",
     "@cloakcal/crypto": "workspace:*",
+    "@cloakcal/db": "workspace:*",
     "@cloakcal/domain": "workspace:*",
     "@cloakcal/policy": "workspace:*",
     "@cloakcal/ui": "workspace:*",

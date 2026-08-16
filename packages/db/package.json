@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./billing-queries": "./src/billing-queries.ts"
   },
   "dependencies": {
     "@cloakcal/crypto": "workspace:*",

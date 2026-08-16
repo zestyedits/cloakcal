@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { config, PUBLIC_PATHS, SIGNED_IN_ELSEWHERE } from '../src/middleware'
+import {
+  config,
+  guardFor,
+  PUBLIC_PATHS,
+  SIGNED_IN_ELSEWHERE,
+  WEBHOOK_PATH,
+} from '../src/middleware'
 
 /**
  * The two path lists, and the difference between them.
@@ -16,6 +22,17 @@ import { config, PUBLIC_PATHS, SIGNED_IN_ELSEWHERE } from '../src/middleware'
  * "reachable without a session" and "pointless once you have one" are different questions,
  * and /recover answers them differently.
  */
+
+/**
+ * Whether the middleware runs for a path at all. Hoisted to module scope because the billing
+ * blocks below ask the same question the matcher block does, and a helper that lives inside
+ * one describe is a helper the next one silently cannot see.
+ */
+const matches = (pathname: string): boolean => {
+  const pattern = config.matcher[0]
+  if (pattern === undefined) throw new Error('the matcher is empty')
+  return new RegExp(`^${pattern}$`).test(pathname)
+}
 
 describe('middleware path lists', () => {
   it('lets a signed-out user reach recovery', () => {
@@ -111,12 +128,6 @@ describe('middleware path lists', () => {
  * or it would 307. These tests fail if someone converts one back.
  */
 describe('middleware matcher', () => {
-  const matches = (pathname: string): boolean => {
-    const pattern = config.matcher[0]
-    if (pattern === undefined) throw new Error('the matcher is empty')
-    return new RegExp(`^${pattern}$`).test(pathname)
-  }
-
   it.each([
     ['/icon.svg', 'the SVG favicon'],
     ['/favicon.ico', 'the ICO fallback, for Safari before 26'],
@@ -149,5 +160,99 @@ describe('middleware matcher', () => {
     // /robots-are-coming must still get a session check rather than sailing past.
     expect(matches('/icons-guide')).toBe(true)
     expect(matches('/favicon-credits')).toBe(true)
+  })
+})
+
+/**
+ * THE BILLING ROUTES, WHICH ARE NOT ONE QUESTION BUT THREE.
+ *
+ * The webhook must be reachable with no session; the other three must not be; and a signed-out
+ * request to any of them must get JSON rather than a redirect. Each is a different failure and
+ * each has a precedent in this file.
+ */
+describe('the billing routes', () => {
+  /**
+   * The FOURTH appearance of "a route that must run for someone with no session, guarded by
+   * the thing that checks for a session". Stripe has no cookies and never will. Without this
+   * entry every delivery is answered with a 307 to /sign-in, Stripe records a failure, and
+   * after a few days it DISABLES the endpoint — while the app keeps looking perfect, because
+   * 0024 made absence mean Free and a row that was never written is indistinguishable from a
+   * free account. Dev and every Playwright project take the dev-unlock early return, so
+   * nothing but this test can see it.
+   */
+  it('makes the webhook public, because Stripe has no session', () => {
+    expect(PUBLIC_PATHS).toContain(WEBHOOK_PATH)
+    expect(WEBHOOK_PATH).toBe('/api/billing/webhook')
+  })
+
+  /**
+   * Public and "pointless once you have one" are different questions, and this file already
+   * spends a paragraph on `/recover` for exactly this distinction. The exact-equality
+   * assertion above stays green with no edit because nothing is ADDED to that list; this
+   * records the reason next to the others rather than leaving it implied by an equality check
+   * that reads as incidental.
+   */
+  it('does not bounce the webhook when a browser happens to be signed in', () => {
+    expect(SIGNED_IN_ELSEWHERE).not.toContain(WEBHOOK_PATH)
+  })
+
+  /** The other three carry a session and must be refused without one. */
+  it.each([
+    '/api/billing/checkout',
+    '/api/billing/portal',
+    '/api/billing/subscription',
+  ])('keeps %s behind the session guard', (path) => {
+    expect(PUBLIC_PATHS).not.toContain(path)
+    expect(matches(path)).toBe(true)
+  })
+
+  /** The webhook still runs middleware, which is what applies the CSP and security headers. */
+  it('still runs middleware on the webhook path', () => {
+    expect(matches(WEBHOOK_PATH)).toBe(true)
+  })
+})
+
+describe('guardFor', () => {
+  /**
+   * A REDIRECT IS THE WRONG ANSWER FOR A JSON ENDPOINT, and the bug this prevents would have
+   * been diagnosed as a Stripe problem. `fetch` follows a 307 while PRESERVING the method, so
+   * a signed-out POST to /api/billing/checkout is re-POSTed to /sign-in, answered with 200 and
+   * a page of HTML, and `res.json()` throws a parse error. The user is told something went
+   * wrong when the truth is that their session expired.
+   */
+  it('answers an unauthenticated API request with 401 rather than a redirect', () => {
+    expect(guardFor('/api/billing/checkout', false)).toBe('unauthorized')
+    expect(guardFor('/api/billing/subscription', false)).toBe('unauthorized')
+  })
+
+  it('still redirects an unauthenticated PAGE request, exactly as before', () => {
+    expect(guardFor('/settings', false)).toBe('to-sign-in')
+    expect(guardFor('/people', false)).toBe('to-sign-in')
+  })
+
+  it('lets a public path through signed out, including the webhook', () => {
+    for (const path of PUBLIC_PATHS) expect(guardFor(path, false)).toBe('allow')
+  })
+
+  it('bounces a signed-in user off the two pages that are pointless with a session', () => {
+    expect(guardFor('/sign-in', true)).toBe('to-home')
+    expect(guardFor('/sign-up', true)).toBe('to-home')
+    // And not off /recover, which the emailed link reaches BY creating a session.
+    expect(guardFor('/recover', true)).toBe('allow')
+  })
+
+  it('lets a signed-in user reach everything else', () => {
+    for (const path of ['/', '/settings', '/settings/plan', '/api/billing/checkout']) {
+      expect(guardFor(path, true)).toBe('allow')
+    }
+  })
+
+  /**
+   * `/apinews` is not under `/api/`. A `startsWith('/api')` check would answer 401 to a page
+   * request and show a stranger a JSON body where a sign-in form belongs.
+   */
+  it('does not mistake a page whose name starts like the api prefix', () => {
+    expect(guardFor('/apinews', false)).toBe('to-sign-in')
+    expect(guardFor('/api', false)).toBe('to-sign-in')
   })
 })

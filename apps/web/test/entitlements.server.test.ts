@@ -129,6 +129,21 @@ describe('the entitlement map', () => {
  */
 const UNGATED: Record<string, string> = {
   'app/auth/callback/route.ts': 'Redeems an emailed sign-in link. Predates any plan.',
+
+  // Billing's own four are ungated BY CONSTRUCTION, and saying so here is the point of the
+  // allowlist: each line is a claim somebody had to write in a diff rather than an omission
+  // nobody noticed. All four must work for an account on its way INTO or OUT OF Pro.
+  'app/api/billing/checkout/route.ts':
+    'Sells Pro. Requiring Pro in order to buy Pro is a locked door with the key inside.',
+  'app/api/billing/subscription/route.ts':
+    'Cancel, resume and switch cadence. Gating cancel on the plan being cancelled would trap ' +
+    'a lapsing account, and gating it on Pro would break the moment Stripe marks it past_due.',
+  'app/api/billing/portal/route.ts':
+    'Updating a card, including for an account that has lapsed to Free and wants to fix the ' +
+    'card that failed.',
+  'app/api/billing/webhook/route.ts':
+    'Stripe has no session and no plan. Authenticated by signature, and it is the thing that ' +
+    'WRITES the entitlement, so it cannot depend on one.',
 }
 
 function routeHandlers(dir: string, prefix = ''): string[] {
