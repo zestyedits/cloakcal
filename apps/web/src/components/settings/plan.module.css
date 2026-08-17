@@ -166,6 +166,35 @@
   color: var(--text-secondary);
 }
 
+/*
+ * PRO'S ROADMAP, INSIDE PRO'S BAND. It used to be a band of its own headed "What Pro will
+ * add", which gave one subject two h2s, two closing notes and two separate statements that
+ * none of it exists yet. A block with its own rule and an h3 files it under the tier instead.
+ *
+ * The top rule is the same hairline the price cards sit above, so the band reads as
+ * price-then-roadmap rather than as two things that happen to be adjacent.
+ */
+.roadmap {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* An h3 that wears the panel head's engraved caps. It COMPOSES nothing from panel.module.css
+   because that file's .panelTitle is written for an h2 and this is deliberately the same
+   size — the hierarchy here is positional (it sits inside the band, under a rule) rather than
+   typographic, which is what keeps the roadmap from shouting as loudly as the tier name. */
+.roadmapTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-engraved-caps-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
 /* Free's own roadmap rows sit inside the "Your plan" band rather than in a band of their
    own, so they need a rule above them to separate them from the includes list. Pro's copies
    head their own section and get theirs from .plannedRow's border-top. */

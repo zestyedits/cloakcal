@@ -23,6 +23,21 @@ import styles from './plan.module.css'
  * /settings/plan — what your account includes, what Pro will cost, and the plain statement
  * that Pro cannot be bought yet.
  *
+ * THREE BANDS, IN A FIXED ORDER, AND THE ORDER IS THE POINT: Your plan, Billing, Pro.
+ * "What am I on", then "where do I manage it", then "what else is there" — which is the order
+ * the questions actually arrive in, and it does not change when the billing flag flips. The
+ * management control used to live at the foot of Your plan while billing was off and in a band
+ * of its own once it was on, so the answer to "where do I cancel" MOVED depending on a server
+ * flag the reader cannot see. A band that is always in the same place, saying either "here is
+ * nothing yet" or "here are your controls", is the whole reason this page has a Billing
+ * heading at all.
+ *
+ * IT SAYS EACH THING ONCE. This page carried the "Pro cannot be bought yet" disclaimer FIVE
+ * times over — the Coming soon tag, the billing note, the Pro lede, the price note and the
+ * roadmap note — plus a merged pair of bands both about Pro. Every sentence was true and the
+ * page was still unreadable, because a caveat repeated five times is not five times as honest,
+ * it is a wall a reader skips. The facts below are the same facts; there is one copy of each.
+ *
  * WIDE, and with the rail, like /settings/security: keeping the rail and swapping the panel
  * beside it is what makes a submenu part of its menu. `settings.layout` WITHOUT
  * `settings.scrollRoom` — that 45vh exists for the scrolling accordion on /settings and
@@ -133,23 +148,39 @@ export function PlanScreen({
                 product will never charge you to leave. */}
             {current.planned.length > 0 && (
               <div className={styles.plannedBlock}>
-                <PlannedRows items={current.planned} />
+                <PlannedRows items={current.planned} tag />
               </div>
             )}
 
-            {/* Rule 1, stated the way the landing page states it. A privacy product that
+            {/* Rule 1, and the one place on this page that states it. A privacy product that
                 overclaims is a privacy product that lies, and a pricing page is exactly
                 where the temptation to round "encrypted" up to "we cannot see anything"
-                lives. */}
+                lives. Two sentences rather than four: "content is encrypted in your browser"
+                was the first bullet in the list directly above, and "that is true on Free and
+                stays true on Pro" is what "on any plan" already says. */}
             <p className={styles.note}>
-              Cloaking is not a paid feature and it will not become one. Event content is
-              encrypted in your browser on every plan. CloakCal is not zero knowledge: the
-              server stores times, durations, repeats and which calendar an event is on in
-              the clear, because reminders and conflict detection need them. That is true on
-              Free, and it stays true on Pro.
+              Cloaking is not a paid feature and it will not become one, on any plan. CloakCal
+              is not zero knowledge: the server stores times, durations, repeats and calendar
+              names in the clear, because reminders and conflict detection need them.
             </p>
+          </section>
 
-            {billing === null && (
+          {/* ALWAYS RENDERED, AND ALWAYS HERE. Everything above is a description of a tier;
+              everything in this band either spends money or explains why it cannot yet.
+              Keeping the heading in place whichever way the flag falls is what makes "where
+              do I manage my subscription" a question with one answer.
+
+              It is also why a purchase control is never buried under the features list and the
+              privacy paragraph: the banners that say "test mode" and "nothing here is real"
+              have to arrive before the button, not after a screen of scrolling. */}
+          <section className={settings.band}>
+            <div className={settings.panelHead}>
+              <h2 className={settings.panelTitle}>Billing</h2>
+            </div>
+
+            {billing !== null ? (
+              <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
+            ) : (
               <div className={styles.billingRow}>
                 {/* Disabled AND the page says why, per the rule the passkeys card states.
                     Rendered rather than omitted so the 44px sweep and the axe scan have a real
@@ -159,26 +190,12 @@ export function PlanScreen({
                   Manage billing
                 </Button>
                 <p className={styles.note}>
-                  Billing opens when sign-ups do. There is no card on file, no payment company
-                  connected to this account, and nothing to cancel.
+                  Billing opens when sign-ups do. There is no card on file and nothing to
+                  cancel.
                 </p>
               </div>
             )}
           </section>
-
-          {/* ITS OWN BAND, not a row at the foot of "Your plan". Everything above is a
-              description of a tier; everything in here can spend money. Burying a purchase
-              control under a features list and a privacy paragraph means the two banners that
-              say "test mode" and "nothing here is real" arrive after a screen of scrolling,
-              which is exactly where a warning stops being read. */}
-          {billing !== null && (
-            <section className={settings.band}>
-              <div className={settings.panelHead}>
-                <h2 className={settings.panelTitle}>Billing</h2>
-              </div>
-              <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
-            </section>
-          )}
 
           {/* Pro's own price band is suppressed once billing is live, because the band above
               has already drawn the price cards as a CONTROL. Two copies of $8 and $72 on one
@@ -192,6 +209,18 @@ export function PlanScreen({
   )
 }
 
+/**
+ * ONE BAND FOR PRO, not two. It was "Pro" (tagline, prices, a price caveat) followed
+ * immediately by "What Pro will add" (the same four rows, another caveat) — two h2s, two
+ * closing notes and two restatements of "none of this exists yet" about one subject. The
+ * roadmap is now an h3 inside the band that names the tier it belongs to, which is what it
+ * always was.
+ *
+ * The prices come out when `showPricing` is false, because the billing band above has already
+ * drawn $8 and $72 as a CONTROL. Two copies on one page, one pressable and one not, is a page
+ * where somebody presses the wrong one. The roadmap survives either way: it is the disclosure
+ * `entitlements.server.test.ts` checks the entitlement map against.
+ */
 function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }) {
   const price = tier.price
   if (price === null) return null
@@ -202,72 +231,91 @@ function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }
   const label = purchaseLabel(tier.purchase)
 
   return (
-    <>
+    <section className={settings.band}>
+      <div className={settings.panelHead}>
+        <h2 className={settings.panelTitle}>{tier.name}</h2>
+        {/*
+         * THE TAG IS SUPPRESSED ONCE THE BILLING BAND IS LIVE, and it is a real contradiction
+         * rather than a tidiness point. `purchase` is a fact about the CATALOG — Pro is not
+         * purchasable — and it stays 'coming-soon' until somebody edits the catalog, which is
+         * a separate change from switching the billing flag on. So in the shipping
+         * configuration this work creates, a subscriber saw "You are on Pro. It renews on
+         * 3 March." in the band above and "PRO · COMING SOON" in this one, about the thing
+         * they were paying for. Found by opening a screenshot of the preview, which is the
+         * only place either state is rendered.
+         *
+         * `purchaseLabel` is still CALLED unconditionally, so the exhaustive switch keeps
+         * being the compile error it exists to be. Only the rendering is gated.
+         */}
+        {showPricing && label !== null && <span className={settings.soon}>{label}</span>}
+      </div>
+
+      {/* The tagline, and the one sentence that says it is not for sale. The tag beside the
+          heading has already said "Coming soon"; this says what that means for money. The
+          longer version explained that the tier is "named and priced here so you can see
+          where this is going", which is a sentence about why the page exists rather than
+          about Pro. */}
+      <p className={settings.sectionLede}>
+        {tier.tagline}
+        {showPricing && ' It cannot be bought yet.'}
+      </p>
+
       {showPricing && (
-      <section className={settings.band}>
-        <div className={settings.panelHead}>
-          <h2 className={settings.panelTitle}>{tier.name}</h2>
-          {label !== null && <span className={settings.soon}>{label}</span>}
-        </div>
+        <>
+          {/* Stacked cards, not a table. See plan.module.css. */}
+          <div className={styles.priceGrid}>
+            <div className={styles.priceCard}>
+              <h3 className={styles.priceTerm}>Monthly</h3>
+              <p className={styles.priceAmount}>
+                {formatPlanPrice(price, 'monthly')}
+                <span className={styles.pricePer}>a month</span>
+              </p>
+              <p className={styles.priceNote}>Billed every month.</p>
+            </div>
 
-        <p className={settings.sectionLede}>
-          {tier.tagline} It is named and priced here so you can see where this is going. It
-          cannot be bought yet, and nothing on this page will take a payment.
-        </p>
-
-        {/* Stacked cards, not a table. See plan.module.css. */}
-        <div className={styles.priceGrid}>
-          <div className={styles.priceCard}>
-            <h3 className={styles.priceTerm}>Monthly</h3>
-            <p className={styles.priceAmount}>
-              {formatPlanPrice(price, 'monthly')}
-              <span className={styles.pricePer}>a month</span>
-            </p>
-            <p className={styles.priceNote}>Billed every month.</p>
+            {/* Better value said three ways and never by colour alone: the flag word, the
+                arithmetic in the note, and the accent edge. */}
+            <div className={styles.priceCard} data-best="true">
+              <h3 className={styles.priceTerm}>
+                Yearly
+                <span className={styles.priceFlag}>Better value</span>
+              </h3>
+              <p className={styles.priceAmount}>
+                {formatPlanPrice(price, 'annual')}
+                <span className={styles.pricePer}>a year</span>
+              </p>
+              <p className={styles.priceNote}>
+                That works out at {annualPerMonth(price)} a month, so {monthsFree} months
+                free. Save {annualSavingPercent(price)} percent against paying monthly.
+              </p>
+            </div>
           </div>
 
-          {/* Better value said three ways and never by colour alone: the flag word, the
-              arithmetic in the note, and the accent edge. */}
-          <div className={styles.priceCard} data-best="true">
-            <h3 className={styles.priceTerm}>
-              Yearly
-              <span className={styles.priceFlag}>Better value</span>
-            </h3>
-            <p className={styles.priceAmount}>
-              {formatPlanPrice(price, 'annual')}
-              <span className={styles.pricePer}>a year</span>
-            </p>
-            <p className={styles.priceNote}>
-              That works out at {annualPerMonth(price)} a month, so {monthsFree} months free.
-              Save {annualSavingPercent(price)} percent against paying monthly.
-            </p>
-          </div>
-        </div>
-
-        <p className={styles.note}>
-          Prices are in US dollars. They are what we plan to charge rather than a quote:
-          nothing can be bought yet, and if they change before billing opens, this page
-          changes with them.
-        </p>
-      </section>
+          <p className={styles.note}>
+            US dollars, and what we plan to charge rather than a quote. They may change
+            before billing opens.
+          </p>
+        </>
       )}
 
-      <section className={settings.band}>
+      {/* An h3, so the roadmap is filed UNDER the tier it belongs to rather than competing
+          with it for an h2. The count keeps the register's grammar. */}
+      <div className={styles.roadmap}>
         <div className={settings.panelHead}>
-          <h2 className={settings.panelTitle}>What {tier.name} will add</h2>
+          <h3 className={styles.roadmapTitle}>What {tier.name} will add</h3>
           <span className={settings.panelCount}>
             {String(tier.planned.length).padStart(2, '0')}
           </span>
         </div>
 
-        <PlannedRows items={tier.planned} />
+        <PlannedRows items={tier.planned} tag={false} />
 
         <p className={styles.note}>
-          None of these exist yet. This is what {tier.name} is for, not a date. Basic privacy
-          is never paywalled: cloaking an event stays on the free plan.
+          None of these exist yet, and this is not a date. Basic privacy is never paywalled:
+          cloaking an event stays on the free plan.
         </p>
-      </section>
-    </>
+      </div>
+    </section>
   )
 }
 
@@ -277,14 +325,22 @@ function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }
  *
  * One component, two callers — Free's block and Pro's band. It was the same six lines twice,
  * and in this repo the second copy is where divergence starts.
+ *
+ * THE TAG IS OPTIONAL, AND WHICH CALLER GETS IT IS THE WHOLE POINT. "Coming soon" is
+ * information only when the row sits among things that DO exist: Free's Export row is one
+ * deferred item under eight shipped bullets, so without the tag it reads as a ninth feature.
+ * Pro's four rows sit under a heading that says "What Pro will add" and above a note that says
+ * none of them exist yet, so the tag there was the third statement of the same fact, printed
+ * four times over. Six identical badges on one screen is how a badge stops being read at all,
+ * including the one that matters.
  */
-function PlannedRows({ items }: { items: PlanTier['planned'] }) {
+function PlannedRows({ items, tag }: { items: PlanTier['planned']; tag: boolean }) {
   return (
     <>
       {items.map((item) => (
         <p key={item.name} className={styles.plannedRow}>
           <span className={styles.plannedName}>{item.name}</span>
-          <span className={settings.soon}>Coming soon</span>
+          {tag && <span className={settings.soon}>Coming soon</span>}
           {item.detail}
         </p>
       ))}

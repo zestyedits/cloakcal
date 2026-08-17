@@ -98,6 +98,50 @@ test('the only billing control is disabled and says why', async ({ page }) => {
   await expect(page.getByText(/no card on file/)).toBeVisible()
 })
 
+/**
+ * THE BILLING HEADING IS ALWAYS THERE, AND ALWAYS IN THE SAME PLACE.
+ *
+ * It used to be a row at the foot of "Your plan" while the flag was off and a band of its own
+ * once it was on, so the answer to "where do I manage my subscription" moved depending on a
+ * server flag no reader can see. Pinning the ORDER rather than mere presence is what catches a
+ * later edit that keeps the heading and drops it below Pro, where a subscriber would have to
+ * scroll past a pitch for the thing they already pay for to find the cancel button.
+ */
+test('files Billing between Your plan and Pro, whichever way the flag falls', async ({
+  page,
+}) => {
+  const headings = await page
+    .locator('main h2')
+    .evaluateAll((nodes) => nodes.map((n) => (n.textContent ?? '').trim()))
+  expect(headings).toEqual(['Your plan', 'Billing', 'Pro'])
+})
+
+/**
+ * The caveat is stated ONCE. Five copies of "you cannot buy this yet" is not five times as
+ * honest; it is a wall a reader skips, which is how a page ends up with an unread warning on
+ * it. Counted rather than eyeballed, because the failure mode is additive — every future copy
+ * edit that wants to be careful adds a sixth.
+ */
+test('says Pro is not for sale once, not five times', async ({ page }) => {
+  const body = (await page.locator('main').textContent()) ?? ''
+  const count = (pattern: RegExp) => body.match(pattern)?.length ?? 0
+
+  // The sentence itself, and the two paraphrases that used to sit beside it.
+  expect(count(/cannot be bought/g)).toBe(1)
+  expect(count(/nothing (on this page will take a payment|can be bought)/g)).toBe(0)
+  expect(count(/before billing opens/g)).toBeLessThanOrEqual(1)
+
+  /*
+   * The tag, twice: once beside the Pro heading, once on Free's Export row. It was SIX —
+   * those two plus one on each of Pro's four roadmap rows, which sit under a heading reading
+   * "What Pro will add" and above a note reading "None of these exist yet". A badge printed
+   * six times on one screen is a badge nobody reads, including the one on Export, which is
+   * the only place it carries information: that row is the single deferred item in a list of
+   * eight shipped ones and without the tag it reads as a ninth feature.
+   */
+  expect(count(/Coming soon/g)).toBe(2)
+})
+
 test('annual is visibly the better value, and not only in colour', async ({ page }) => {
   await expect(page.getByText('Better value')).toBeVisible()
   // The arithmetic, spelled out, so the claim does not rest on an accent border.
