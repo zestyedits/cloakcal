@@ -139,10 +139,29 @@ test.describe('the routes', () => {
         data: { cadence: 'monthly', intent: 'cancel', flow: 'payment_method' },
         maxRedirects: 0,
       })
-      // 404 because billing is off. Never 200, and never a 3xx.
-      expect(response.status()).toBe(404)
+
+      /*
+       * TWO ACCEPTABLE REFUSALS, AND ASSERTING ONLY ONE MADE THIS TEST MEAN DIFFERENT THINGS
+       * ON DIFFERENT MACHINES.
+       *
+       * It pinned `404 billing_off` outright, which is a fact about the DEPLOYMENT rather than
+       * about the route: `prepareBillingRequest` checks `billingEnabled()` before the session,
+       * so an environment with no billing variables answers 404 and one with them answers 401
+       * for the same signed-out request. CI has none and went green; anybody who has run the
+       * Stripe work locally has all six in `apps/web/.env.local` and gets three red tests that
+       * say nothing is wrong. A suite that is red on a correct tree is a suite people stop
+       * reading, and this one guards a payment endpoint.
+       *
+       * So it asserts what is true in BOTH configurations, which is also the whole of what
+       * this test was ever for: the endpoint refuses, it refuses in JSON, it does not redirect,
+       * and it names a slug from the closed union rather than doing any work. Which of the two
+       * refusals arrives is the deployment's business.
+       */
+      expect([401, 404]).toContain(response.status())
       expect(response.headers()['content-type']).toContain('application/json')
-      expect(await response.json()).toEqual({ error: 'billing_off' })
+      expect(await response.json()).toEqual({
+        error: response.status() === 404 ? 'billing_off' : 'not_signed_in',
+      })
     })
 
     test(`${path} refuses a request that is not JSON`, async ({ request }) => {

@@ -104,7 +104,10 @@ export const PLANS: readonly PlanTier[] = [
       // the first bullet on a pricing page, above the honesty paragraph and not travelling
       // with it in a screenshot, which is exactly the shape of overclaim that gets a
       // privacy product in trouble.
-      'Titles, places, notes and guest lists, encrypted in this browser before they are stored',
+      // "before they are stored" came out and nothing was lost: "encrypted in this browser"
+      // already places the encryption before the network. The FIELD LIST is the load-bearing
+      // half and it is untouched.
+      'Titles, places, notes and guest lists, encrypted in this browser',
       'Agenda, week, day and month views',
       'As many calendars as you want, named and coloured',
       // NOT "and for anyone with the link". There is no link: nothing can be sent to
@@ -121,7 +124,7 @@ export const PLANS: readonly PlanTier[] = [
       {
         name: 'Export',
         detail:
-          'Take your calendar out as a standard .ics file, or the whole account as an archive. This stays free permanently: charging to leave is not something a privacy product gets to do.',
+          'Your calendar as a standard .ics file, or the whole account as an archive. Free permanently: charging to leave is not something a privacy product gets to do.',
       },
     ],
     purchase: 'included',
