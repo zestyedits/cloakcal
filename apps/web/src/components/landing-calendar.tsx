@@ -234,8 +234,12 @@ export function LandingCalendar() {
       onBlur={() => (rest.current.focused = false)}
     >
       <div className={styles.chrome}>
-        <span className={styles.chromeLabel}>Who is looking</span>
-        <div className={styles.people} role="group" aria-label="Choose who is looking">
+        {/* THIS IS THE PAGE'S CALL TO ACTION while sign-ups are closed, which is why it
+            reads as an instruction rather than as a filter label. "Who is looking" named
+            the control; "Show the week as" asks for something, and the thing it asks for
+            is the product's whole argument performed on the visitor's own screen. */}
+        <span className={styles.chromeLabel}>Show the week as</span>
+        <div className={styles.people} role="group" aria-label="Show the week as">
           {AUDIENCES.map((person) => (
             <button
               key={person.id}
