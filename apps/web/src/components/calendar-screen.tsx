@@ -23,6 +23,7 @@ import { CloakHomeLink, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
 import { MiniMonth } from './mini-month'
 import { MonthGrid } from './month-grid'
+import { PreviewBar } from './preview-bar'
 import { WeekStrip } from './week-strip'
 import { CloakSheet } from './cloak-sheet'
 import { SeedSampleEvents } from './seed-sample-events'
@@ -509,7 +510,6 @@ export function CalendarScreen({
               audiences={audiences}
               baselineLevel={page.baselineLevel}
               current={page.audience}
-              withheldCount={page.withheldCount}
             />
           </Suspense>
 
@@ -623,6 +623,15 @@ export function CalendarScreen({
         </aside>
 
         <main id="main" className={styles.main}>
+          {/* The mode, at the top of the thing it applies to. Owner sees nothing here, which
+              is why it is not a permanently reserved row: a bar that is always present but
+              usually empty trains people to stop reading it. */}
+          {page.audience !== 'owner' && (
+            <Suspense fallback={null}>
+              <PreviewBar audiences={audiences} current={page.audience} />
+            </Suspense>
+          )}
+
           {/* Mobile only (CSS): the board's week strip. On the agenda it is seven in-page
               anchors into the list below (one fetch, no roundtrip); on the day view the
               other six days' data is NOT on the page, so it becomes seven day links. The
@@ -641,19 +650,25 @@ export function CalendarScreen({
             />
           )}
 
-          {/* Two different facts, and conflating them was wrong. "Everything is hidden from
-              this audience" is a privacy statement; an owner looking at a quiet week is not
-              being told anything about privacy, and a fresh account read the old copy as a
-              failure to load. withheldCount distinguishes them exactly. The day and month
-              grids render even when empty — an empty time grid is a legible empty day, and
-              a month of quiet cells is a legible quiet month. */}
+          {/* Three different facts, still not conflated — but no longer distinguished by a
+              NUMBER. "Everything is hidden from this audience" is a privacy statement; an
+              owner looking at a quiet week is not being told anything about privacy, and a
+              fresh account read the old copy as a failure to load.
+
+              The count used to do this work and is gone from every preview surface (see
+              preview-bar.tsx). `withheldCount` still CHOOSES the sentence — it just never
+              appears in one. That is the honest reading of the decision: the number is not
+              displayed, and the three cases stay tellable apart by wording. It is thinner
+              than it was, and worth knowing it is thinner: "Nothing here for this audience"
+              and "Nothing in this week for this audience" are one preposition apart.
+
+              The day and month grids render even when empty — an empty time grid is a
+              legible empty day, and a month of quiet cells is a legible quiet month. */}
           {days.length === 0 && (view === 'agenda' || view === 'week') && (
             <>
               <p className={styles.empty}>
                 {page.withheldCount > 0
-                  ? `Nothing here for this audience. ${page.withheldCount} ${
-                      page.withheldCount === 1 ? 'event is' : 'events are'
-                    } hidden from them entirely.`
+                  ? 'Nothing here for this audience.'
                   : page.audience === 'owner'
                     ? 'Nothing scheduled this week.'
                     : 'Nothing in this week for this audience.'}
@@ -712,11 +727,21 @@ export function CalendarScreen({
             />
           )}
 
+          {/* KEYED ON THE AUDIENCE, so changing who is looking replays the staggered
+              entrance instead of swapping the rows in place. Switching audience is a server
+              navigation and React reuses the DOM across it, so without this the calendar
+              simply becomes different text under a still cursor — the one moment in the
+              product where something ought to be seen happening.
+
+              The entrance is `rise`, not the cloak wipe. --duration-cloak is already spent
+              on a sealed VALUE becoming readable (cloaked-text.module.css), and spending it
+              on a list re-entrance as well would make the signature motion mean two things.
+              Same trick as the landing hero, which keys its grid for exactly this reason. */}
           {/* Rendered conditionally rather than hidden: two copies of every title in the
               DOM would mean any assertion about a title matching twice, and a `hidden`
               subtree is still text a naive leak scan would find. */}
           {view === 'agenda' && (
-          <ol className={styles.agenda}>
+          <ol className={styles.agenda} key={page.audience}>
             {agendaDays.map(([day, occurrences]) => (
               // The id is the week strip's anchor target; scroll-margin in CSS keeps the
               // heading clear of the sticky chrome.

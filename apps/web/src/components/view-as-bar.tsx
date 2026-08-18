@@ -13,22 +13,24 @@ import styles from './calendar-screen.module.css'
  * redaction a real recipient gets. Switching audience refetches from the server rather
  * than filtering on the client, because client-side filtering would prove nothing.
  *
- * WHAT THIS OWNS, now that the Cloak sheet no longer contains a copy of it: the MODE. It
- * is the one surface that can say "you are currently looking at someone else's view" when
- * nothing is open — the accent border and the hidden-events count — and a dialog by
- * definition cannot, because it is dismissed. The sheet owns the MAP instead: who exists
- * and what each of them gets. The sheet used to render this very component, so switching
- * audience on a phone meant two identical selects in the DOM bound to the same state.
+ * WHAT THIS OWNS: the CHOICE. The select is how you pick an audience, and the baseline
+ * line is what the agenda's chips are measured against.
+ *
+ * It no longer owns the MODE. Announcing "you are previewing" from a card in the sidebar
+ * put the announcement 300px from the content it described on desktop, and above the fold
+ * only until you scrolled on a phone. `<PreviewBar>` does that job at the top of the
+ * content now. The sheet still owns the MAP: who exists and what each of them gets.
+ *
+ * AND THE HIDDEN-EVENTS COUNT IS GONE, deliberately — Keith's call, 2026-08-18. See
+ * preview-bar.tsx for the reasoning and for what it costs the empty state.
  */
 export function ViewAsBar({
   audiences,
   current,
-  withheldCount,
   baselineLevel,
 }: {
   audiences: readonly AudienceOption[]
   current: string
-  withheldCount: number
   baselineLevel?: DisclosureLevel | undefined
 }) {
   const router = useRouter()
@@ -47,8 +49,8 @@ export function ViewAsBar({
   }
 
   return (
-    // Previewing as someone else is a MODE, and the card's accent border says so — the
-    // note alone scrolls away with the card on mobile, a border does not go unnoticed.
+    // The accent border stays: it marks the control that put you in this mode, which is
+    // where you come back to change it. The MODE itself is announced by <PreviewBar>.
     <div className={styles.viewAs} data-previewing={current !== 'owner' || undefined}>
       <label className={styles.viewAsLabel} htmlFor={selectId}>
         Viewing as
@@ -85,13 +87,6 @@ export function ViewAsBar({
         </p>
       )}
 
-      {current !== 'owner' && (
-        <p className={styles.viewAsNote}>
-          {withheldCount === 0
-            ? 'They can see every event below.'
-            : `${withheldCount} ${withheldCount === 1 ? 'event is' : 'events are'} hidden from them entirely.`}
-        </p>
-      )}
     </div>
   )
 }

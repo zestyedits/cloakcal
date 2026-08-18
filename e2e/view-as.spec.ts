@@ -42,13 +42,13 @@ test('a colleague sees busy blocks with no content at all', async ({ page }) => 
 
 test('the public sees nothing, and is told so plainly', async ({ page }) => {
   await page.goto('/?as=public')
-  // The count is stated, not implied. "Nothing here" alone would leave a reviewer unable
-  // to tell "this audience sees nothing" apart from "this week is empty" — which are very
-  // different claims to be checking.
-  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
+
+  // No number, by decision (2026-08-18) — see preview-bar.tsx. What must survive is that
+  // the three empty states stay tellable apart by WORDING, which is now the only thing
+  // separating "this audience sees nothing" from "this week is empty".
+  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
     timeout: 15_000,
   })
-  await expect(page.getByText(/\d+ events are hidden from them entirely/i).first()).toBeVisible()
 
   const html = await page.content()
   expect(CANARIES.filter((c) => html.includes(c))).toEqual([])
@@ -61,13 +61,44 @@ test('a busy audience is not shown the calendar list', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /my calendars/i })).toHaveCount(0)
 })
 
-test('the withheld count is stated, not implied', async ({ page }) => {
+test('no preview surface puts a number on what it is hiding', async ({ page }) => {
+  /*
+   * The inverse of the test that used to live here, and the reason is a decision rather
+   * than a discovery: the withheld count was removed from every preview surface on
+   * 2026-08-18.
+   *
+   * It is asserted as an ABSENCE across the whole page because that is what the decision
+   * is. The count previously appeared in two places at once (the View As note and the
+   * empty state), so a check scoped to one of them would go green while the other kept
+   * counting.
+   */
   await page.goto('/?as=public')
-  // Two elements legitimately say this — the View As note and the empty state — so scope
-  // to the first rather than loosening the matcher.
-  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
+  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
     timeout: 15_000,
   })
+  await expect(page.getByText(/hidden from them entirely/i)).toHaveCount(0)
+  await expect(page.getByText(/\d+ events? (is|are) hidden/i)).toHaveCount(0)
+})
+
+test('previewing announces itself at the top of the content, with a way out', async ({
+  page,
+}) => {
+  // The mode used to be announced only by an accent border on a sidebar card: 300px from
+  // the content on desktop, and above the fold only until you scrolled on a phone.
+  await page.goto('/?as=contact:sarah')
+  const bar = page.getByText('Previewing as')
+  await expect(bar).toBeVisible({ timeout: 15_000 })
+
+  await page.getByRole('button', { name: 'Back to my view' }).click()
+  await expect(page.getByText('Previewing as')).toHaveCount(0)
+  // Back to the owner's own calendar, not merely a cleared banner.
+  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner')
+})
+
+test('the owner is never shown a preview bar', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Previewing as')).toHaveCount(0)
 })
 
 test('server responses for a restricted audience carry no withheld ciphertext', async ({ page }) => {
