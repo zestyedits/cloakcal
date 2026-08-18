@@ -754,6 +754,23 @@
   color: var(--text-secondary);
 }
 
+/*
+ * The workspace baseline, stated once per screen because the rows stopped restating it.
+ *
+ * Wraps rather than truncates: it carries a chip, and a chip clipped mid-word is the one
+ * shape on this card that has to stay readable at 300px. Baseline alignment, not centre,
+ * so the words sit on the chip label rather than on the middle of its wash.
+ */
+.viewAsBaseline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
 .empty {
   margin: var(--space-12) auto;
   max-width: 32ch;

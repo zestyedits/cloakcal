@@ -2,8 +2,10 @@
 
 import { useId } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import type { DisclosureLevel } from '@cloakcal/policy'
 import { audienceHref, audienceIdOf, type AudienceOption } from '@/lib/audiences'
 import { useAudienceNames } from './use-audience-names'
+import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
 
 /**
@@ -22,10 +24,12 @@ export function ViewAsBar({
   audiences,
   current,
   withheldCount,
+  baselineLevel,
 }: {
   audiences: readonly AudienceOption[]
   current: string
   withheldCount: number
+  baselineLevel?: DisclosureLevel | undefined
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -61,6 +65,25 @@ export function ViewAsBar({
           </option>
         ))}
       </select>
+
+      {/* THE BASELINE, STATED ONCE, so the absence of a chip on a row has a meaning
+          rather than being a gap. Agenda rows and week blocks show a privacy chip only
+          where the event DIFFERS from this; every other row shows its calendar instead.
+          Without this line that rule would be legible only to whoever wrote it.
+
+          It is the chip component itself, not a re-worded copy: same icon, same words,
+          same composited ink pair. A sentence that said "limited" in its own voice would
+          be a second vocabulary for one fact, and the two would drift the first time a
+          level was renamed.
+
+          Owner only. While previewing, the question on screen is what THIS audience sees,
+          and the answer is the calendar underneath rather than a workspace default. */}
+      {current === 'owner' && baselineLevel !== undefined && (
+        <p className={styles.viewAsBaseline}>
+          <span>By default, others see</span>
+          <PrivacyChip level={baselineLevel} />
+        </p>
+      )}
 
       {current !== 'owner' && (
         <p className={styles.viewAsNote}>

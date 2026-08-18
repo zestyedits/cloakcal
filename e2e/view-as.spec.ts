@@ -131,3 +131,38 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
   await page.getByRole('button', { name: 'Back to my own view' }).click()
   await expect(page).not.toHaveURL(/as=/)
 })
+
+/*
+ * The privacy chip means "this one is different", and that is only true if it is absent
+ * where nothing is different.
+ *
+ * Before this rule the chip showed the widest disclosure unless it was `full` — and the
+ * widest disclosure is a workspace setting, so one contact on title-only printed "Limited
+ * details" on all eleven fixture rows. Eleven copies of one fact, each costing the eye a
+ * stop. The failure mode being guarded here is the return of that: a chip on every row
+ * again, or a chip on none, both of which look fine in a screenshot.
+ */
+test('the agenda chips only the event that departs from the baseline', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+
+  // The agenda list, not the first list on the page: the mini month and the calendars
+  // list are both lists and both sit above it in the DOM.
+  const agenda = page.locator('main ol').first()
+
+  // Project Review carries event-scoped rules hiding it from everyone who could otherwise
+  // see something (see FIXTURE_EVENT_RULES). It is the only row that may wear a chip.
+  await expect(agenda.getByText('Hidden', { exact: true })).toHaveCount(1)
+
+  // And the baseline is stated once, in the same words, rather than on every row. Scoped
+  // to the sidebar, because a page-wide `Limited details` would also match a visibility
+  // control on some other surface, and a negative assertion that matches the whole page is
+  // asserting about the whole page.
+  const sidebar = page.getByRole('complementary', { name: 'Calendars' })
+  await expect(sidebar.getByText('By default, others see')).toBeVisible()
+  await expect(sidebar.getByText('Limited details', { exact: true })).toHaveCount(1)
+  await expect(agenda.getByText('Limited details', { exact: true })).toHaveCount(0)
+
+  // Rows at the baseline say something useful instead of saying nothing: the calendar.
+  await expect(agenda.getByText('Work', { exact: true }).first()).toBeVisible()
+})

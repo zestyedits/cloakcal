@@ -86,6 +86,56 @@ export const FIXTURE_RULES: readonly VisibilityRule[] = [
   },
 ]
 
+/**
+ * The one event that departs from the workspace baseline, and the reason it exists.
+ *
+ * A privacy chip now appears only where an event DIFFERS from the workspace baseline (see
+ * audience.ts), which means a fixture carrying workspace rules ALONE would render no chip
+ * anywhere — the product's central control, absent from the demo and from every browser
+ * test that scans it. That is the "a control behind a click is a control nobody tested"
+ * trap wearing different clothes: the rule would look implemented and be unexercised.
+ *
+ * So one fixture event is sealed harder than the rest. Both audiences that can see anything
+ * are set to hidden, which takes the widest disclosure to `hidden` against a `limited`
+ * baseline, and the row shows a Hidden chip. It is deliberately the MORE private direction:
+ * that is the case a real person reaches for, and it is the one where a missing chip would
+ * cost them something.
+ *
+ * The event is Project Review, chosen because nothing asserts on it. Legal Call and Lunch
+ * with Sarah are CANARIES in e2e/view-as.spec.ts — the titles that must be absent from a
+ * restricted audience's HTML — and hiding a canary from the audience a test expects to see
+ * it turns a privacy assertion into a fixture accident.
+ */
+export const FIXTURE_EVENT_RULES: ReadonlyMap<string, readonly VisibilityRule[]> = new Map([
+  [
+    'e0000000-0000-4000-8000-000000000005',
+    [
+      {
+        id: 'fixture-event-sarah-hidden',
+        scope: 'event',
+        audience: 'individual',
+        audienceRef: 'sarah',
+        groupPriority: null,
+        timeVis: 'hidden',
+        fields: {},
+        revealAt: null,
+        expiresAt: null,
+      },
+      {
+        id: 'fixture-event-colleagues-hidden',
+        scope: 'event',
+        audience: 'group',
+        audienceRef: 'colleagues',
+        groupPriority: 10,
+        timeVis: 'hidden',
+        fields: {},
+        revealAt: null,
+        expiresAt: null,
+      },
+    ] satisfies readonly VisibilityRule[],
+  ],
+])
+
 /** Alex is the colleague; Sarah is not, so the two rules above land differently. */
 export const FIXTURE_GROUPS = new Map<string, readonly string[]>([['alex', ['colleagues']]])
 

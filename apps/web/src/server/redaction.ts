@@ -11,6 +11,7 @@ import {
   FIXTURE_AUDIENCES,
   FIXTURE_GROUPS,
   FIXTURE_NOW,
+  FIXTURE_EVENT_RULES,
   FIXTURE_RULES,
 } from './dev-fixture'
 
@@ -52,6 +53,7 @@ export async function resolveAndRedact(
           ...EMPTY_VISIBILITY('fixture'),
           audiences: FIXTURE_AUDIENCES,
           workspaceRules: FIXTURE_RULES,
+          rulesByEvent: FIXTURE_EVENT_RULES,
         }
       : await loadWorkspaceVisibility(calendarPage.workspaceId)
 

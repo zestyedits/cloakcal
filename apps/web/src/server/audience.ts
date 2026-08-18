@@ -33,6 +33,23 @@ export interface RedactedPage {
   readonly occurrences: readonly RedactedOccurrence[]
   /** Occurrences withheld entirely, for the "N hidden" affordance in View As. */
   readonly withheldCount: number
+  /**
+   * Owner-only: the widest disclosure any non-owner audience gets from the WORKSPACE rules
+   * alone, with no event's own rules applied.
+   *
+   * This is what a privacy chip is measured against. The chip used to show `privacyLevel`
+   * unless it was `full`, and `privacyLevel` is the widest disclosure across audiences —
+   * which, for an event with no rules of its own, IS this number. One contact set to
+   * title-only therefore printed "Limited details" on every row in the calendar: a setting
+   * restated once per event rather than a fact about any of them. Rows now show the chip
+   * only where they differ from this, the calendar name otherwise, and the UI states this
+   * value once per screen so the absence of a chip still has a stated meaning.
+   *
+   * It does not vary by occurrence — workspace rules do not know which event they are being
+   * asked about — so it is computed once per page against a synthetic rule-less event, the
+   * same trick `cloak-sheet.tsx` uses to summarise an audience with no event in hand.
+   */
+  readonly baselineLevel?: DisclosureLevel
 }
 
 export interface RedactedOccurrence extends RedactedEvent {
@@ -149,6 +166,24 @@ export interface RedactionContext {
 const OPENNESS: Record<DisclosureLevel, number> = { full: 0, limited: 1, busy: 2, hidden: 3 }
 
 /**
+ * The widest disclosure any of these viewers gets, asked of the real engine each time.
+ *
+ * Starts at `hidden` and opens: with no viewers at all the answer is that nobody sees
+ * anything, which is the correct floor rather than a missing value.
+ */
+const widestLevel = (
+  viewers: Iterable<ViewerIdentity>,
+  inputFor: (viewer: ViewerIdentity) => EvaluateInput,
+): DisclosureLevel => {
+  let widest: DisclosureLevel = 'hidden'
+  for (const viewer of viewers) {
+    const level = decisionToLevel(evaluate(inputFor(viewer)))
+    if (OPENNESS[level] < OPENNESS[widest]) widest = level
+  }
+  return widest
+}
+
+/**
  * The viewers whose sightline the owner's privacy chip summarises: one per audience that
  * a set of rules names, keyed so a contact appearing in several rules is evaluated once.
  * Evaluating only rule-bearing audiences is not a shortcut past the engine — an audience
@@ -197,40 +232,71 @@ export function redactPage(
   collectRuleViewers(context.workspaceRules, groupsFor, workspaceViewers)
   workspaceViewers.set('public', { kind: 'public' })
 
+  /**
+   * The workspace baseline: what the widest disclosure is before any event says otherwise.
+   *
+   * Asked of the engine against a synthetic event carrying no rules, because that is
+   * precisely the question — workspace rules do not vary by event, so there is nothing an
+   * occurrence could contribute and one evaluation answers it for the whole page. The id is
+   * a placeholder that no rule can match, which is what makes the answer rule-less rather
+   * than "whatever the first event happened to say".
+   */
+  const baselineLevel =
+    audience === 'owner'
+      ? widestLevel(workspaceViewers.values(), (asViewer) => ({
+          event: {
+            eventId: 'baseline',
+            workspaceId: context.workspaceId,
+            lifecycle: 'active',
+            rules: [],
+          },
+          viewer: asViewer,
+          workspace: {
+            workspaceId: context.workspaceId,
+            timeVis: context.defaultTimeVis,
+            fields: {},
+            rules: context.workspaceRules,
+          },
+          now,
+          policyVersion: 'v1',
+        }))
+      : undefined
+
   for (const occurrence of page.occurrences) {
     const eventRules = context.rulesByEvent.get(occurrence.eventId) ?? []
-    const inputFor = (asViewer: ViewerIdentity): EvaluateInput => ({
-      event: {
-        eventId: occurrence.eventId,
-        workspaceId: context.workspaceId,
-        lifecycle: 'active',
-        // Per-event overrides. This was always `[]`, so an event-scoped rule could be stored
-        // and would never be applied — the engine supported them and nothing fed them in.
-        rules: eventRules,
-      },
-      viewer: asViewer,
-      workspace: {
-        workspaceId: context.workspaceId,
-        timeVis: context.defaultTimeVis,
-        fields: {},
-        rules: context.workspaceRules,
-      },
-      now,
-      policyVersion: 'v1',
-    })
+    const inputWith =
+      (rules: typeof eventRules) =>
+      (asViewer: ViewerIdentity): EvaluateInput => ({
+        event: {
+          eventId: occurrence.eventId,
+          workspaceId: context.workspaceId,
+          lifecycle: 'active',
+          // Per-event overrides. This was always `[]`, so an event-scoped rule could be
+          // stored and would never be applied — the engine supported them and nothing fed
+          // them in. Passing `[]` deliberately is now how the baseline is asked for.
+          rules,
+        },
+        viewer: asViewer,
+        workspace: {
+          workspaceId: context.workspaceId,
+          timeVis: context.defaultTimeVis,
+          fields: {},
+          rules: context.workspaceRules,
+        },
+        now,
+        policyVersion: 'v1',
+      })
+    const inputFor = inputWith(eventRules)
 
     // The owner's chip: the widest disclosure any non-owner audience gets, each one asked
     // of the real engine. Owner-only work for owner-only metadata — no other audience
     // pays for it or receives it.
+    //
     let privacyLevel: DisclosureLevel | undefined
     if (audience === 'owner') {
       const viewers = new Map(workspaceViewers)
       collectRuleViewers(eventRules, groupsFor, viewers)
-      privacyLevel = 'hidden'
-      for (const candidate of viewers.values()) {
-        const level = decisionToLevel(evaluate(inputFor(candidate)))
-        if (OPENNESS[level] < OPENNESS[privacyLevel]) privacyLevel = level
-      }
+      privacyLevel = widestLevel(viewers.values(), inputFor)
     }
 
     const { event } = redactForRecipient(inputFor(viewer), toPayload(occurrence, page.timezone))
@@ -277,5 +343,6 @@ export function redactPage(
     calendars: disclosesCalendars ? page.calendars : [],
     occurrences,
     withheldCount,
+    ...(baselineLevel === undefined ? {} : { baselineLevel }),
   }
 }

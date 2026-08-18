@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { PRIVACY_LEVELS } from '@cloakcal/ui'
 import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
 import type { AvailabilityWeek } from '@/server/availability'
+import type { DisclosureLevel } from '@cloakcal/policy'
 import type { RedactedOccurrence } from '@/server/audience'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
@@ -143,6 +144,7 @@ export function WeekGrid({
   from,
   timezone,
   colorFor,
+  baselineLevel,
   dayCount = 7,
   audience,
   onOpenVisibility,
@@ -163,6 +165,14 @@ export function WeekGrid({
    * that coupling.
    */
   audience?: string | undefined
+  /**
+   * The workspace baseline a block's privacy note is measured against (see audience.ts).
+   *
+   * A prop rather than a field on each occurrence because it is one value for the whole
+   * page: workspace rules do not vary by event, so carrying a copy on every block would put
+   * the same string in the Flight payload once per event and invite the two from drifting.
+   */
+  baselineLevel?: DisclosureLevel | undefined
   /** The screen-level Event Visibility sheet's opener; absent = no visibility door. */
   onOpenVisibility?: ((eventId: string) => void) | undefined
   /**
@@ -454,11 +464,16 @@ export function WeekGrid({
                         />
                       )}
                     </span>
-                    {/* The board's second line: privacy level when restricted, calendar
-                        name otherwise. Rendered in the block's own ink — the blocks sit on
-                        calendar-coloured washes the chip ink pairs were never computed
-                        against, and the icon + label carry the meaning without colour.
-                        Short blocks clip it via overflow; the title always wins.
+                    {/* The board's second line, under the agenda's rule: the privacy
+                        level only where this event DIFFERS from the workspace baseline,
+                        the calendar name otherwise. See calendar-screen.tsx for why the
+                        baseline comparison replaced "unless it is full" — the short version
+                        is that the widest disclosure is a workspace setting, so printing it
+                        on every block said one thing N times. Rendered in the block's own
+                        ink — the blocks sit on calendar-coloured washes the chip ink pairs
+                        were never computed against, and the icon + label carry the meaning
+                        without colour. Short blocks clip it via overflow; the title always
+                        wins.
 
                         For the owner it is also the visibility door, exactly like the
                         agenda's chip: a button ABOVE the stretched edit trigger
@@ -471,7 +486,7 @@ export function WeekGrid({
                           aria-label={`Change who can see the event at ${timeLabel}`}
                           onClick={() => onOpenVisibility(occurrence.eventId)}
                         >
-                          {occurrence.privacyLevel !== 'full' ? (
+                          {occurrence.privacyLevel !== baselineLevel ? (
                             <>
                               <Icon
                                 name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}
@@ -487,10 +502,11 @@ export function WeekGrid({
                               placeholder="Calendar"
                             />
                           ) : (
-                            PRIVACY_LEVELS.full.label
+                            PRIVACY_LEVELS[baselineLevel ?? occurrence.privacyLevel]
+                              .label
                           )}
                         </button>
-                      ) : occurrence.privacyLevel !== 'full' ? (
+                      ) : occurrence.privacyLevel !== baselineLevel ? (
                         <span className={styles.privacyNote}>
                           <Icon
                             name={PRIVACY_LEVELS[occurrence.privacyLevel].icon as IconName}

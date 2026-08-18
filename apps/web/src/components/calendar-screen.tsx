@@ -501,6 +501,7 @@ export function CalendarScreen({
           <Suspense fallback={null}>
             <ViewAsBar
               audiences={audiences}
+              baselineLevel={page.baselineLevel}
               current={page.audience}
               withheldCount={page.withheldCount}
             />
@@ -668,6 +669,7 @@ export function CalendarScreen({
               from={page.from}
               timezone={timezone}
               colorFor={colorFor}
+              baselineLevel={page.baselineLevel}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
@@ -682,6 +684,7 @@ export function CalendarScreen({
               from={page.from}
               timezone={timezone}
               colorFor={colorFor}
+              baselineLevel={page.baselineLevel}
               dayCount={1}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
@@ -792,14 +795,27 @@ export function CalendarScreen({
                           </span>
                         )}
                       </span>
-                      {/* The board's rule for the second label: the privacy level when it
-                          is anything other than full — the product's whole argument, at a
-                          glance — otherwise the calendar, which is the useful fact about
-                          an unrestricted event. For the owner the chip is also the DOOR:
-                          it opens this event's visibility sheet, which makes the privacy
-                          state and the privacy control the same object. Non-owners keep
-                          the availability chip: the redaction they received IS their
-                          privacy information. */}
+                      {/* THE SECOND LABEL SHOWS THE CHIP ONLY WHERE THIS EVENT DIFFERS
+                          FROM YOUR BASELINE, and the calendar everywhere else.
+
+                          The board's rule was "the level unless it is full", and the level
+                          is the widest disclosure any audience gets — which is the
+                          workspace setting for almost every event. One rule putting a
+                          contact on title-only therefore printed "Limited details" on every
+                          row in the calendar, forever: a setting restated once per event
+                          rather than a fact about any of them. A chip that is always the
+                          same carries no information and still costs the eye a stop.
+
+                          So the chip now means "this one is different", and the baseline it
+                          differs from is stated ONCE per screen, in the same vocabulary, in
+                          the sidebar. Colour is still never the sole carrier: the chip keeps
+                          its icon and its words, and its ABSENCE is not a colour.
+
+                          For the owner it is also the DOOR either way, which is why the
+                          button wraps both branches — the route into the visibility sheet
+                          does not depend on which label won. Non-owners keep the
+                          availability chip: the redaction they received IS their privacy
+                          information. */}
                       {page.audience === 'owner' && occurrence.privacyLevel !== undefined ? (
                         <button
                           type="button"
@@ -808,7 +824,7 @@ export function CalendarScreen({
                           aria-label={`Change who can see the event at ${timeOf(occurrence.start)}`}
                           onClick={() => setVisibilityFor(occurrence.eventId)}
                         >
-                          {occurrence.privacyLevel === 'full' &&
+                          {occurrence.privacyLevel === page.baselineLevel &&
                           occurrence.calendarId !== undefined ? (
                             <CloakedText
                               className={styles.calendarNote}
