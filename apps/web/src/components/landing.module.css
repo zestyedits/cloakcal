@@ -106,6 +106,7 @@
   }
 }
 
+
 @keyframes heroRise {
   from {
     opacity: 0;
@@ -151,7 +152,7 @@
 .sub {
   margin: 0;
   max-width: 34rem;
-  font-size: var(--text-lg);
+  font-size: var(--text-lead);
   line-height: var(--leading-relaxed);
   color: var(--text-secondary);
 }
@@ -168,13 +169,17 @@
 
 /* ---------------------------------------------------------- how it works */
 
+/* --space-16 between four children was 256px of pure gap plus 128px of section padding,
+   for about 330px of content: over half the section's height was nothing. The steps are a
+   sequence, and a sequence reads as one thing when its parts are nearer each other than
+   they are to what surrounds it. */
 .how {
   max-width: 72rem;
   margin: 0 auto;
   padding: var(--space-16) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-8);
 }
 
 .kicker {
@@ -244,6 +249,9 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* The one section given more room than its neighbours, because it is the one a cautious
+   reader stops at. Everything below the hero used to share an identical --space-16, so the
+   page had no way to say which part mattered. */
 .honestyInner {
   max-width: 72rem;
   margin: 0 auto;
@@ -309,7 +317,7 @@
 .honestyNote {
   margin: 0;
   max-width: 44rem;
-  font-size: var(--text-lg);
+  font-size: var(--text-lead);
   line-height: var(--leading-relaxed);
   color: var(--text-secondary);
 }
@@ -434,4 +442,44 @@
     font-size: var(--text-2xl);
   }
 
+}
+
+/*
+ * MOVED TO THE END OF THE FILE ON PURPOSE. A media query adds NO specificity, so a
+ * same-specificity override only wins by source order — this block sat above the base
+ * .headline rule and its font-size was silently discarded while its .hero rules applied,
+ * which is the worst version of the bug because the layout looked like it had worked.
+ */
+/*
+ * TWO COLUMNS, AND NOT ONE PIXEL EARLIER THAN 1120px.
+ *
+ * The week is the proof, and a week needs horizontal room to be one: five day columns at a
+ * 7rem minimum plus the hour gutter is about 640px before it starts scrolling inside
+ * itself. Split at 900px and the demo becomes another compressed card sitting next to some
+ * text, which is the thing it exists to not be. At 1120px the copy takes 24rem and the grid
+ * still clears its own minimum.
+ *
+ * Centred rather than top-aligned: the copy is shorter than the grid, and aligning their
+ * tops leaves the paragraph floating above a long empty gutter.
+ */
+@media (min-width: 1120px) {
+  .hero {
+    grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  /* The measure is already 34rem on .sub; the copy column is narrower than that here, so
+     the constraint stops doing anything and the column width becomes the measure. */
+  .heroCopy {
+    max-width: none;
+  }
+
+  /* FLAT, NOT FLUID, once the copy has a column of its own. The fluid size is written
+     against the VIEWPORT, and in two columns the headline no longer has the viewport to
+     fill: at 1120px the clamp resolved to 64px inside a 384px column and broke the line
+     into "Not / everything is / for / everyone." - four ragged lines with a preposition
+     alone on one. 48px sets it in two. */
+  .headline {
+    font-size: 3rem;
+  }
 }

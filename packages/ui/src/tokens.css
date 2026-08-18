@@ -103,7 +103,16 @@
   --text-xs: 0.75rem;    /* 12px — chip labels, metadata */
   --text-sm: 0.875rem;   /* 14px — secondary copy */
   --text-base: 1rem;     /* 16px — body. Never smaller for reading text. */
-  --text-lg: 1.125rem;   /* 18px — subheads */
+  --text-lg: 1.125rem;
+  /* The LEAD paragraph size, and the step the scale was missing.
+   *
+   * Between --text-lg (18px) and --text-xl (24px) there was nothing, so a landing page
+   * whose headline is 40-64px dropped straight to 16-18px body with one 32px heading in
+   * between: two sizes doing all the work below the hero, and no way to mark the one
+   * paragraph on a page that is meant to be read first. Named for the job rather than
+   * given a ladder rung, because inserting one between lg and xl would have renamed every
+   * step above it. */
+  --text-lead: 1.25rem;   /* 18px — subheads */
   --text-xl: 1.5rem;     /* 24px — screen titles */
   --text-2xl: 2rem;      /* 32px — display */
   --text-3xl: 2.75rem;   /* 44px — marketing display */
