@@ -1,0 +1,39 @@
+/*
+ * The preview bar: a mode announced at the top of the content it applies to.
+ *
+ * Sticky rather than fixed, so it belongs to `main`'s scroller and cannot end up floating
+ * over the bottom nav the way a fixed element on this shell would. `main` is the scroller
+ * (the shell is height: 100dvh), so `top: 0` here is the top of the content area.
+ */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  /* The accent as a SHAPE: an alpha wash and an edge. Never as ink -- every word in the bar
+     is --text-primary/-secondary, which are pinned pairs. --accent-quiet is not opaque, and
+     it does not need to be: this sits on --surface-base and scrolls over nothing. */
+  background: var(--accent-quiet);
+  box-shadow: var(--edge-highlight);
+}
+
+.text {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* The audience is the fact; the framing around it is not. Primary ink on the name only. */
+.text strong {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}

@@ -93,11 +93,16 @@ test('the page says it is not open, and offers no action that is not', async ({ 
   await expect(page.getByRole('link', { name: 'Create your calendar' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Get started' })).toHaveCount(0)
 
-  // Sign in survives, because Keith still has to get in.
-  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toHaveAttribute(
-    'href',
-    '/sign-in',
-  )
+  // Sign in survives, because Keith still has to get in. EXACTLY ONE of them: the header
+  // and the hero both used to render it, so the page asked twice for the one thing a
+  // visitor cannot do yet. The count is the assertion, not the presence.
+  const signIn = page.getByRole('link', { name: 'Sign in' })
+  await expect(signIn).toHaveCount(1)
+  await expect(signIn).toHaveAttribute('href', '/sign-in')
+
+  // The audience picker is what the hero offers instead, so it has to be reachable as a
+  // real control rather than as decoration inside the demo.
+  await expect(page.getByRole('group', { name: 'Show the week as' })).toBeVisible()
 })
 
 test('no em dash anywhere in the rendered page', async ({ page }) => {

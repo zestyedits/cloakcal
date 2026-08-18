@@ -25,9 +25,10 @@
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   cursor: pointer;
-  /* ButtonLink renders an <a>, and globals.css underlines anchors. Without this every
-     link-shaped button wore an underline through its label — which is why the one call
-     site that noticed carried an inline `textDecoration: 'none'` of its own. */
+  /* ButtonLink renders an <a>, and a UA stylesheet underlines anchors with an href.
+     globals.css has NO anchor rule — this comment claimed it did, and defending against a
+     rule that does not exist is how a declaration outlives its reason and then gets
+     "cleaned up" by someone who checks. The UA default is reason enough on its own. */
   text-decoration: none;
   transition:
     background var(--duration-fast) var(--ease-standard),

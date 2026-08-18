@@ -42,13 +42,13 @@ test('a colleague sees busy blocks with no content at all', async ({ page }) => 
 
 test('the public sees nothing, and is told so plainly', async ({ page }) => {
   await page.goto('/?as=public')
-  // The count is stated, not implied. "Nothing here" alone would leave a reviewer unable
-  // to tell "this audience sees nothing" apart from "this week is empty" — which are very
-  // different claims to be checking.
-  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
+
+  // No number, by decision (2026-08-18) — see preview-bar.tsx. What must survive is that
+  // the three empty states stay tellable apart by WORDING, which is now the only thing
+  // separating "this audience sees nothing" from "this week is empty".
+  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
     timeout: 15_000,
   })
-  await expect(page.getByText(/\d+ events are hidden from them entirely/i).first()).toBeVisible()
 
   const html = await page.content()
   expect(CANARIES.filter((c) => html.includes(c))).toEqual([])
@@ -61,13 +61,50 @@ test('a busy audience is not shown the calendar list', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /my calendars/i })).toHaveCount(0)
 })
 
-test('the withheld count is stated, not implied', async ({ page }) => {
+test('no preview surface puts a number on what it is hiding', async ({ page }) => {
+  /*
+   * The inverse of the test that used to live here, and the reason is a decision rather
+   * than a discovery: the withheld count was removed from every preview surface on
+   * 2026-08-18.
+   *
+   * It is asserted as an ABSENCE across the whole page because that is what the decision
+   * is. The count previously appeared in two places at once (the View As note and the
+   * empty state), so a check scoped to one of them would go green while the other kept
+   * counting.
+   */
   await page.goto('/?as=public')
-  // Two elements legitimately say this — the View As note and the empty state — so scope
-  // to the first rather than loosening the matcher.
-  await expect(page.getByText(/hidden from them entirely/i).first()).toBeVisible({
+  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
     timeout: 15_000,
   })
+  await expect(page.getByText(/hidden from them entirely/i)).toHaveCount(0)
+  await expect(page.getByText(/\d+ events? (is|are) hidden/i)).toHaveCount(0)
+})
+
+test('previewing announces itself at the top of the content, with a way out', async ({
+  page,
+}) => {
+  // The mode used to be announced only by an accent border on a sidebar card: 300px from
+  // the content on desktop, and above the fold only until you scrolled on a phone.
+  await page.goto('/?as=contact:sarah')
+  const bar = page.getByText('Previewing as')
+  await expect(bar).toBeVisible({ timeout: 15_000 })
+
+  await page.getByRole('button', { name: 'Back to my view' }).click()
+  // The SAME 15s budget every other first-paint assertion in this file carries. Leaving
+  // these on the default 5s made the test flaky under parallel load and it failed on a
+  // different project each run: the click crosses a router.push server navigation, so the
+  // assertions are waiting on a round trip, not on a re-render.
+  await expect(page.getByText('Previewing as')).toHaveCount(0, { timeout: 15_000 })
+  // Back to the owner's own calendar, not merely a cleared banner.
+  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner', {
+    timeout: 15_000,
+  })
+})
+
+test('the owner is never shown a preview bar', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Previewing as')).toHaveCount(0)
 })
 
 test('server responses for a restricted audience carry no withheld ciphertext', async ({ page }) => {
@@ -130,4 +167,39 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
   await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
   await page.getByRole('button', { name: 'Back to my own view' }).click()
   await expect(page).not.toHaveURL(/as=/)
+})
+
+/*
+ * The privacy chip means "this one is different", and that is only true if it is absent
+ * where nothing is different.
+ *
+ * Before this rule the chip showed the widest disclosure unless it was `full` — and the
+ * widest disclosure is a workspace setting, so one contact on title-only printed "Limited
+ * details" on all eleven fixture rows. Eleven copies of one fact, each costing the eye a
+ * stop. The failure mode being guarded here is the return of that: a chip on every row
+ * again, or a chip on none, both of which look fine in a screenshot.
+ */
+test('the agenda chips only the event that departs from the baseline', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
+
+  // The agenda list, not the first list on the page: the mini month and the calendars
+  // list are both lists and both sit above it in the DOM.
+  const agenda = page.locator('main ol').first()
+
+  // Project Review carries event-scoped rules hiding it from everyone who could otherwise
+  // see something (see FIXTURE_EVENT_RULES). It is the only row that may wear a chip.
+  await expect(agenda.getByText('Hidden', { exact: true })).toHaveCount(1)
+
+  // And the baseline is stated once, in the same words, rather than on every row. Scoped
+  // to the sidebar, because a page-wide `Limited details` would also match a visibility
+  // control on some other surface, and a negative assertion that matches the whole page is
+  // asserting about the whole page.
+  const sidebar = page.getByRole('complementary', { name: 'Calendars' })
+  await expect(sidebar.getByText('By default, others see')).toBeVisible()
+  await expect(sidebar.getByText('Limited details', { exact: true })).toHaveCount(1)
+  await expect(agenda.getByText('Limited details', { exact: true })).toHaveCount(0)
+
+  // Rows at the baseline say something useful instead of saying nothing: the calendar.
+  await expect(agenda.getByText('Work', { exact: true }).first()).toBeVisible()
 })

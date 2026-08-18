@@ -4,6 +4,7 @@ import { ButtonLink } from './ui/button'
 import { Icon } from './ui/icons'
 import { LandingCalendar } from './landing-calendar'
 import { LandingReveal } from './landing-reveal'
+import { signupsOpen } from '@/lib/signups'
 import styles from './landing.module.css'
 
 /**
@@ -23,6 +24,15 @@ import styles from './landing.module.css'
  * No em dashes in rendered copy, by decree. Commas and periods do the work.
  */
 export function Landing() {
+  /**
+   * READ THE FLAG, do not hardcode the state. Every pre-launch string on this page used to
+   * be a literal, so flipping NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN opened /sign-up while the
+   * front page went on saying the opposite and offered no route to it. A flag that half the
+   * product ignores is worse than no flag: it makes the door's state a thing you have to
+   * know rather than a thing you can read.
+   */
+  const open = signupsOpen()
+
   return (
     <div className={styles.page} data-theme="dark">
       <header className={styles.header}>
@@ -43,7 +53,7 @@ export function Landing() {
             {/* Text, not a pill: the eyebrow matches the section kickers below, and ink on
                 the page background is a contrast pair already pinned. A washed badge would
                 need its composite re-measured for one word. */}
-            <p className={styles.eyebrow}>Coming soon</p>
+            <p className={styles.eyebrow}>{open ? 'Now open' : 'Coming soon'}</p>
             <h1 className={styles.headline}>
               Not everything is for <em>everyone</em>.
             </h1>
@@ -52,14 +62,20 @@ export function Landing() {
               as much as you choose. Your client sees a meeting. Your colleagues see busy.
               Everyone else sees nothing.
             </p>
-            <div className={styles.ctaRow}>
-              {/* ONE solid button on the page. The hero and the header both used to render
-                  an outline "Sign in", so the landing had two identical grey boxes and no
-                  anchor anywhere — every element competing at the same weight is most of
-                  what made this page read as generic. The header keeps its outline; this
-                  one is the action. */}
-              <ButtonLink href="/sign-in">Sign in</ButtonLink>
-            </div>
+            {/* WHILE SIGN-UPS ARE CLOSED THE DEMO IS THE CALL TO ACTION, and there is no
+                button here at all. The hero and the header both used to render a "Sign in",
+                so the page asked twice for the one thing a visitor cannot yet do and
+                answered the question it raised with itself. The audience picker below is
+                the only control in the hero now, which makes the product's own trick the
+                thing you reach for. Nothing is collected to see it.
+
+                Once the door opens this becomes a real primary action, because then there
+                genuinely is something to start. */}
+            {open && (
+              <div className={styles.ctaRow}>
+                <ButtonLink href="/sign-up">Create your calendar</ButtonLink>
+              </div>
+            )}
           </div>
 
           {/* Full width, under the copy rather than beside it. See .heroCopy in
@@ -178,12 +194,18 @@ export function Landing() {
         <LandingReveal>
           <section className={styles.closing}>
             <h2 className={styles.closingTitle}>Your time. Your business.</h2>
-            {/* The page closes on a statement rather than a button, for the same reason
-                the hero does. There is nothing to sign up for yet, and saying when there
-                will be is more use than a control that refuses. */}
-            <p className={styles.closingNote}>
-              CloakCal is still being built. New accounts open soon.
-            </p>
+            {/* Closed: a statement rather than a button, for the same reason the hero has
+                none. Open: the one place on the page that asks, at the end, after the
+                honesty ledger has been read rather than before it. */}
+            {open ? (
+              <div className={styles.ctaRow} data-centered="true">
+                <ButtonLink href="/sign-up">Create your calendar</ButtonLink>
+              </div>
+            ) : (
+              <p className={styles.closingNote}>
+                CloakCal is still being built. New accounts open soon.
+              </p>
+            )}
           </section>
         </LandingReveal>
       </main>

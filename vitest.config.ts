@@ -8,6 +8,16 @@ import { defineConfig } from 'vitest/config'
  * module itself, so an unresolvable alias inside it fails the whole file. Test files here
  * still import relatively — this exists for the SOURCE modules they pull in, which use the
  * app's own convention and should not be rewritten to suit the runner.
+ *
+ * THE KEY IS `'@'`, NOT `'@/'`, AND THE DIFFERENCE IS NOT COSMETIC. Vite resolves an object
+ * alias through @rollup/plugin-alias, whose matcher accepts a string pattern only when the
+ * specifier EQUALS it or starts with `pattern + '/'`. Under a `'@/'` key, `@/lib/csp` would
+ * have to start with `'@//'`, so the alias matched nothing and every module reaching for one
+ * failed to resolve. It shipped that way with the CSP work and took four test FILES down
+ * with it — middleware-paths (41 tests), subscription-row and both billing suites — while
+ * the summary line still said hundreds passed, because a file that cannot be COLLECTED
+ * contributes no failing tests, only a quieter total. That is the same shape as the visual
+ * baselines skipping on every platform: the gate reports green by having nothing to check.
  */
 const webSrc = fileURLToPath(new URL('./apps/web/src/', import.meta.url))
 
@@ -23,7 +33,7 @@ const serverOnlyStub = fileURLToPath(
 )
 
 const webAlias = {
-  resolve: { alias: { '@/': webSrc, 'server-only': serverOnlyStub } },
+  resolve: { alias: { '@': webSrc, 'server-only': serverOnlyStub } },
 }
 
 /**

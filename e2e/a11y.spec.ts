@@ -263,6 +263,19 @@ for (const [label, path] of [
   ['sign in', '/sign-in'],
   ['sign up', '/sign-up'],
   ['recover', '/recover'],
+  /*
+   * PREVIEW MODE IS A PAGE STATE NOTHING HERE HAD EVER SCANNED.
+   *
+   * Every other entry above is a route; this one is the calendar wearing `<PreviewBar>`,
+   * which no axe run reached because none of them passed `?as=`. The bar introduces a
+   * ground the palette did not previously composite anywhere — --accent-quiet over
+   * --surface-base — and the repo's own rule is that a colour checked as a SHAPE and a
+   * colour used under TEXT are different pairs. That gap has shipped an AA failure twice.
+   *
+   * The engine decides what a restricted audience sees, so this also puts a redacted
+   * calendar in front of axe for the first time in the light theme.
+   */
+  ['preview mode', '/?as=contact:alex'],
 ] as const) {
   test(`the ${label} page scans clean in the LIGHT theme`, async ({ page }) => {
     await page.goto(path)

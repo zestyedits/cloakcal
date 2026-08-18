@@ -71,9 +71,31 @@ export function CloakLockup({
  * DESTINATION, not the image — "CloakCal home" tells a screen reader what the link does,
  * where the inner text alone would just repeat the brand.
  */
-export function CloakHomeLink({ size = 'md' }: { size?: 'sm' | 'md' }) {
+export function CloakHomeLink({
+  size = 'md',
+  compact = false,
+}: {
+  size?: 'sm' | 'md'
+  /**
+   * Drop to the MARK ALONE below 640px.
+   *
+   * Opt-in rather than automatic, because it is a statement about the header it sits in
+   * and not about the brand. In the app's calendar header the wordmark was taking ~110px
+   * out of a 390px row, which squeezed the date range into three wrapped lines and cost
+   * the calendar 50px of vertical space it needed more. On the landing there is room and
+   * the wordmark stays.
+   *
+   * The accessible name does not change: it is on the Link and it names the DESTINATION,
+   * so a screen reader still hears "CloakCal home" either way. Nothing is lost but paint.
+   */
+  compact?: boolean
+}) {
   return (
-    <Link className={styles.homeLink} href={{ pathname: '/' }} aria-label="CloakCal home">
+    <Link
+      className={compact ? `${styles.homeLink} ${styles.compact}` : styles.homeLink}
+      href={{ pathname: '/' }}
+      aria-label="CloakCal home"
+    >
       <CloakLockup size={size} />
     </Link>
   )

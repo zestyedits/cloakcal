@@ -56,6 +56,26 @@ export const inter = localFont({
  * rule that uses --font-display must also set `font-weight: var(--weight-regular)` and
  * earn its emphasis from letterspacing — leaving a semibold in place would make the
  * browser synthesise a fake bold and the letterforms turn to mud.
+ *
+ * WHERE IT MAY GO, written down after an audit rather than left to taste (2026-08-18):
+ *
+ *   - Headings that appear ONCE per page or section. A page title, a card's name, a
+ *     section kicker.
+ *   - The engraved caps LABEL voice: 12-14px, uppercase, --tracking-engraved-caps*. This
+ *     is a label naming a thing, never the thing itself.
+ *
+ * And where it may not: running copy, form controls, and any VALUE — the answer beside a
+ * label, a title in a list row, anything a user reads for content rather than for
+ * structure. Inter carries all of that, and carries it at every density the product has.
+ *
+ * The risk being managed is specific. Marcellus is a display Roman, and a display Roman
+ * spread across a dense productivity surface stops reading as a calendar and starts
+ * reading as an editorial or a watch advertisement. Confined to structure it does the
+ * opposite: it tells you instantly which words are the furniture.
+ *
+ * The audit found nothing to move. All 41 declarations were already one of the two
+ * permitted cases, so this comment records the rule rather than a change — which is the
+ * point, because the next twenty declarations are the ones at risk.
  */
 export const marcellus = localFont({
   src: './fonts/Marcellus-Regular-latin.woff2',

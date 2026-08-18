@@ -18,12 +18,12 @@ import { DefaultViewControl } from './default-view-control'
 import { NewCalendarButton } from './new-calendar'
 import { WeekGrid } from './week-grid'
 import { NewEvent, NewEventButton } from './new-event'
-import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
 import { CloakHomeLink, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
 import { MiniMonth } from './mini-month'
 import { MonthGrid } from './month-grid'
+import { PreviewBar } from './preview-bar'
 import { WeekStrip } from './week-strip'
 import { CloakSheet } from './cloak-sheet'
 import { SeedSampleEvents } from './seed-sample-events'
@@ -208,6 +208,15 @@ export function CalendarScreen({
    * The empty-state check below still keys off `days`, deliberately. A week with one
    * holiday and no events has nothing scheduled, and "Nothing scheduled this week" is
    * still the true and useful thing to say.
+   *
+   * A REJECTED ALTERNATIVE, recorded because it will be proposed again: rendering all
+   * seven days with a "Nothing scheduled" line for the empty ones, to give the list a
+   * rhythm. Tried and measured rather than argued about, and it costs 74px per empty day
+   * on a phone where the calendar already begins several hundred pixels down behind the
+   * header, the View As card and the week strip. Two visible rows became one. The rhythm
+   * it was meant to supply now comes from the day group being one surface (`.events` in
+   * the stylesheet), which costs no height at all. The code below is unchanged by that
+   * decision — it always behaved this way.
    */
   const agendaDays = useMemo(() => {
     const merged = new Map(days)
@@ -376,7 +385,7 @@ export function CalendarScreen({
             layout scattered five separate boxes across the row and the slack pooled in an
             unowned centre. */}
         <header className={styles.header}>
-          <CloakHomeLink size="sm" />
+          <CloakHomeLink size="sm" compact />
 
           <div className={styles.placeCluster}>
             {/* Real links, not buttons: a week is a location, so it should be shareable,
@@ -501,8 +510,8 @@ export function CalendarScreen({
           <Suspense fallback={null}>
             <ViewAsBar
               audiences={audiences}
+              baselineLevel={page.baselineLevel}
               current={page.audience}
-              withheldCount={page.withheldCount}
             />
           </Suspense>
 
@@ -616,6 +625,15 @@ export function CalendarScreen({
         </aside>
 
         <main id="main" className={styles.main}>
+          {/* The mode, at the top of the thing it applies to. Owner sees nothing here, which
+              is why it is not a permanently reserved row: a bar that is always present but
+              usually empty trains people to stop reading it. */}
+          {page.audience !== 'owner' && (
+            <Suspense fallback={null}>
+              <PreviewBar audiences={audiences} current={page.audience} />
+            </Suspense>
+          )}
+
           {/* Mobile only (CSS): the board's week strip. On the agenda it is seven in-page
               anchors into the list below (one fetch, no roundtrip); on the day view the
               other six days' data is NOT on the page, so it becomes seven day links. The
@@ -634,19 +652,25 @@ export function CalendarScreen({
             />
           )}
 
-          {/* Two different facts, and conflating them was wrong. "Everything is hidden from
-              this audience" is a privacy statement; an owner looking at a quiet week is not
-              being told anything about privacy, and a fresh account read the old copy as a
-              failure to load. withheldCount distinguishes them exactly. The day and month
-              grids render even when empty — an empty time grid is a legible empty day, and
-              a month of quiet cells is a legible quiet month. */}
+          {/* Three different facts, still not conflated — but no longer distinguished by a
+              NUMBER. "Everything is hidden from this audience" is a privacy statement; an
+              owner looking at a quiet week is not being told anything about privacy, and a
+              fresh account read the old copy as a failure to load.
+
+              The count used to do this work and is gone from every preview surface (see
+              preview-bar.tsx). `withheldCount` still CHOOSES the sentence — it just never
+              appears in one. That is the honest reading of the decision: the number is not
+              displayed, and the three cases stay tellable apart by wording. It is thinner
+              than it was, and worth knowing it is thinner: "Nothing here for this audience"
+              and "Nothing in this week for this audience" are one preposition apart.
+
+              The day and month grids render even when empty — an empty time grid is a
+              legible empty day, and a month of quiet cells is a legible quiet month. */}
           {days.length === 0 && (view === 'agenda' || view === 'week') && (
             <>
               <p className={styles.empty}>
                 {page.withheldCount > 0
-                  ? `Nothing here for this audience. ${page.withheldCount} ${
-                      page.withheldCount === 1 ? 'event is' : 'events are'
-                    } hidden from them entirely.`
+                  ? 'Nothing here for this audience.'
                   : page.audience === 'owner'
                     ? 'Nothing scheduled this week.'
                     : 'Nothing in this week for this audience.'}
@@ -668,6 +692,7 @@ export function CalendarScreen({
               from={page.from}
               timezone={timezone}
               colorFor={colorFor}
+              baselineLevel={page.baselineLevel}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
@@ -682,6 +707,7 @@ export function CalendarScreen({
               from={page.from}
               timezone={timezone}
               colorFor={colorFor}
+              baselineLevel={page.baselineLevel}
               dayCount={1}
               audience={page.audience}
               onOpenVisibility={setVisibilityFor}
@@ -703,11 +729,21 @@ export function CalendarScreen({
             />
           )}
 
+          {/* KEYED ON THE AUDIENCE, so changing who is looking replays the staggered
+              entrance instead of swapping the rows in place. Switching audience is a server
+              navigation and React reuses the DOM across it, so without this the calendar
+              simply becomes different text under a still cursor — the one moment in the
+              product where something ought to be seen happening.
+
+              The entrance is `rise`, not the cloak wipe. --duration-cloak is already spent
+              on a sealed VALUE becoming readable (cloaked-text.module.css), and spending it
+              on a list re-entrance as well would make the signature motion mean two things.
+              Same trick as the landing hero, which keys its grid for exactly this reason. */}
           {/* Rendered conditionally rather than hidden: two copies of every title in the
               DOM would mean any assertion about a title matching twice, and a `hidden`
               subtree is still text a naive leak scan would find. */}
           {view === 'agenda' && (
-          <ol className={styles.agenda}>
+          <ol className={styles.agenda} key={page.audience}>
             {agendaDays.map(([day, occurrences]) => (
               // The id is the week strip's anchor target; scroll-margin in CSS keeps the
               // heading clear of the sticky chrome.
@@ -749,7 +785,7 @@ export function CalendarScreen({
                         )}
                       </span>
                       <span className={styles.eventBody}>
-                        {/* Owner-only, same guard as Delete below. For every other audience
+                        {/* Owner-only, same guard the delete path uses in the sheet. For every other audience
                             the body renders exactly as it always did — a non-owner has
                             nothing to open, and nothing to be told about. */}
                         {page.audience === 'owner' && occurrence.version !== undefined ? (
@@ -792,14 +828,27 @@ export function CalendarScreen({
                           </span>
                         )}
                       </span>
-                      {/* The board's rule for the second label: the privacy level when it
-                          is anything other than full — the product's whole argument, at a
-                          glance — otherwise the calendar, which is the useful fact about
-                          an unrestricted event. For the owner the chip is also the DOOR:
-                          it opens this event's visibility sheet, which makes the privacy
-                          state and the privacy control the same object. Non-owners keep
-                          the availability chip: the redaction they received IS their
-                          privacy information. */}
+                      {/* THE SECOND LABEL SHOWS THE CHIP ONLY WHERE THIS EVENT DIFFERS
+                          FROM YOUR BASELINE, and the calendar everywhere else.
+
+                          The board's rule was "the level unless it is full", and the level
+                          is the widest disclosure any audience gets — which is the
+                          workspace setting for almost every event. One rule putting a
+                          contact on title-only therefore printed "Limited details" on every
+                          row in the calendar, forever: a setting restated once per event
+                          rather than a fact about any of them. A chip that is always the
+                          same carries no information and still costs the eye a stop.
+
+                          So the chip now means "this one is different", and the baseline it
+                          differs from is stated ONCE per screen, in the same vocabulary, in
+                          the sidebar. Colour is still never the sole carrier: the chip keeps
+                          its icon and its words, and its ABSENCE is not a colour.
+
+                          For the owner it is also the DOOR either way, which is why the
+                          button wraps both branches — the route into the visibility sheet
+                          does not depend on which label won. Non-owners keep the
+                          availability chip: the redaction they received IS their privacy
+                          information. */}
                       {page.audience === 'owner' && occurrence.privacyLevel !== undefined ? (
                         <button
                           type="button"
@@ -808,7 +857,7 @@ export function CalendarScreen({
                           aria-label={`Change who can see the event at ${timeOf(occurrence.start)}`}
                           onClick={() => setVisibilityFor(occurrence.eventId)}
                         >
-                          {occurrence.privacyLevel === 'full' &&
+                          {occurrence.privacyLevel === page.baselineLevel &&
                           occurrence.calendarId !== undefined ? (
                             <CloakedText
                               className={styles.calendarNote}
@@ -826,24 +875,21 @@ export function CalendarScreen({
                           {occurrence.busy === 'free' ? 'Free' : 'Busy'}
                         </span>
                       )}
-                      {/* Owner only, and only when the server actually sent a version to
-                          guard the write with. Both conditions are already true together —
-                          audience.ts only attaches `version` for the owner — but relying on
-                          that coupling silently would make this the thing that breaks the
-                          day the engine changes. */}
-                      {page.audience === 'owner' && occurrence.version !== undefined && (
-                        <DeleteEvent
-                          eventId={occurrence.eventId}
-                          version={occurrence.version}
-                          recurring={occurrence.recurring ?? false}
-                          // The occurrence's ORIGINAL local wall time, straight from the
-                          // server. Never re-derived from `start`, which is a resolved
-                          // instant — deriving it back would put a second wall-clock
-                          // resolution in the codebase, and ADR 0001 allows exactly one.
-                          occurrenceLocal={occurrence.occurrenceLocal}
-                          label={`the event at ${timeOf(occurrence.start)}`}
-                        />
-                      )}
+                      {/* NO DELETE HERE ANY MORE. It lives in the edit sheet, which has
+                          hosted the same component with the same two scopes since the sheet
+                          was built, so this was the second door to one room rather than the
+                          only door to it.
+
+                          It was also the heaviest thing in the agenda: the one irreversible
+                          action in the product, rendered permanently in every row of the
+                          primary content area, and doing it once per row is most of what
+                          made the list read as a stack of forms. A row is a thing you read;
+                          the sheet is where you act on it.
+
+                          Not hover-revealed, which was the other candidate: a phone has no
+                          hover, so that spelling would have put the control on desktop only
+                          and left the sheet as the sole route on the device most people
+                          use. One route on every device is the smaller idea. */}
                     </li>
                   ))}
                 </ul>
