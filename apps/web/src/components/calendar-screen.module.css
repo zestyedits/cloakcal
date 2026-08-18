@@ -286,6 +286,32 @@
   margin-top: var(--space-8);
 }
 
+/*
+ * THE DAY IS THE SURFACE, AND THE ROWS INSIDE IT ARE RULES.
+ *
+ * Every row used to carry this itself — border, chamfer, shadow, its own radius — so a
+ * seven-event week rendered seven plates in a column and the eye had to resolve seven
+ * separate objects to read one day. The chrome says "these belong together", which is a
+ * true statement about a DAY and a redundant one about a single event.
+ *
+ * Nothing is lost by moving it up: the machined-plate language, the two-edge chamfer and
+ * the true shadow are all still here, once per group instead of once per row, which is
+ * also where the brand board puts them.
+ */
+.events {
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  overflow: hidden;
+}
+
+/* A day with a holiday and no events still renders its list. An empty plate is a bordered
+   box with nothing in it, which reads as a loading failure rather than as a quiet day. */
+.events:empty {
+  display: none;
+}
+
 /* Engraved section label: the display face over one champagne hairline — the rule under
    a caseback inscription. Secondary ink, up from tertiary, because Marcellus at 14px
    caps earns its quiet from the letterspacing rather than from fading. */
@@ -353,24 +379,17 @@
 
 .event {
   display: grid;
-  /* time | title | busy pill | owner actions. The fourth column is `auto`, so it collapses
-     to nothing for audiences that get no delete control and the row looks untouched. */
-  grid-template-columns: 4.5rem 1fr auto auto;
+  /* time | title | privacy or calendar. The delete column is gone: deleting moved into the
+     edit sheet, which had hosted the same control all along. */
+  grid-template-columns: 4.5rem 1fr auto;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--touch-min);
   padding: var(--space-3);
-  /* A machined plate, not a card: the sharp radius plus the two-edge chamfer
-     (--edge-highlight), layered with a true shadow per the tokens.css rule. */
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm), var(--edge-highlight);
-  /* The calendar colour reads as a spine, not a fill: colour supports the grouping, it
-     never carries meaning on its own. */
+  /* No plate of its own — see .events above. What survives is the calendar colour as a
+     SPINE: colour supports the grouping and never carries meaning alone. */
   border-left: 3px solid var(--event-color, var(--accent));
-  transition: transform var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+  transition: background var(--duration-fast) var(--ease-standard);
   /* Entrance: the shared rise, staggered by row. `backwards` holds the from-state during
      the delay so late rows do not flash in place before their turn. --i is set inline per
      row and CAPPED THERE (at 8) so a packed week settles in under half a second; the
@@ -379,19 +398,21 @@
   animation-delay: calc(var(--i, 0) * var(--stagger-step));
 }
 
+/* A hairline between rows, not a gap. Rows are a list inside one surface now, and space
+   between them would put the day's own ground back on show and undo the grouping. */
 .event + .event {
-  margin-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
 }
 
+/* Hover and press are a GROUND change rather than a transform. A row that slid sideways
+   made sense when it was a free-standing plate; inside a shared surface the same 2px
+   would shear the row off the edge it now sits flush against. */
 .event:hover {
-  border-color: var(--border-default);
-  transform: translateX(2px);
+  background: var(--surface-overlay);
 }
 
-/* Pressed: the whole row dips, whichever of its controls the press lands on — the row IS
-   the affordance (its body is one big edit door), so the row gives the feedback. */
 .event:active {
-  transform: translateX(2px) translateY(1px);
+  background: var(--field-bg-hover);
 }
 
 .event[data-color='indigo'] {

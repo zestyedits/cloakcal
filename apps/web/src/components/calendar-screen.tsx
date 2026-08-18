@@ -18,7 +18,6 @@ import { DefaultViewControl } from './default-view-control'
 import { NewCalendarButton } from './new-calendar'
 import { WeekGrid } from './week-grid'
 import { NewEvent, NewEventButton } from './new-event'
-import { DeleteEvent } from './delete-event'
 import { EditableEvent } from './editable-event'
 import { CloakHomeLink, CloakMark } from './cloak-logo'
 import { ThemeToggle } from './theme-toggle'
@@ -208,6 +207,13 @@ export function CalendarScreen({
    * The empty-state check below still keys off `days`, deliberately. A week with one
    * holiday and no events has nothing scheduled, and "Nothing scheduled this week" is
    * still the true and useful thing to say.
+  *
+   * AND ONLY DAYS THAT HAVE SOMETHING. Rendering all seven with a "Nothing scheduled"
+   * line was tried and measured rather than argued about: it added 74px per empty day, and
+   * on a 390px phone the calendar already begins ~460px down the screen behind the header,
+   * the View As card and the week strip, so two visible rows became one. The rhythm it was
+   * meant to supply now comes from the day group being one surface (.events in the
+   * stylesheet), which costs no height at all.
    */
   const agendaDays = useMemo(() => {
     const merged = new Map(days)
@@ -842,24 +848,21 @@ export function CalendarScreen({
                           {occurrence.busy === 'free' ? 'Free' : 'Busy'}
                         </span>
                       )}
-                      {/* Owner only, and only when the server actually sent a version to
-                          guard the write with. Both conditions are already true together —
-                          audience.ts only attaches `version` for the owner — but relying on
-                          that coupling silently would make this the thing that breaks the
-                          day the engine changes. */}
-                      {page.audience === 'owner' && occurrence.version !== undefined && (
-                        <DeleteEvent
-                          eventId={occurrence.eventId}
-                          version={occurrence.version}
-                          recurring={occurrence.recurring ?? false}
-                          // The occurrence's ORIGINAL local wall time, straight from the
-                          // server. Never re-derived from `start`, which is a resolved
-                          // instant — deriving it back would put a second wall-clock
-                          // resolution in the codebase, and ADR 0001 allows exactly one.
-                          occurrenceLocal={occurrence.occurrenceLocal}
-                          label={`the event at ${timeOf(occurrence.start)}`}
-                        />
-                      )}
+                      {/* NO DELETE HERE ANY MORE. It lives in the edit sheet, which has
+                          hosted the same component with the same two scopes since the sheet
+                          was built, so this was the second door to one room rather than the
+                          only door to it.
+
+                          It was also the heaviest thing in the agenda: the one irreversible
+                          action in the product, rendered permanently in every row of the
+                          primary content area, and doing it once per row is most of what
+                          made the list read as a stack of forms. A row is a thing you read;
+                          the sheet is where you act on it.
+
+                          Not hover-revealed, which was the other candidate: a phone has no
+                          hover, so that spelling would have put the control on desktop only
+                          and left the sheet as the sole route on the device most people
+                          use. One route on every device is the smaller idea. */}
                     </li>
                   ))}
                 </ul>
