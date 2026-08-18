@@ -90,9 +90,15 @@ test('previewing announces itself at the top of the content, with a way out', as
   await expect(bar).toBeVisible({ timeout: 15_000 })
 
   await page.getByRole('button', { name: 'Back to my view' }).click()
-  await expect(page.getByText('Previewing as')).toHaveCount(0)
+  // The SAME 15s budget every other first-paint assertion in this file carries. Leaving
+  // these on the default 5s made the test flaky under parallel load and it failed on a
+  // different project each run: the click crosses a router.push server navigation, so the
+  // assertions are waiting on a round trip, not on a re-render.
+  await expect(page.getByText('Previewing as')).toHaveCount(0, { timeout: 15_000 })
   // Back to the owner's own calendar, not merely a cleared banner.
-  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner')
+  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner', {
+    timeout: 15_000,
+  })
 })
 
 test('the owner is never shown a preview bar', async ({ page }) => {

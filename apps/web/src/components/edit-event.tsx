@@ -325,10 +325,10 @@ export function EditEvent({
         </p>
       )}
 
-      {/* Delete lives IN the sheet now, because the sheet is reachable from every view and
-          the agenda's Delete button is not — Day and Week open this sheet, Month drills to
-          Day, and before this the agenda was the only place an event could die. The same
-          DeleteEvent flow as the agenda rows: same two-choice scope, same RPCs, same
+      {/* Delete lives IN the sheet, and as of 2026-08-18 it is the ONLY place it lives:
+          the agenda row no longer carries one. The sheet is reachable from every view,
+          which the row never was — Day and Week open this sheet and Month drills to Day, so
+          for those three the row was no route at all. Two-choice scope, same RPCs, same
           refusal to offer an unverified truncation. Owner-only by construction — only the
           owner can open an edit sheet at all. Below the scope picker and cut off by a
           hairline, so "which occurrences to CHANGE" and "delete" never read as one form. */}

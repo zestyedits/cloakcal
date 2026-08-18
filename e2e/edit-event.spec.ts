@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { openSheet, sheet } from './sheet'
 
 /**
  * The edit sheet.
@@ -24,7 +25,6 @@ test.beforeEach(async ({ page }) => {
 })
 
 /** The sheet, once open. Scoped because the agenda behind it has similarly-named controls. */
-const sheet = (page: import('@playwright/test').Page) => page.locator('dialog[open]')
 
 /**
  * Open a row's sheet and wait for it to finish animating.
@@ -38,13 +38,7 @@ const sheet = (page: import('@playwright/test').Page) => page.locator('dialog[op
  * keeps this correct under prefers-reduced-motion, where the same animation collapses to
  * 1ms and a fixed sleep would just be wasted time.
  */
-async function openSheet(page: import('@playwright/test').Page, name: RegExp) {
-  await page.getByRole('button', { name }).first().click()
-  const dialog = sheet(page)
-  await expect(dialog).toHaveCount(1)
-  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
-  return dialog
-}
+// The helper moved to ./sheet, where the reasoning above now lives in full.
 
 test('opens from the event row and pre-fills from decrypted values', async ({ page }) => {
   const dialog = await openSheet(page, ONE_OFF)

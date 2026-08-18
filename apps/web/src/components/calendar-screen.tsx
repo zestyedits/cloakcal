@@ -208,13 +208,15 @@ export function CalendarScreen({
    * The empty-state check below still keys off `days`, deliberately. A week with one
    * holiday and no events has nothing scheduled, and "Nothing scheduled this week" is
    * still the true and useful thing to say.
-  *
-   * AND ONLY DAYS THAT HAVE SOMETHING. Rendering all seven with a "Nothing scheduled"
-   * line was tried and measured rather than argued about: it added 74px per empty day, and
-   * on a 390px phone the calendar already begins ~460px down the screen behind the header,
-   * the View As card and the week strip, so two visible rows became one. The rhythm it was
-   * meant to supply now comes from the day group being one surface (.events in the
-   * stylesheet), which costs no height at all.
+   *
+   * A REJECTED ALTERNATIVE, recorded because it will be proposed again: rendering all
+   * seven days with a "Nothing scheduled" line for the empty ones, to give the list a
+   * rhythm. Tried and measured rather than argued about, and it costs 74px per empty day
+   * on a phone where the calendar already begins several hundred pixels down behind the
+   * header, the View As card and the week strip. Two visible rows became one. The rhythm
+   * it was meant to supply now comes from the day group being one surface (`.events` in
+   * the stylesheet), which costs no height at all. The code below is unchanged by that
+   * decision — it always behaved this way.
    */
   const agendaDays = useMemo(() => {
     const merged = new Map(days)
@@ -383,7 +385,7 @@ export function CalendarScreen({
             layout scattered five separate boxes across the row and the slack pooled in an
             unowned centre. */}
         <header className={styles.header}>
-          <CloakHomeLink size="sm" />
+          <CloakHomeLink size="sm" compact />
 
           <div className={styles.placeCluster}>
             {/* Real links, not buttons: a week is a location, so it should be shareable,
@@ -783,7 +785,7 @@ export function CalendarScreen({
                         )}
                       </span>
                       <span className={styles.eventBody}>
-                        {/* Owner-only, same guard as Delete below. For every other audience
+                        {/* Owner-only, same guard the delete path uses in the sheet. For every other audience
                             the body renders exactly as it always did — a non-owner has
                             nothing to open, and nothing to be told about. */}
                         {page.audience === 'owner' && occurrence.version !== undefined ? (

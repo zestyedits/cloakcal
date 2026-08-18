@@ -68,3 +68,17 @@
   color: inherit;
   text-decoration: none;
 }
+
+/*
+ * Mark-only, for a header with no room for a wordmark. See CloakHomeLink's `compact`.
+ *
+ * `display: none`, not `visibility` or a zero width: the wordmark must stop taking part in
+ * the flex layout entirely, since reclaiming its ~110px for the date range beside it is the
+ * whole point. The link keeps its own aria-label, so the accessible name survives the text
+ * being gone.
+ */
+@media (max-width: 639px) {
+  .compact .wordmark {
+    display: none;
+  }
+}

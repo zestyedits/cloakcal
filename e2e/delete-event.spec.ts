@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import { openSheet } from './sheet'
 
 /**
  * The delete confirmation, and its scope picker.
@@ -31,31 +32,14 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
 })
 
-type Dialog = ReturnType<Page['getByRole']>
-
-/**
- * Open an event's sheet and return it.
- *
- * Waits out the rise rather than sleeping: the sheet animates over --duration-base, and axe
- * measures COMPOSITED colour, so analysing mid-animation reports every label as a contrast
- * failure against a box that is not painted yet.
- */
-const openSheet = async (page: Page, title: RegExp): Promise<Dialog> => {
-  await page.getByRole('button', { name: title }).first().click()
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toHaveCount(1)
-  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
-  return dialog
-}
-
 /** The sheet's Delete trigger. */
-const triggerIn = (dialog: Dialog) => dialog.getByRole('button', { name: /^Delete the/ })
+const triggerIn = (dialog: Locator) => dialog.getByRole('button', { name: /^Delete the/ })
 
 /**
  * The confirmation, addressed by its label rather than by role alone: the scope fieldset is
  * also a group, so `getByRole('group')` is ambiguous inside an open confirmation.
  */
-const confirmIn = (dialog: Dialog) =>
+const confirmIn = (dialog: Locator) =>
   dialog.getByRole('group', { name: /^Confirm deleting/ })
 
 /** Open the sheet for `title` and click through to the confirmation. */
@@ -124,8 +108,10 @@ test('scopes the radio group to one occurrence, not to the page', async ({ page 
   expect(name).toBeTruthy()
   expect(name).not.toBe('scope')
   // Occurrence-qualified: a per-EVENT name would still collide across two occurrences of
-  // one recurring series, which is exactly the Monday/Tuesday case.
-  expect(name).toContain('2026-05-')
+  // one recurring series, which is exactly the Monday/Tuesday case. Asserted as the SHAPE
+  // of a local wall time rather than against the fixture own month, which would couple this
+  // guard to data it is not about.
+  expect(name).toMatch(/\d{4}-\d{2}-\d{2}/)
 })
 
 test('Keep dismisses without deleting, and forgets the scope', async ({ page }) => {

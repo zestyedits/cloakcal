@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { settleSheet, sheet } from './sheet'
 
 /**
  * The compose sheet — reachable at last. `composeDate` used to be undefined in fixture
@@ -23,21 +24,14 @@ const settle = async (page: Page) => {
 const composeButton = (page: Page) =>
   page.getByRole('button', { name: 'New event', exact: true }).filter({ visible: true })
 
-const sheet = (page: Page) => page.locator('dialog[open]')
-
-const openAndSettle = async (page: Page) => {
-  const dialog = sheet(page)
-  await expect(dialog).toHaveCount(1)
-  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)))
-  return dialog
-}
+// sheet() and settleSheet() live in ./sheet - three specs had a copy of this each.
 
 test('opens from the compose button, prefilled on the anchor day', async ({ page }) => {
   await page.goto('/')
   await settle(page)
 
   await composeButton(page).click()
-  const dialog = await openAndSettle(page)
+  const dialog = await settleSheet(page)
 
   // The fixture's anchor is pinned to the demo Tuesday; a real account gets today.
   await expect(dialog.getByLabel('Day')).toHaveValue('2026-05-19')
@@ -49,7 +43,7 @@ test('the demo cannot save, and says so instead of failing confusingly', async (
   await settle(page)
 
   await composeButton(page).click()
-  const dialog = await openAndSettle(page)
+  const dialog = await settleSheet(page)
 
   await expect(dialog.getByText(/nothing typed here is saved/)).toBeVisible()
   const save = dialog.getByRole('button', { name: 'Save' })
@@ -68,7 +62,7 @@ test('an empty week-grid slot composes at that day and hour', async ({ page }) =
   // Tuesday 3 PM is empty in the demo week, so the slot is clickable rather than sitting
   // under an event block.
   await page.getByRole('button', { name: 'New event on 2026-05-19 at 3 PM' }).click()
-  const dialog = await openAndSettle(page)
+  const dialog = await settleSheet(page)
 
   await expect(dialog.getByLabel('Day')).toHaveValue('2026-05-19')
   await expect(dialog.getByLabel('Starts')).toHaveValue('15:00')
@@ -81,7 +75,7 @@ test('the day view inherits slot composing, and a later compose forgets the slot
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
 
   await page.getByRole('button', { name: 'New event on 2026-05-20 at 8 AM' }).click()
-  let dialog = await openAndSettle(page)
+  let dialog = await settleSheet(page)
   await expect(dialog.getByLabel('Day')).toHaveValue('2026-05-20')
   await expect(dialog.getByLabel('Starts')).toHaveValue('08:00')
 
@@ -90,7 +84,7 @@ test('the day view inherits slot composing, and a later compose forgets the slot
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(sheet(page)).toHaveCount(0)
   await composeButton(page).click()
-  dialog = await openAndSettle(page)
+  dialog = await settleSheet(page)
   await expect(dialog.getByLabel('Starts')).toHaveValue('09:00')
 })
 
@@ -104,7 +98,7 @@ test('the compose sheet has no detectable WCAG A or AA violations', async ({ pag
   await settle(page)
 
   await composeButton(page).click()
-  await openAndSettle(page)
+  await settleSheet(page)
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -118,7 +112,7 @@ test('gives every control in the compose sheet a 44px target', async ({ page }) 
   await page.goto('/')
   await settle(page)
   await composeButton(page).click()
-  await openAndSettle(page)
+  await settleSheet(page)
 
   const undersized = await page.evaluate(() =>
     [...document.querySelectorAll('dialog button, dialog input, dialog select, dialog textarea')]
@@ -142,7 +136,7 @@ test('does not let anything typed into the demo leave the page', async ({ page, 
   await page.goto('/')
   await settle(page)
   await composeButton(page).click()
-  const dialog = await openAndSettle(page)
+  const dialog = await settleSheet(page)
 
   await dialog.getByLabel('What is it').fill(canary)
   // Enter from a field is the implicit-submission path the demo guard exists for.

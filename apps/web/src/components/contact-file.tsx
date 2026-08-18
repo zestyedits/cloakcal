@@ -286,8 +286,16 @@ function ContactFileBody({
               : page.occurrences.length === 0
                 ? `Sees none of your ${total} ${total === 1 ? 'event' : 'events'} this week.`
                 : `Sees ${page.occurrences.length} of your ${total} ${total === 1 ? 'event' : 'events'} this week.`}
-            {page.withheldCount > 0 &&
-              ` ${page.withheldCount} ${page.withheldCount === 1 ? 'is' : 'are'} hidden from them entirely.`}
+            {/* No SEPARATE count sentence, matching every other preview surface
+                (2026-08-18, see preview-bar.tsx).
+
+                Being exact about what that does and does not achieve, because the line
+                above makes the softer claim false: `total` is occurrences + withheld, so
+                "Sees 3 of your 11 events this week" still lets a reader subtract. The count
+                is not gone from this page, it is stated as disclosure rather than as
+                concealment — which is the framing this page is for, and is why the sentence
+                stays. What is gone is the second sentence that named the hidden number on
+                its own. */}
           </p>
 
           {days.length === 0 ? (

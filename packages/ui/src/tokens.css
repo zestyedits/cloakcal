@@ -112,7 +112,7 @@
    * paragraph on a page that is meant to be read first. Named for the job rather than
    * given a ladder rung, because inserting one between lg and xl would have renamed every
    * step above it. */
-  --text-lead: 1.25rem;   /* 18px — subheads */
+  --text-lead: 1.25rem; /* 20px */   /* 18px — subheads */
   --text-xl: 1.5rem;     /* 24px — screen titles */
   --text-2xl: 2rem;      /* 32px — display */
   --text-3xl: 2.75rem;   /* 44px — marketing display */

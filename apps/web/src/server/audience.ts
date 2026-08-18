@@ -186,9 +186,19 @@ const widestLevel = (
 /**
  * The viewers whose sightline the owner's privacy chip summarises: one per audience that
  * a set of rules names, keyed so a contact appearing in several rules is evaluated once.
- * Evaluating only rule-bearing audiences is not a shortcut past the engine — an audience
- * with no rule lands on the hidden default, which cannot widen a maximum that already
- * includes the public baseline.
+ * Evaluating only rule-bearing audiences is a shortcut that is CURRENTLY sound and is not
+ * sound in general, which is worth stating precisely because a chip became a sentence.
+ *
+ * The engine sends an unruled INDIVIDUAL to `workspace.timeVis` (evaluate.ts) — only the
+ * public and unauthenticated viewers deny by default. So an unruled contact could widen
+ * this maximum. It cannot today for exactly one reason: `defaultTimeVis` is hardcoded
+ * `hidden` in server/redaction.ts, while the type here already admits exact and busy.
+ *
+ * The day a workspace default becomes settable — and Settings already has a section called
+ * visibility defaults — this must seed from `context.audiences` rather than from rules, or
+ * the sidebar will state "By default, others see Hidden" while an unruled contact sees more
+ * than that. On a privacy product that is not a stale label, it is a false claim, and the
+ * absence of a chip on a row would stop meaning what the sentence above it says.
  */
 const collectRuleViewers = (
   rules: readonly VisibilityRule[],
@@ -237,9 +247,14 @@ export function redactPage(
    *
    * Asked of the engine against a synthetic event carrying no rules, because that is
    * precisely the question — workspace rules do not vary by event, so there is nothing an
-   * occurrence could contribute and one evaluation answers it for the whole page. The id is
-   * a placeholder that no rule can match, which is what makes the answer rule-less rather
-   * than "whatever the first event happened to say".
+   * occurrence could contribute and one evaluation answers it for the whole page.
+   *
+   * WHAT MAKES IT RULE-LESS IS `rules: []`, NOT THE ID. `packages/policy` never reads
+   * `event.eventId` at all — matching is audience, scope and time window — so the string
+   * here is a label for a debugger and nothing else. An earlier version of this comment
+   * said the id was "a placeholder that no rule can match", which implies an id-matching
+   * path exists and is being dodged; if one is ever added, that sentence would read as a
+   * guarantee it never made.
    */
   const baselineLevel =
     audience === 'owner'
