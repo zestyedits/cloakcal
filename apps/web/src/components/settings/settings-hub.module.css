@@ -150,6 +150,24 @@
   text-decoration: underline;
 }
 
+/*
+ * You, in the list. Primary ink against the siblings' secondary, plus an accent rule under it
+ * -- accent as a SHAPE at 3:1 on the page ground, never as ink, so the word itself stays
+ * ordinary text at full contrast.
+ *
+ * Not bold: Inter has the weight, but the difference between this and its neighbours should be
+ * position and colour rather than heft, or the strip starts competing with the page title
+ * above it.
+ */
+.siblingCurrent {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .legalRow {
   display: flex;
   flex-wrap: wrap;

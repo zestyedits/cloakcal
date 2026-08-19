@@ -167,7 +167,15 @@ describe('middleware applies it before anything can return early', () => {
     // The theme bootstrap is the only inline script in the app and the only thing that must
     // carry the nonce. Without it the page paints the wrong theme and snaps — a full-screen
     // flash that looks like a rendering bug rather than a blocked script.
-    expect(layout).toContain('<script nonce={nonce}')
+    //
+    // MATCHED ACROSS THE TAG, not as a one-line substring. This was
+    // `toContain('<script nonce={nonce}')`, which pinned the FORMATTING as tightly as the
+    // guarantee: adding a second prop to the element wrapped it over four lines and the test
+    // went red while the nonce was still exactly where it belonged.
+    //
+    // `[^>]*` is bounded by the tag's own close, so it cannot run away the way an unanchored
+    // source regex does — the `[^;]*` hazard CLAUDE.md records, with something to stop it.
+    expect(layout).toMatch(/<script[^>]*\snonce=\{nonce\}/)
   })
 })
 

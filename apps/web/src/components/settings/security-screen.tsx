@@ -156,7 +156,7 @@ export function SecurityScreen({
           </div>
 
           <div className={styles.subSection}>
-            <h3 className={styles.panelTitle}>Export</h3>
+            <h3 className={styles.subTitle}>Export</h3>
             {/* SAYS WHAT THE CONTROL DOES NOT. `ExportCalendar` carries its own note about the
                 file format and about repeating events keeping their rule, directly under the
                 button; a lede repeating both put the same two facts on screen twice, four
@@ -175,12 +175,12 @@ export function SecurityScreen({
               "Recently deleted" — nothing here expires, and a heading implying a window that
               does not exist is the export claim's mistake wearing a different sentence. */}
           <div className={styles.subSection}>
-            <h3 className={styles.panelTitle}>Trash</h3>
+            <h3 className={styles.subTitle}>Trash</h3>
             <TrashSection demo={demo} />
           </div>
 
           <div className={styles.subSection}>
-            <h3 className={styles.panelTitle}>Deleting your account</h3>
+            <h3 className={styles.subTitle}>Deleting your account</h3>
             {/*
               A LINK, NOT A BUTTON, and the copy says why rather than leaving it a mystery.
               Nothing in this app can reach `auth.users`: rule 4 bans the service-role key and

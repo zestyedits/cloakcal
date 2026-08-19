@@ -113,7 +113,33 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             On a calendar of pastel blocks that is a full-screen white flash on every
             navigation, which is worse than not offering the choice at all.
             Inline and synchronous by necessity: anything deferred loses the race to paint. */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        {/*
+          `suppressHydrationWarning` IS ABOUT THE BROWSER, NOT ABOUT THIS MARKUP, and it is the
+          one place in this app where suppressing a hydration warning is the correct answer
+          rather than a way of not looking at one.
+
+          Browsers deliberately BLANK the `nonce` content attribute once the CSP has been
+          applied. It is an anti-exfiltration measure: without it a stylesheet could read the
+          nonce out one character at a time with `script[nonce^="a"]` selectors and hand a
+          would-be injector the only thing standing between them and a script tag. The real
+          value survives in the element's internal slot, which is what the browser enforces
+          against; `getAttribute('nonce')` returns "".
+
+          React hydrates by comparing attributes, so it saw the server's nonce against an empty
+          string and reported a mismatch on EVERY ROUTE, in every browser, for the life of the
+          nonce-based CSP. Nothing was wrong with the output and nothing could be done to the
+          output to fix it.
+
+          Left alone it is worse than noise. A permanent error in every console is where a real
+          hydration bug goes to hide, and this app has already paid once for a genuine failure
+          that looked like ordinary breakage (the doubled `/settings` page). Scoped to this one
+          element, so any other mismatch still shouts.
+        */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }}
+        />
       </head>
       <body>
         <a className="skip-link" href="#main">

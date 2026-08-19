@@ -96,14 +96,35 @@ export function SettingsSiblings({
   current: SettingsDoorId
   billingEnabled: boolean
 }) {
-  const others = visibleDoors(billingEnabled).filter((door) => door.id !== current)
+  /*
+   * THE CURRENT PAGE IS IN THE LIST, AND THAT IS THE WHOLE POINT OF THE COMPONENT.
+   *
+   * This filtered itself out, which made the one thing on the page whose job is "where am I"
+   * the one thing that would not say. What rendered was a row of somewhere-elses, identical on
+   * every sub-page except for which item was missing -- a difference nobody reads as position.
+   *
+   * With the current door marked it becomes a MAP: four items, one of them you, in the same
+   * place on every page. That is what stops the sub-pages blurring together, and it is cheaper
+   * than any amount of per-page decoration.
+   *
+   * A span rather than a self-link, because a link to the page you are on is a control that
+   * does nothing; `aria-current="page"` is what carries the state to anyone not looking at the
+   * ink.
+   */
+  const doors = visibleDoors(billingEnabled)
   return (
-    <nav className={styles.siblings} aria-label="Other settings">
-      {others.map((door) => (
-        <Link key={door.id} href={door.href} className={styles.sibling}>
-          {door.label}
-        </Link>
-      ))}
+    <nav className={styles.siblings} aria-label="Settings pages">
+      {doors.map((door) =>
+        door.id === current ? (
+          <span key={door.id} className={styles.siblingCurrent} aria-current="page">
+            {door.label}
+          </span>
+        ) : (
+          <Link key={door.id} href={door.href} className={styles.sibling}>
+            {door.label}
+          </Link>
+        ),
+      )}
     </nav>
   )
 }

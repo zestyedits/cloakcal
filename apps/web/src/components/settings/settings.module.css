@@ -187,16 +187,26 @@
     The old page's heaviest object carried --shadow-sm while the calendar's carried
     --shadow-lg, which is most of why one looked designed and the other looked like a
     wireframe. This is the landing demo card's own recipe at page scale. */
+/*
+ * ONE PLATE PER BAND, NOT ONE PLATE PER PAGE.
+ *
+ * This was a single slab with hairline dividers, and the cost was that every settings page had
+ * the same SILHOUETTE. A four-band page and a one-band page were the same rectangle, so the
+ * only thing distinguishing /settings/security from /settings/privacy was the words in it --
+ * and words are exactly what the eye skips while it is orienting. Pages blurred together.
+ *
+ * Separate plates make a page's structure countable before it is read: three cards on Privacy,
+ * two on Security. That is the actual mechanism against pages mushing together, and it costs
+ * nothing but a gap.
+ *
+ * No settings page has a visual baseline (visual.spec.ts shoots only the agenda and the
+ * landing), so this restructure needed no snapshot regeneration -- which is just as well,
+ * since the visual project is skipped on Windows.
+ */
 .sections {
   display: grid;
+  gap: var(--space-4);
   min-width: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg), var(--edge-highlight);
-  /* Bands run edge to edge and are divided by their own rules, so the plate must clip them
-     to its corners. */
-  overflow: hidden;
   /* The page eases in rather than popping — the settings-shaped skeleton hands off to
      this. `backwards` holds the from-state so there is no flash before the animation. */
   animation: rise var(--duration-base) var(--ease-decelerate) backwards;
@@ -637,7 +647,35 @@
 .subSection {
   display: grid;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  /* More air than the old --space-2: with a real title above each one, these are items in a
+     list rather than paragraphs in a run. */
+  margin-top: var(--space-4);
+}
+
+/*
+ * THE SUB-SECTION TITLE, AND WHY IT IS NOT `panelTitle`.
+ *
+ * Both `<h2>` and `<h3>` used `panelTitle`, so "Your data" and "Trash" rendered BYTE-IDENTICAL:
+ * 12px, uppercase, letterspaced, secondary ink. The hierarchy was present in the DOM and
+ * entirely absent on screen, which is most of why these pages read as one undifferentiated
+ * column of labels.
+ *
+ * Same face, different register. The band keeps the engraved caps index -- the app's section
+ * label everywhere, shared with agenda day headings and the sidebar -- and the item takes
+ * sentence case at reading size in primary ink. A small caps eyebrow over larger item titles
+ * is the editorial pattern this type system already speaks, so the h3 sitting visually above
+ * its h2 in size is deliberate rather than an inversion to fix.
+ *
+ * `font-weight` IS NOT OPTIONAL. An `<h3>` is bold by default and Marcellus has exactly one
+ * weight, so leaving it would synthesise a fake bold -- a defect, not emphasis.
+ */
+.subTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+  color: var(--text-primary);
 }
 
 /* NOT a card. Four things that do not exist had the same box, chevron and weight as four
@@ -774,8 +812,50 @@
   color: var(--text-secondary);
 }
 
+/*
+ * The band carries the plate now: border, radius, ground and the two-edge chamfer, exactly the
+ * machined language an agenda day group wears.
+ *
+ * --shadow-sm rather than the --shadow-lg the old single plate used. One big plate earns a
+ * deep shadow; four of them stacked would read as a pile of cards fighting for the same
+ * foreground. The lift is per-card and quiet.
+ */
 .band {
   composes: band from '../panel.module.css';
+}
+
+/*
+ * THE STACK CONFERS THE PLATE, NOT THE BAND, and that distinction is the whole fix.
+ *
+ * Putting it on `.band` looked right and left Security half-cased: "Your data" is a `.band`
+ * and got a card, while Passkeys, Change password and Reissue phrase are separate COMPONENTS
+ * with roots of their own and got nothing. One slab used to hide that they come from different
+ * places; separate plates exposed it immediately.
+ *
+ * A child combinator means anything a page drops into the stack is a card by virtue of being
+ * in it, including components this file has never heard of. Nothing has to remember to opt in,
+ * which is the failure mode a class-based rule was already demonstrating.
+ */
+.sections > * {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+  /* Components that bring their own root bring no padding for a card they did not know they
+     were in. `.band` composes its own from panel.module.css and simply matches this. */
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+/*
+ * DOUBLED ON PURPOSE. `panel.module.css` draws a hairline between adjacent bands, which was
+ * right when they shared one plate and is a stray line across the top of every card now that
+ * they do not. A same-specificity override would be decided by CSS-module import order, which
+ * is the fight `.signOutRow.signOutRow` and `.accountCluster.accountCluster` already document
+ * losing; 0,2,0 wins regardless of order.
+ */
+.band.band + .band.band {
+  border-top: 0;
 }
 
 /* The shortcut list, in Settings.

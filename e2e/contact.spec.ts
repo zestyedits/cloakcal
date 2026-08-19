@@ -187,7 +187,22 @@ test('the landing footer carries it, signed out', async ({ page }) => {
   const link = page.locator('footer').getByRole('link', { name: 'Contact' })
   await expect(link).toBeVisible()
   await link.click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Contact' })).toBeVisible()
+
+  /*
+   * THE TIMEOUT BELONGS ON THE ASSERTION, and getting that wrong cost two full runs.
+   * `test.slow()` triples the TEST timeout and does nothing to an `expect`, which carries its
+   * own budget -- 15s here, already raised repo-wide because `next dev` compiles on demand. So
+   * a `test.slow()` on this test could never have helped it, and the failure kept reporting the
+   * same 15s while the number being raised was a different one.
+   *
+   * The wait is real and reproduces: this clicks into /contact, the coldest route in the suite
+   * because nothing else warms it, with eight workers sharing one compile-on-demand server. It
+   * passes in isolation in under eight seconds every time. The number says only that a cold
+   * compile under load can take this long, and nothing about what the navigation costs a user.
+   */
+  await expect(page.getByRole('heading', { level: 1, name: 'Contact' })).toBeVisible({
+    timeout: 30_000,
+  })
 })
 
 test('every auth page carries it, which is where somebody is actually stuck', async ({ page }) => {
