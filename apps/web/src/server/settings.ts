@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { isCalendarView } from '@/lib/calendar-views'
 import { planById } from '@/lib/plans'
 import type { SettingsSummary } from '@/lib/settings-sections'
+import { summariseSettings } from '@/lib/settings-summary'
 import type { CalendarView } from '@/components/calendar-screen'
 import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
@@ -187,25 +188,24 @@ export async function loadSettingsSummary(): Promise<SettingsSummary | null> {
     loadPlan(prefs.workspaceId),
   ])
 
+  /*
+   * COMPOSED SOMEWHERE THAT CAN BE RUN. `summariseSettings` takes numbers and returns the four
+   * strings; this function's job is the six queries and nothing else. The split is what puts
+   * the copy a signed-in user reads in front of a test at all — the fixture has no session and
+   * no workspace, so every line here resolves to "Demo" and this composition had never once
+   * executed. It also makes the no-labels rule a type: there is no parameter a calendar name,
+   * contact name or group label could arrive in.
+   */
   const n = (result: { count: number | null }): number => result.count ?? 0
-  const plural = (value: number, one: string, many: string): string =>
-    `${value} ${value === 1 ? one : many}`
 
-  const people = n(contacts)
-  const passkeyCount = n(passkeys)
-
-  return {
-    privacy:
-      people === 0
-        ? 'Nobody yet'
-        : `${plural(people, 'person', 'people')} · ${plural(n(rules), 'default rule', 'default rules')}`,
-    calendar: `${plural(n(calendars), 'calendar', 'calendars')} · ${prefs.timezone.replaceAll('_', ' ')}`,
-    security:
-      passkeyCount === 0
-        ? 'Password and recovery phrase, no passkey'
-        : `Password, recovery phrase, ${plural(passkeyCount, 'passkey', 'passkeys')}`,
-    plan: planById(plan).name,
-  }
+  return summariseSettings({
+    calendars: n(calendars),
+    contacts: n(contacts),
+    workspaceRules: n(rules),
+    passkeys: n(passkeys),
+    timezone: prefs.timezone,
+    planName: planById(plan).name,
+  })
 }
 
 /** /settings/privacy: the default visibility rules, and the people they name. */

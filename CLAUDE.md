@@ -606,6 +606,22 @@ true fact, and nothing else. Every control moved to a page.
 - **A two-up door grid lasted one screenshot.** The door COUNT is not fixed — Billing is
   conditional — so the common case was three doors in four cells, and the hole read as a page
   that failed to load. Full-width rows fill the measure at any count.
+- **THE HUB'S FOUR LINES HAVE NEVER RUN AGAINST AN ACCOUNT, and the composition was split out
+  so that at least the sentences could be.** The fixture has no session and no workspace row,
+  so `loadSettingsSummary` returns null before composing anything and every door reads "Demo":
+  not one character of the copy a signed-in user sees was reachable by any test in the repo.
+  `lib/settings-summary.ts` is the pure half now and `settings-summary.server.test.ts` covers
+  every branch of every door. **What remains unverified is the wire** — whether PostgREST
+  returns those counts, under RLS, for a real user. Only the throwaway-account recipe sees it,
+  and it is the same shape as the contact-name ingest bug: fixture-only green is not evidence
+  for a path the fixture cannot take.
+- **`summariseSettings` takes numbers, and that signature IS the no-labels rule.** Everything
+  it accepts is a count, plus an IANA timezone and a catalog plan name — both Tier A, both the
+  same for anyone on that tier. There is no parameter a calendar name, contact name or group
+  label could arrive in, so the obvious future request ("make the Calendar line say WHICH
+  calendars") is a compile error rather than a review catch. The other half — that the queries
+  stay head counts and never name `cloaked_fields`, `ciphertext` or a wrap column — is a source
+  sweep in the same file, proved by injecting both violations and watching it fail.
 
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
@@ -705,6 +721,20 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A TRANSIENT UI STATE HELD OPEN BY A WALL-CLOCK DELAY IS A FLAKY TEST, and the flake shows
+  up only in the full suite.** `e2e/nav-feel.spec.ts` asserts on two states that exist solely
+  while a server navigation is in flight, and made them observable by holding the request for a
+  fixed 800-1000ms. That budgets the observation window against a clock while the thing being
+  observed is a SHARED `next dev` server: eight workers hit it at once, it compiles routes on
+  demand, and its response time under load has no ceiling. Measured over three full-suite runs
+  it failed on two, and passed 6/6 in isolation every time — the shape that reads as "flaky
+  infrastructure" and is really a test that only works on an idle machine. **The failures were
+  never the mechanism**: the pending marker was always found, and what timed out was the wait
+  for the navigation to land afterwards, with a second of self-inflicted delay already spent.
+  The route is released BY THE TEST now, once the marker has been seen, so the window is exactly
+  as long as the assertion needs. That is strictly better than a bigger timeout: it takes the
+  artificial delay off the critical path, and it makes the mid-flight state something the test
+  proves it observed rather than something it hoped to be fast enough to catch.
 - **AN INLINE `= []` PROP DEFAULT IN A DEPENDENCY ARRAY IS AN UNBOUNDED EFFECT LOOP, AND IT
   PRESENTS AS CLICKS DOING NOTHING.** `CloakProvider` had `extraFields = []`, and
   `extraFields` is in its unlock effect's deps — a new array identity every render, so the
