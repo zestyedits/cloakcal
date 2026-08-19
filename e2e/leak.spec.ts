@@ -55,16 +55,24 @@ test.describe('decryption actually happens', () => {
      * asynchronously from a response event competes with navigation, and Playwright will
      * resolve that promise against a buffer that is no longer the one you asked for.
      *
-     * It does not fail loudly. It fails by ATTRIBUTING CONTENT TO THE WRONG RESPONSE, and the
-     * shape that took here was worse than useless: a run reported decrypted event titles
-     * inside `app/page.css` and `app/loading.css`. Those strings are in no stylesheet, in no
-     * source file, and not in the fixture, which stores ciphertext only and says so on its
-     * first line. The same run passed on retry with nothing changed.
+     * It does not fail loudly. It fails by ATTRIBUTING CONTENT TO THE WRONG RESPONSE, which
+     * is the wrong kind of quiet for a privacy gate: a false negative here looks exactly like
+     * a clean run.
      *
-     * A privacy gate that cries leak about a CSS file is a gate nobody believes the third
-     * time, which is how a real one eventually gets waved through. Collecting the URL
-     * synchronously and fetching each body afterwards removes the race, and costs one extra
-     * request per asset on a page that has already loaded them.
+     * HARDENING, NOT A BUG FIX, AND THE DIFFERENCE IS WORTH RECORDING. A run once reported
+     * decrypted titles inside `app/page.css`, and the first diagnosis written here was that
+     * this race had misattributed them. That was WRONG, twice over: the suite was attached to
+     * another worktree's dev server (see playwright.config.ts on the port), and in that
+     * checkout a CSS COMMENT genuinely quoted a fixture calendar name. `next dev` ships CSS
+     * comments verbatim, so the stylesheet really did contain it.
+     *
+     * The gate was right and the reader was wrong. Which is the actual lesson: an impossible
+     * looking result is information, and the first thing to check is what produced it rather
+     * than the assertion that reported it. The race below is still real and still worth
+     * removing -- the sibling test's comment says it was rewritten for exactly this -- but it
+     * was never the cause of that symptom.
+     *
+     * Do not put example content in a comment in any file that ships to the browser.
      */
     const urls: string[] = []
     page.on('response', (response) => {

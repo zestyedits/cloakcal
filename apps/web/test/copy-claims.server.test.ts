@@ -50,11 +50,29 @@ const walk = (dir: string): string[] =>
     return /\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry) ? [path] : []
   })
 
-const SURFACES = [join(SRC, 'components'), join(SRC, 'app'), join(SRC, 'lib')]
+/*
+ * `tools/email-templates.ts` IS A USER-FACING SURFACE, and leaving it out is how the last
+ * one survived.
+ *
+ * CLAUDE.md records five surfaces being corrected off the sentence "because reminders and
+ * booking need them" -- copy cashing a cheque on two features that are not merely unbuilt
+ * but unwritable. A sixth copy sat in the recovery email the whole time, because every
+ * sweep in this repo reads `apps/web/src` and an email is not in it. It reaches real
+ * inboxes and it is the one surface a user cannot navigate away from.
+ *
+ * Same lesson as the file header: the fix existed, and the guard's SCOPE was what let it
+ * come back.
+ */
+const TOOLS = join(__dirname, '..', '..', '..', 'tools')
+
+const SURFACES = [join(SRC, 'components'), join(SRC, 'app'), join(SRC, 'lib'), TOOLS]
   .flatMap(walk)
   // legal.ts has its own guards, which read the structured document rather than the source.
   .filter((path) => !path.endsWith(join('lib', 'legal.ts')))
-  .map((path) => ({ path: path.slice(SRC.length + 1), source: code(readFileSync(path, 'utf8')) }))
+  .map((path) => ({
+    path: path.startsWith(SRC) ? path.slice(SRC.length + 1) : path.slice(TOOLS.length - 5),
+    source: code(readFileSync(path, 'utf8')),
+  }))
 
 /**
  * A NEGATION CLOSE ENOUGH TO GOVERN THE PHRASE, which is the difference between a claim and a
@@ -124,6 +142,14 @@ describe('no surface sells a capability that is not built', () => {
    * every row since 0001. Five surfaces once justified readable times with "because reminders
    * need them", which is copy cashing a cheque on a capability that does not exist.
    */
+  /*
+   * The exact sentence, banned by shape rather than by wording. Five product surfaces were
+   * corrected off it and a sixth shipped in an email for months.
+   */
+  it('never justifies readable times with a feature that does not exist', () => {
+    expect(offenders(/so (?:that )?(?:reminders|booking)[^.]{0,40}work/iu)).toEqual([])
+  })
+
   it('promises no reminder that will actually fire', () => {
     expect(offenders(/we(?:'| a)?ll remind you|you can set a reminder/iu)).toEqual([])
   })

@@ -36,14 +36,25 @@ export const metadata: Metadata = {
   // No `template` here. The four pages below already end their own titles with "— CloakCal",
   // so a template would render "Sign in — CloakCal — CloakCal".
   title: 'CloakCal',
-  description: 'Not everything is for everyone.',
+  /*
+   * SAYS WHAT IT IS, because a description is not a tagline. This was
+   * 'Not everything is for everyone.' -- fine above a hero that explains itself, and the
+   * only thing a search result or a link unfurl had to go on. Neither ever said the word
+   * calendar.
+   *
+   * Bound by rule 1 like every other claim: what is encrypted is the CONTENT, and the
+   * sentence says so rather than implying the whole event is sealed.
+   */
+  description:
+    'A calendar that shows different people different amounts of the same event. Titles, places and notes are encrypted in your browser.',
   applicationName: 'CloakCal',
   manifest: '/manifest.webmanifest',
   openGraph: {
     type: 'website',
     siteName: 'CloakCal',
     title: 'CloakCal',
-    description: 'Not everything is for everyone. Your time. Your business.',
+    description:
+      'A calendar that shows different people different amounts of the same event. Titles, places and notes are encrypted in your browser.',
   },
   twitter: { card: 'summary_large_image' },
 }

@@ -140,7 +140,7 @@ export const RECOVERY_HTML = shell({
     p(`Open this link ${strong('in the same browser you requested it from')}. It expires in an hour and works once.`),
   buttonLabel: 'Set a new password',
   footnote:
-    'CloakCal encrypts your event details in your browser. We store times so reminders and booking work, and we say so plainly: we are not zero-knowledge. If you did not request this, no action is needed.',
+    'CloakCal encrypts your event details in your browser. We store times in the clear, because a calendar cannot place, repeat or lay out an event without them, and we say so plainly: we are not zero-knowledge. If you did not request this, no action is needed.',
 })
 
 /** Sign-up confirmation. */

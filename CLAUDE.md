@@ -829,11 +829,15 @@ and re-add.
   the port attaches to that one instead of starting its own. Harmless when the other server
   is yours. Not harmless once agents run in git worktrees: a worktree is a DIFFERENT CHECKOUT
   of the same project on the same port. One night of this produced a full run reporting 365
-  failures, an app regression in a file nothing had touched, and a LEAK-GATE HIT claiming
-  decrypted event titles inside `app/page.css` -- a canary that appears in no stylesheet, no
-  source file and not in the fixture, which stores ciphertext only and says so on its first
-  line. Every one of those was the other checkout, and the hours went into hunting a
-  regression in this one. **Before believing any e2e failure, check what is on the port**
+  failures, an app regression in a file nothing had touched, and a LEAK-GATE HIT reporting
+  decrypted event titles inside `app/page.css`. Every one of those was the other checkout.
+  **The leak hit was TRUE, which is the part worth keeping**: that worktree had a CSS comment
+  quoting a fixture calendar name, and `next dev` ships CSS comments verbatim, so the
+  stylesheet really did contain it. It was written off here as a Playwright race before the
+  port was checked -- an impossible-looking result is information, and the thing to check
+  first is what produced it rather than the assertion that reported it. Corollary, cheap and
+  absolute: **never put example content in a comment in a file that ships to the browser.**
+  **Before believing any e2e failure, check what is on the port**
   (`netstat -ano | grep 3100`, then the PID's command line). Use
   `CLOAKCAL_E2E_PORT=3200 pnpm test:e2e` in a worktree.
 - **`tail` ON A PLAYWRIGHT LOG HIDES THE FAILURE COUNT, AND A BACKGROUNDED COMMAND'S EXIT
