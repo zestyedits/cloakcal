@@ -322,3 +322,48 @@ for (const [label, path] of [
     expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
   })
 }
+
+/**
+ * The export control, which is behind a click and therefore invisible to the sweep above.
+ *
+ * "axe only sees what is on screen, so a control behind a click is a control nobody tested"
+ * — the lesson the delete confirmation taught this repo, where a 2.99:1 label on the one
+ * irreversible action in the product survived every scan because nothing ever opened it.
+ *
+ * Scanned in LIGHT, because that is where this project's contrast failures have actually
+ * been: --surface-raised is #ffffff there, and every failure the light sweep has found was
+ * invisible in dark.
+ */
+test('the export control scans clean in the LIGHT theme', async ({ page }) => {
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Switch to light mode' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+
+  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
+  const button = page.getByRole('button', { name: 'Export as .ics' })
+  await expect(button).toBeVisible()
+
+  // The `<details>` opens over --duration-base; axe measures COMPOSITED colour, so scanning
+  // mid-animation reports the whole card as a contrast failure against a box that is not
+  // painted yet. Same bounded settle as the sweep above, and for the same three reasons.
+  await page.evaluate(async () => {
+    const settled = new Promise<void>((resolve) => setTimeout(resolve, 2_000))
+    const painted = Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ).then(() => undefined)
+    await Promise.race([painted, settled])
+  })
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+
+  // The 44px floor applies to a control that only exists after an interaction just as much
+  // as to one that is always there.
+  const box = await button.boundingBox()
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+})

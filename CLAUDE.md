@@ -70,7 +70,7 @@ apps/web/                Next.js 15 App Router
 packages/policy/         THE visibility engine + shared JSON vectors
 packages/crypto/         Cloak boundary: AES-GCM, HKDF, key wrapping, recovery, pairing
 packages/cloak-store/    Browser-only decryption store + IndexedDB key vault
-packages/domain/         Recurrence, DST, edit scopes, RRULE/UNTIL conversion. Pure, no I/O.
+packages/domain/         Recurrence, DST, edit scopes, RRULE/UNTIL conversion, .ics. No I/O.
 packages/db/             Migrations + CRUD service, tested against PGlite (no Docker)
 tools/                   email-setup (Resend/Porkbun/Supabase), fixture generator,
                          render-brand-assets (icons; output committed)
@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1282 unit tests
-pnpm test:e2e            # 466 Playwright tests, runs its own dev server
+pnpm test                # 1306 unit tests
+pnpm test:e2e            # 485 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
@@ -857,8 +857,8 @@ and re-add.
   cloak-mark.ts` is the only place the mark's geometry exists; `pnpm brand:assets` rasterises
   the favicon, `.ico`, apple icon, PWA tiles and social card from it. Nothing in CI or on
   Vercel runs it. See `docs/brand.md`.
-- **THE PRIVACY POLICY CLAIMED A FEATURE THAT DOES NOT EXIST, AND IT SAT IN THE STATUTORY
-  RIGHTS SECTION.** `lib/legal.ts` said "You can export your calendar as a standard .ics file
+- **THE PRIVACY POLICY CLAIMED A FEATURE THAT DID NOT EXIST, AND IT SAT IN THE STATUTORY
+  RIGHTS SECTION.** *(The claim is true now — export shipped — but the shape is the lesson.)* `lib/legal.ts` said "You can export your calendar as a standard .ics file
   at any time, from Settings" — in the present tense, naming a location — while
   `settings-screen.tsx` said "Export — Coming soon" and no such control had ever been built.
   Two lines below it, the same section invokes UK/EU/California portability rights, so the
@@ -869,11 +869,37 @@ and re-add.
   document overstated. `legal-claims.server.test.ts` now pairs every present-tense capability
   claim in that file against the control or flag backing it, because prose is the one surface
   in this repo with no compiler and no test — which is exactly why it drifted first.
-- **`packages/domain/src/ical.ts` is NOT an .ics exporter**, whatever its name suggests. It
-  converts a series spec to and from an RRULE, and exists for one hazard: `DTSTART` is
-  local-with-TZID while `UNTIL` must be UTC and is inclusive. There is no `VEVENT` or
-  `VCALENDAR` emitter anywhere. ADR 0007 said the file "is already written" and that reads as
-  "export is nearly done"; it is the hard sub-problem, not the feature.
+- **`packages/domain/src/ical.ts` is NOT the .ics exporter**, whatever its name suggests. It
+  converts a series spec to and from an RRULE and exists for one hazard: `DTSTART` is
+  local-with-TZID while `UNTIL` must be UTC and is inclusive. The file emitter is `ics.ts`
+  beside it. ADR 0007 said `ical.ts` "is already written", which read as "export is nearly
+  done" — it is the hard sub-problem, not the feature.
+- **EXPORT IS BUILT, AND EVERY BYTE OF IT IS ASSEMBLED IN THE BROWSER.** The server cannot
+  read titles, so it cannot build the file: `/api/export` serves the whole account's
+  CIPHERTEXT and `components/export-calendar.tsx` (`'use client'`) decrypts, emits and
+  downloads. It owns a PRIVATE CloakStore rather than the shared one — not for availability
+  (Settings is inside CloakProvider) but for blast radius: pushing every event through the
+  shared store would leave the user's whole decrypted history resident in page state to serve
+  one click. It `lock()`s in a `finally`. Series export as a RULE, never as expanded dates,
+  or the wall-clock guarantee dies at the boundary.
+- **A source-scanning `code()` helper must strip LINE comments BEFORE block comments.** The
+  obvious order is wrong: a line comment mentioning a path like `/api/*` opens a block the
+  matcher closes at the next `*/` it finds, swallowing everything between. It ate 3,884
+  characters of `export-calendar.tsx` and made a sweep report a feature missing while it sat
+  four lines below the comment that hid it. Fixed in `legal-claims`, `billing-boundary` and
+  `billing-routes`; no file triggered it in the latter two, which is exactly why it was worth
+  fixing — a blind sweep and a passing sweep look identical. Same family as the `[^;]*`
+  warning further down: a source regex with nothing to stop it runs until something else does.
+- **.ics folding is measured in OCTETS, not characters** (RFC 5545 §3.1, 75 of them). Folding
+  by `.length` passes every test written in English and corrupts the first title written in
+  a language that is not — an emoji is four octets and one character. `ics.ts` walks
+  codepoints and measures encoded width; `ics.test.ts` pins it with a CJK/emoji case.
+  Escaping is backslash FIRST (§3.3.11), and colon is NOT escaped in TEXT.
+- **No VTIMEZONE is emitted, deliberately.** §3.6.5 wants one for every TZID referenced.
+  Generating it means a second implementation of the DST rules `resolveLocal` already owns,
+  and two implementations of a DST rule disagree eventually — the lesson ADR 0001 is built on.
+  Google, Apple, Outlook and Thunderbird all resolve IANA TZIDs directly; a strict validator
+  will complain. Stated in `ics.ts` rather than discovered.
 - **Never declare `metadata.icons`.** Next merges the `app/icon.*` and `app/apple-icon.*` file
   conventions only when that key is undefined — the merge is guarded by
   `if (!resolvedMetadata.icons)`. Setting it anywhere silently deletes every tag those files

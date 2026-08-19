@@ -11,6 +11,7 @@ import { SECTIONS } from '@/lib/settings-sections'
 import { planById, type PlanId } from '@/lib/plans'
 import { SettingsNav, useVisibleSection } from './settings-nav'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
+import { ExportCalendar } from '../export-calendar'
 import { PageMasthead, PageShell } from '../page-shell'
 import { SignOutButton } from '../sign-out-button'
 import { ButtonLink } from '../ui/button'
@@ -421,6 +422,12 @@ export function SettingsScreen({
               state={`${calendars.length} ${calendars.length === 1 ? 'calendar' : 'calendars'}`}
             >
               <CalendarsSection fixtureMode={fixtureMode} calendars={calendars} />
+
+              {/* Export lives with the calendars rather than under Security, because it is
+                  data portability and not a security control — and it was in the "What's next"
+                  footer until it existed, which is where the privacy policy's claim about it
+                  went unchecked for months. */}
+              <ExportCalendar />
             </SettingsSection>
 
             {/* People and Visibility were two cards, and one of them held no settings at
@@ -571,7 +578,7 @@ export function SettingsScreen({
           <footer className={styles.whatsNext}>
             <div className={styles.panelHead}>
               <h2 className={styles.panelTitle}>What&apos;s next</h2>
-              <span className={styles.panelCount}>04</span>
+              <span className={styles.panelCount}>03</span>
             </div>
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Device pairing</span>
@@ -584,11 +591,6 @@ export function SettingsScreen({
               Let people book time with you. Hard here on purpose: your contacts are
               encrypted, so matching a stranger&apos;s email to one is a real design
               problem, not a form.
-            </p>
-            <p className={styles.deferredRow}>
-              <span className={styles.deferredName}>Export</span>
-              <span className={styles.soon}>Coming soon</span>
-              Take your calendar out, decrypted by you, on your machine.
             </p>
             <p className={styles.deferredRow}>
               <span className={styles.deferredName}>Deleting calendars</span>

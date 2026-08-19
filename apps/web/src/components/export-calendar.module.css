@@ -1,0 +1,21 @@
+/* The export control and the sentence under it.
+   Deliberately plain: this is a Settings row, not a feature card, and the last pass through
+   this page removed four things that "do not exist yet had the same shape, weight and chevron
+   as four that do". A control that works should not arrive dressed as an announcement. */
+
+.export {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.note {
+  margin: 0;
+  /* --text-tertiary would be the reflex here and it is 4.81:1 at its worst; this text carries
+     the "nothing left your browser" claim and an error message, so it takes the secondary ink
+     rather than the quietest one available. */
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  max-width: 46ch;
+}

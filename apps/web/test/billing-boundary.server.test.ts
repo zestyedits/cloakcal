@@ -36,7 +36,14 @@ const FILES = walk(SRC).map((path) => ({ path, source: readFileSync(join(SRC, pa
 
 /** Comments stripped, so a file may explain a rule without appearing to break it. */
 const code = (source: string): string =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  // Line comments FIRST, and the order is load-bearing. Blocks-first is the obvious way round
+  // and it is wrong: a line comment mentioning a glob path opens a block the matcher then
+  // closes at the next `*/` it can find, swallowing everything between. Found in
+  // legal-claims.server.test.ts, where it ate 3,884 characters and made the sweep report a
+  // feature missing while it sat four lines below the comment that hid it. No file here
+  // triggers it today, which is exactly why it is worth fixing now — the failure is silent
+  // and this sweep going blind looks identical to this sweep passing.
+  source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
 /**
  * Who imports a module under `server/billing/`, counting BOTH spellings.

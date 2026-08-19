@@ -15,7 +15,9 @@ const ROUTES = { WEBHOOK, CHECKOUT, SUBSCRIPTION, PORTAL }
 
 /** Comments stripped, so a header may explain a rule without appearing to break it. */
 const code = (source: string): string =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  // Line comments FIRST — see the note on the same helper in billing-boundary.server.test.ts.
+  // Blocks-first lets a line comment containing `/*` swallow the rest of the file.
+  source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('the webhook', () => {
   /**

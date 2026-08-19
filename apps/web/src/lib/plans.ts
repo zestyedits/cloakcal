@@ -119,12 +119,15 @@ export const PLANS: readonly PlanTier[] = [
       'Contacts and groups, whose names are encrypted too',
       'Repeating events that keep their wall time across a clock change',
       'Passkeys, a 24 word recovery phrase, and password changes',
+      // Free PERMANENTLY, and it belongs in this list rather than the roadmap now that the
+      // control exists. Charging to leave is not something a privacy product gets to do.
+      'Export to .ics, assembled in your browser so the file holds what our servers cannot read',
     ],
     planned: [
       {
-        name: 'Export',
+        name: 'Whole-account archive',
         detail:
-          'Your calendar as a standard .ics file, or the whole account as an archive. Free permanently: charging to leave is not something a privacy product gets to do.',
+          'Everything at once: calendars, contacts and settings, not only events. Exporting your events works today, and stays free permanently.',
       },
     ],
     purchase: 'included',

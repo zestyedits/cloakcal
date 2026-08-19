@@ -3,6 +3,7 @@ import type { VisibilityRule } from '@cloakcal/policy'
 import type { AudienceOption } from '@/lib/audiences'
 import fixture from './events.fixture.json' with { type: 'json' }
 import type { CalendarPage, CalendarRange, OccurrenceView } from './events'
+import type { ExportBundle, ExportSeries } from './export'
 import { isoLocalFromUtc } from './local-time'
 
 /**
@@ -239,4 +240,49 @@ export function getFixturePage(requested: CalendarRange = DEMO_WEEK): CalendarPa
     // no owner.
     workspaceId: null,
   }
+}
+
+/**
+ * The fixture, as export series rather than a week of occurrences.
+ *
+ * Exists so the export path has an end-to-end test at all: every Playwright project runs with
+ * the dev-unlock flag, so a Postgres-only export would be exercised by nothing. It reads the
+ * same `fixture.events` rows `getFixturePage` reads, which is what stops the two drifting into
+ * disagreeing about what the demo account contains.
+ *
+ * The fixture has no recurrence_exceptions, so `exdates` is always empty here. That gap is
+ * covered by unit tests on the emitter instead — see packages/domain/src/ics.test.ts.
+ */
+export function getFixtureExportBundle(): ExportBundle {
+  assertDevFixtureAllowed()
+
+  const series: ExportSeries[] = fixture.events.map((event) => {
+    const shared = {
+      eventId: event.id,
+      calendarId: event.calendarId,
+      timezone: event.timezone,
+      rrule: event.rrule,
+      busy: event.busy as ExportSeries['busy'],
+      fields: event.fields,
+      exdates: [] as readonly string[],
+    }
+
+    if (event.allDay !== null) {
+      return {
+        ...shared,
+        allDay: true,
+        dtstartLocal: event.allDay.startDate,
+        durationMinutes: event.durationMinutes,
+      }
+    }
+
+    return {
+      ...shared,
+      allDay: false,
+      dtstartLocal: event.dtstartLocal ?? isoLocalFromUtc(event.startUtc, event.timezone),
+      durationMinutes: event.durationMinutes,
+    }
+  })
+
+  return { series, timezone: fixture.timezone }
 }

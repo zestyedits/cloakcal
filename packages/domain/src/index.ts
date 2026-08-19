@@ -49,3 +49,5 @@ export {
   toIcalSeries,
   type IcalSeries,
 } from './ical.js'
+
+export { toIcs, type IcsCalendar, type IcsEvent } from './ics.js'

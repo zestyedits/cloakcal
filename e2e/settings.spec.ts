@@ -163,14 +163,27 @@ test('the theme radios switch the page and persist across reload', async ({ page
 })
 
 test('the deferred rows are named, quiet, and not dressed as settings', async ({ page }) => {
-  // No longer a card behind a chevron: four things that do not exist wore the same box
-  // and weight as four that do. Named, because an honest roadmap is worth something, and
-  // in a footer, because none of them work.
-  for (const name of ['Device pairing', 'Booking', 'Export']) {
+  // No longer a card behind a chevron: things that do not exist wore the same box and weight
+  // as things that do. Named, because an honest roadmap is worth something, and in a footer,
+  // because none of them work.
+  //
+  // EXPORT CAME OFF THIS LIST BY SHIPPING, which is the only way anything should leave it.
+  // It sat here while the privacy policy claimed in the present tense that it worked, and
+  // this row was the true half of that contradiction.
+  for (const name of ['Device pairing', 'Booking']) {
     await expect(page.getByText(name, { exact: true })).toBeVisible()
   }
   await expect(page.getByRole('heading', { level: 2, name: "What's next" })).toBeVisible()
   await expect(page.locator('#more')).toHaveCount(0)
+})
+
+test('export is a real control now, not a promise in the footer', async ({ page }) => {
+  // The other side of the row that was removed above. Without this, deleting the roadmap
+  // entry would satisfy the test either way — including by deleting the feature.
+  await expect(page.getByRole('button', { name: 'Export as .ics' })).toHaveCount(0)
+
+  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
+  await expect(page.getByRole('button', { name: 'Export as .ics' })).toBeVisible()
 })
 
 test('never scrolls sideways', async ({ page }) => {

@@ -144,6 +144,11 @@ const UNGATED: Record<string, string> = {
   'app/api/billing/webhook/route.ts':
     'Stripe has no session and no plan. Authenticated by signature, and it is the thing that ' +
     'WRITES the entitlement, so it cannot depend on one.',
+
+  'app/api/export/route.ts':
+    'Export is on Free PERMANENTLY (ADR 0007): charging to leave is not something a privacy ' +
+    'product gets to do. Gating it would be the one paywall the spec forbids outright, and it ' +
+    'is also the mechanism behind a statutory portability right.',
 }
 
 function routeHandlers(dir: string, prefix = ''): string[] {

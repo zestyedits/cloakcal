@@ -54,9 +54,28 @@ function walk(dir: string, prefix = ''): string[] {
  */
 const PROSE = new Set(['lib/legal.ts', 'lib/plans.ts'])
 
+/**
+ * Comments stripped, in the house style of billing-boundary.server.test.ts.
+ *
+ * NOT optional, and it was caught by testing the guard rather than by writing it: the export
+ * route's own doc comment explains why it does NOT return `text/calendar`, and a raw-source
+ * scan matched those words. The file went green while the implementation it was looking for
+ * had been removed — a guard satisfied by a sentence describing its own absence.
+ *
+ * LINE COMMENTS COME OFF FIRST, AND THE ORDER IS LOAD-BEARING. Doing blocks first is the
+ * obvious way round and it is wrong: a line comment mentioning a path like `/api/*` opens a
+ * block the matcher then closes at the next `*​/` it can find, swallowing everything between.
+ * That is not hypothetical — it ate 3,884 characters of `export-calendar.tsx`, including the
+ * only line this file was looking for, and the sweep reported the feature missing while it
+ * sat four lines below the comment that hid it. Same family as the `[^;]*` warning in
+ * CLAUDE.md: a source-scanning regex with nothing to stop it runs until something else does.
+ */
+const code = (source: string): string =>
+  source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+
 const IMPLEMENTATION = walk(SRC)
   .filter((path) => !PROSE.has(path))
-  .map((path) => ({ path, source: readFileSync(join(SRC, path), 'utf8') }))
+  .map((path) => ({ path, source: code(readFileSync(join(SRC, path), 'utf8')) }))
 
 const built = (pattern: RegExp): boolean => IMPLEMENTATION.some((f) => pattern.test(f.source))
 

@@ -78,11 +78,20 @@ describe('what the catalog may claim', () => {
   })
 
   it('keeps export on the free tier, permanently', () => {
-    // Charging to leave is not something a privacy product gets to do. If this ever moves,
-    // it should move loudly. See ADR 0007.
-    const names = [...free.planned, ...pro.planned].map((item) => item.name)
-    expect(names).toContain('Export')
-    expect(pro.planned.map((item) => item.name)).not.toContain('Export')
+    /*
+     * Charging to leave is not something a privacy product gets to do. If this ever moves, it
+     * should move loudly. See ADR 0007.
+     *
+     * This used to look for "Export" among the PLANNED items, which was right while it was a
+     * roadmap entry and became wrong the moment it shipped — a test that would have gone red
+     * for the good reason. It asserts the durable claim now: export is described on Free,
+     * under either heading, and appears nowhere in Pro.
+     */
+    const freeText = [...free.includes, ...free.planned.map((i) => `${i.name} ${i.detail}`)]
+    expect(freeText.some((line) => /export/i.test(line))).toBe(true)
+
+    const proText = [...pro.includes, ...pro.planned.map((i) => `${i.name} ${i.detail}`)]
+    expect(proText.some((line) => /export/i.test(line))).toBe(false)
   })
 
   it('publishes no limit it cannot enforce', () => {
