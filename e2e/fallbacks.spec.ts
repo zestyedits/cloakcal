@@ -26,10 +26,17 @@ test('a page that does not exist says so without saying why', async ({ page }) =
   /*
    * NAMES THE PRODUCT, NOT "YOUR CALENDAR", and that is pinned rather than incidental.
    *
-   * `/` is public and branches on the session, so this page is reachable by someone with no
-   * account -- which is most people who hit a 404, since a bad link is how strangers arrive.
-   * "Back to your calendar" told them they had one. The destination is unchanged; only the
-   * promise it made was wrong.
+   * A SIGNED-OUT VISITOR REALLY DOES REACH THIS PAGE, and the route is worth naming because
+   * the obvious reading says otherwise: middleware sends an unknown path to /sign-in, so it
+   * looks like only a signed-in user (who does have a calendar) can see a 404. But
+   * `matches()` is a PREFIX test -- `pathname === p || pathname.startsWith(p + '/')` -- so
+   * anything under a public prefix is public too. Verified against production: /privacy/nope,
+   * /terms/nope, /contact/nope and /sign-in/nope all answer 404 with no session, and those
+   * are precisely the URLs strangers hold, since the legal and contact pages are the ones
+   * handed to app stores, processors and regulators.
+   *
+   * "Back to your calendar" told those people they had one. The destination is unchanged;
+   * only the promise it made was wrong.
    */
   await expect(page.getByRole('link', { name: /back to cloakcal/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /your calendar/i })).toHaveCount(0)
