@@ -12,6 +12,7 @@ import { sealFields } from '@/lib/cloaked-fields'
 import { UnsafeSplitError, planSplit } from '@/lib/split-plan'
 import { planFieldChanges, isNoop, type EditableField } from '@/lib/field-changes'
 import { rpcErrorMessage, isVersionConflict } from '@/lib/rpc-error'
+import type { DeletedEvent, SavedEvent } from '@/lib/saved-event'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import styles from './edit-event.module.css'
 
@@ -79,6 +80,8 @@ export function EditEvent({
   start,
   end,
   label,
+  onSaved,
+  onDeleted,
   onClose,
 }: {
   eventId: string
@@ -93,6 +96,10 @@ export function EditEvent({
   end: string
   /** Describes the event without naming it, for the Delete flow's accessible names. */
   label: string
+  /** Reported on success, before onClose. An edit NEVER navigates — see CalendarScreen. */
+  onSaved?: ((result: SavedEvent) => void) | undefined
+  /** Forwarded to the Delete flow this sheet hosts, so a delete can be undone. */
+  onDeleted?: ((info: DeletedEvent) => void) | undefined
   onClose: () => void
 }) {
   const store = useCloakStore()
@@ -165,6 +172,10 @@ export function EditEvent({
     }
 
     setBusy(true)
+    // Declared out here so the success report below can name the row that now holds this
+    // occurrence: a split moves it to a new event id, and reporting the old one would ring
+    // the row the user did not just change.
+    let splitEventId = eventId
     try {
       // Wall clock to instant happens in ONE place across the app. If the server recomputed
       // it with `at time zone`, the two DST policies would disagree twice a year.
@@ -183,6 +194,7 @@ export function EditEvent({
       if (splitting && series !== null) {
         // A NEW row, so a NEW id, generated before sealing — the AAD binds content to it.
         const newEventId = globalThis.crypto.randomUUID()
+        splitEventId = newEventId
 
         // Throws before anything is written if the split would add, lose or duplicate an
         // occurrence. This is gate 3a; the RPC's read-back check is 3b.
@@ -227,6 +239,14 @@ export function EditEvent({
         if (rpcError !== null) throw rpcError
       }
 
+      // A split writes a NEW row, so the id the user should be shown is the successor's;
+      // an ordinary update keeps its own. Either way the date reported is where the event
+      // ENDED UP, which is what makes "Moved to Thursday" true when a retime moved it.
+      onSaved?.({
+        eventId: splitting && series !== null ? splitEventId : eventId,
+        date: values.date,
+        kind: 'edited',
+      })
       onClose()
       router.refresh()
     } catch (caught) {
@@ -340,6 +360,7 @@ export function EditEvent({
           occurrenceLocal={occurrenceLocal}
           label={label}
           onDone={onClose}
+          onDeleted={onDeleted}
         />
       </div>
     </EventSheet>

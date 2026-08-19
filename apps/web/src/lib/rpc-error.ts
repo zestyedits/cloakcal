@@ -63,6 +63,14 @@ const BY_SLUG: Record<string, string> = {
   unknown_time_visibility: 'Something went wrong saving this rule. Nothing was saved.',
   rule_not_found: 'This rule was already removed. Reload the page.',
 
+  // 0031 — undo, and the one action that really destroys. All three read as statements about
+  // the calendar rather than about the request, because the user is looking at a result they
+  // asked to reverse and "the operation failed" tells them nothing about what is on screen.
+  not_trashed: 'This event is already back on your calendar.',
+  occurrence_not_cancelled: 'This occurrence is already back on your calendar.',
+  purge_requires_trashed:
+    'This event is not in the trash, so there is nothing to delete permanently. Reload the page.',
+
   // create_calendar (0021). The client always seals a name before calling, so a missing
   // one is our bug: the copy promises the thing the user cares about, nothing saved.
   missing_name: 'Something went wrong saving this calendar. Nothing was saved.',

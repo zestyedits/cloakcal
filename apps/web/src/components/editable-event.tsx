@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { useCloakStore } from './cloak-provider'
 import { EditEvent } from './edit-event'
+import type { DeletedEvent, SavedEvent } from '@/lib/saved-event'
 import styles from './editable-event.module.css'
 
 /**
@@ -35,6 +36,8 @@ export function EditableEvent({
   /** Describes the event without naming it — the title is encrypted and stays that way. */
   label,
   variant = 'row',
+  onSaved,
+  onDeleted,
   children,
 }: {
   eventId: string
@@ -54,6 +57,10 @@ export function EditableEvent({
    * so the no-plaintext-in-constructed-names rule holds by construction.
    */
   variant?: 'row' | 'block'
+  /** Forwarded to the sheet. Threaded as a prop, exactly like onOpenVisibility. */
+  onSaved?: ((result: SavedEvent) => void) | undefined
+  /** Forwarded to the sheet's Delete flow, so the screen can offer an undo. */
+  onDeleted?: ((info: DeletedEvent) => void) | undefined
   children?: ReactNode
 }) {
   const store = useCloakStore()
@@ -92,6 +99,8 @@ export function EditableEvent({
           start={start}
           end={end}
           label={label}
+          onSaved={onSaved}
+          onDeleted={onDeleted}
           onClose={() => setEditing(false)}
         />
       )}

@@ -1,17 +1,28 @@
 'use client'
 
-import { Suspense, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { todayQuery, viewQuery } from '@/lib/calendar-links'
 import { HEADER_VIEWS, NAV_LEADING, NAV_TRAILING, VIEW_LABELS } from '@/lib/calendar-views'
 import { wallTimeLabel } from '@/lib/wall-time'
+import { savedDateLabel, type DeletedEvent, type SavedEvent } from '@/lib/saved-event'
+import { armFirstRun } from '@/lib/first-run'
+import { FirstAudiencePrompt } from './first-audience-prompt'
+import { CalendarNotice } from './calendar-notice'
+import { UndoDelete } from './undo-delete'
 import { CalendarHotkeys } from './calendar-hotkeys'
 import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedOccurrence, RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
 import { withViewTransition } from '@/lib/view-transition'
 import { CloakProvider, type ExtraSealedField } from './cloak-provider'
+import {
+  AudienceCover,
+  AudienceTransitionProvider,
+  AudienceWidening,
+  SealableMain,
+} from './audience-transition'
 import { CloakedText } from './cloaked-text'
 import { ViewAsBar } from './view-as-bar'
 import { DefaultViewControl } from './default-view-control'
@@ -201,6 +212,26 @@ export function CalendarScreen({
   const [cloakOpen, setCloakOpen] = useState(false)
   /** Event id whose visibility sheet is open, or null. */
   const [visibilityFor, setVisibilityFor] = useState<string | null>(null)
+  /**
+   * The last successful write, with the anchor it belongs to.
+   *
+   * `anchor` is what retires the notice: it is the anchorDate this result is ABOUT, recorded
+   * at report time — including the date we are about to navigate to. Clearing on any
+   * navigation instead would kill the notice for the one navigation the save itself caused,
+   * which is the case it exists for. Any later step, Today or view change moves anchorDate
+   * away from it and the strip goes.
+   */
+  const [saved, setSaved] = useState<{ result: SavedEvent; anchor: string } | null>(null)
+  const savedNotice = saved !== null && saved.anchor === anchorDate ? saved.result : null
+  /**
+   * The last delete, held so it can be undone.
+   *
+   * Not anchored to a date like `saved` is, and deliberately: a deleted event has no row left
+   * to scroll to, so the strip is the ONLY thing standing between the user and a trip to the
+   * trash page. It survives stepping between weeks and goes when it is used, dismissed, or
+   * replaced. It is also never timed — see undo-delete.tsx.
+   */
+  const [deleted, setDeleted] = useState<DeletedEvent | null>(null)
   const days = useMemo(() => groupByDay(page.occurrences), [page.occurrences])
 
   /**
@@ -335,6 +366,97 @@ export function CalendarScreen({
   /** One compose gate for every trigger: a date to open on, and the owner's own eyes. */
   const canCompose = composeDate !== undefined && page.audience === 'owner'
 
+  /** The wall dates this page is actually showing, as an inclusive `YYYY-MM-DD` pair. */
+  const visibleDates = useMemo(() => {
+    const labels = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    return {
+      first: labels.format(new Date(page.from)),
+      // `to` is exclusive, so the last visible day is the instant before it.
+      last: labels.format(new Date(new Date(page.to).getTime() - 1)),
+    }
+  }, [page.from, page.to, timezone])
+
+  /**
+   * WHAT HAPPENS AFTER A WRITE, and it differs by action because they are different promises.
+   *
+   * CREATE may move you: you asked for a new thing and a calendar that makes one and then
+   * refuses to show it is behaving like a database form. If it landed off this page, go there.
+   *
+   * EDIT MUST NOT. You were working here, and retiming an event out of the current week is
+   * not a request to leave the week — so the strip names where it went and offers a door,
+   * and nothing moves unless the door is taken.
+   *
+   * Either way the row itself wears the ring, which is the actual confirmation; the sentence
+   * only names the date, because a title is ciphertext and never crosses into this string.
+   */
+  const reportDeleted = (info: DeletedEvent) => {
+    // One result at a time. Two strips would make two competing claims about what just
+    // happened, and the older one is always the less interesting.
+    setSaved(null)
+    setDeleted(info)
+  }
+
+  const reportSaved = (result: SavedEvent) => {
+    setDeleted(null)
+    // Arms the first-contact invitation. Idempotent, and never cleared: see lib/first-run.
+    armFirstRun()
+    const offPage = result.date < visibleDates.first || result.date > visibleDates.last
+    const goThere = result.kind === 'created' && offPage
+    setSaved({ result, anchor: goThere ? result.date : (anchorDate ?? result.date) })
+    if (goThere) {
+      router.push(`/?${new URLSearchParams(viewQuery(view, result.date, page.audience))}`)
+    }
+  }
+
+  /** Whether a wall date falls outside what this page is showing. */
+  const offPage = (date: string) => date < visibleDates.first || date > visibleDates.last
+
+  /**
+   * Bring the saved row into view, and — for a CREATE only — put focus on it.
+   *
+   * WHY IT WATCHES page.occurrences. A create finishes with router.refresh(), so at the moment
+   * `saved` is set the new row does not exist in the DOM yet; querying then finds nothing. The
+   * refresh re-renders this component with new occurrences, which re-runs this, and by then it
+   * is there. The ref stops it firing twice for the same write and stealing focus back from
+   * wherever the user has since moved.
+   *
+   * FOCUS MOVES ONLY FOR A CREATE, per the split above: you asked for a new object and focus
+   * belongs on the object. An edit returns focus to the sheet's trigger, which is what the
+   * native <dialog> already does correctly and what someone editing a row in place expects.
+   *
+   * No `behavior` argument, so the platform decides: nothing in this app sets
+   * `scroll-behavior: smooth`, and globals.css forces `auto` under reduced motion anyway.
+   * `block: 'nearest'` scrolls the minimum required, so a row already on screen does not move.
+   */
+  const announced = useRef<string | null>(null)
+  useEffect(() => {
+    if (savedNotice === null) {
+      announced.current = null
+      return
+    }
+    if (announced.current === savedNotice.eventId) return
+    const row = document.querySelector('[data-just-saved]')
+    if (row === null) return
+
+    announced.current = savedNotice.eventId
+    row.scrollIntoView({ block: 'nearest' })
+    if (savedNotice.kind === 'created') {
+      const target = row.querySelector('button, a')
+      if (target instanceof HTMLElement) target.focus()
+    }
+  }, [savedNotice, page.occurrences])
+
+  /** The door offered when an edit moved an event off the page, rather than moving the user. */
+  const savedHref = (date: string): WeekLink => ({
+    pathname: '/',
+    query: viewQuery(view, date, page.audience),
+  })
+
   /** Open the compose sheet, from a grid slot or (null) from a button's plain default. */
   const composeAt = (slot: { date: string; time: string } | null) => {
     setComposeSlot(slot)
@@ -374,6 +496,10 @@ export function CalendarScreen({
 
   return (
     <CloakProvider page={page} email={email} extraFields={audienceNames}>
+      {/* Every audience switch goes through this, so the cloak cover cannot be forgotten by a
+          fourth door the way three separate router.push calls invited. It renders no DOM, so
+          the shell below is still the grid's only parent. */}
+      <AudienceTransitionProvider>
       {/* Inside CloakProvider so the `n` binding can honour the lock state, exactly like
           the buttons it mirrors. */}
       {hotkeysEnabled && (
@@ -632,7 +758,63 @@ export function CalendarScreen({
           )}
         </aside>
 
-        <main id="main" className={styles.main}>
+        <SealableMain className={styles.main}>
+          {/* Widening has no cover, so it needs a line: the restricted view a user is still
+              looking at while the fuller one loads is otherwise indistinguishable from a
+              calendar that simply did not answer. */}
+          <AudienceWidening />
+
+          {/* The one thing standing between a deletion and a trip to Settings. Above the save
+              strip because only one of them can be set at a time; the ordering just fixes
+              where it lands. */}
+          {deleted !== null && (
+            <CalendarNotice
+              onDismiss={() => setDeleted(null)}
+              action={<UndoDelete info={deleted} onUndone={() => setDeleted(null)} />}
+            >
+              {/* The TIME, never the title. `label` is the same no-content string
+                  EditableEvent builds for every constructed name in the grids. */}
+              Deleted {deleted.label}.
+            </CalendarNotice>
+          )}
+
+          {/* What just happened, stated where it happened. Above the preview bar because a
+              result is about the action you took a moment ago and the bar is about the mode
+              you are in; the newer fact reads first. */}
+          {savedNotice !== null && (
+            <CalendarNotice
+              onDismiss={() => setSaved(null)}
+              action={
+                savedNotice.kind === 'edited' && offPage(savedNotice.date) ? (
+                  <ButtonLink variant="outline" size="sm" href={savedHref(savedNotice.date)}>
+                    Show me
+                  </ButtonLink>
+                ) : undefined
+              }
+            >
+              {savedNotice.kind === 'created'
+                ? `Saved to ${savedDateLabel(savedNotice.date)}.`
+                : offPage(savedNotice.date)
+                  ? `Moved to ${savedDateLabel(savedNotice.date)}.`
+                  : 'Saved.'}
+            </CalendarNotice>
+          )}
+
+          {/* The product's argument is inert until a person exists: with no audiences no
+              row can differ from the baseline, so no privacy chip ever renders. One line,
+              after there is something to show someone, opening the sheet where adding a
+              person and choosing what they see happen together. */}
+          {page.occurrences.length > 0 && (
+            <FirstAudiencePrompt
+              isOwner={page.audience === 'owner'}
+              hasEvents={page.occurrences.length > 0}
+              hasAudiences={audiences.some(
+                (option) => option.kind === 'individual' || option.kind === 'group',
+              )}
+              onOpen={() => setVisibilityFor(page.occurrences[0]!.eventId)}
+            />
+          )}
+
           {/* The mode, at the top of the thing it applies to. Owner sees nothing here, which
               is why it is not a permanently reserved row: a bar that is always present but
               usually empty trains people to stop reading it. */}
@@ -676,13 +858,50 @@ export function CalendarScreen({
               legible empty day, and a month of quiet cells is a legible quiet month. */}
           {days.length === 0 && (view === 'agenda' || view === 'week') && (
             <>
-              <p className={styles.empty}>
-                {page.withheldCount > 0
-                  ? 'Nothing here for this audience.'
-                  : page.audience === 'owner'
-                    ? 'Nothing scheduled this week.'
-                    : 'Nothing in this week for this audience.'}
-              </p>
+              {/* THE SENTENCE AND THE SEEDER ARE GATED SEPARATELY, and that split is a bug
+                  fix rather than a refinement. The sentence keyed off `days` (occurrences
+                  only) while the agenda list below keys off `agendaDays` (occurrences PLUS
+                  holiday-only days), so a week holding Christmas Day and nothing else
+                  rendered "Nothing scheduled this week." AND, underneath it, a day heading
+                  with an empty list. Two contradictory answers to one question, which reads
+                  as a rendering failure rather than as a quiet week.
+
+                  The sentence now asks the VIEW'S own question — has this view a row to
+                  show? — which for the agenda is `agendaDays` and for the week is the grid,
+                  which does not render at all without events.
+
+                  The seeder keeps asking the older and genuinely different question: are
+                  there any EVENTS? A public holiday is not something you scheduled, so a
+                  first week that happens to contain one must still offer the way in. */}
+              {(view === 'week' || agendaDays.length === 0) && (
+                <div className={styles.empty}>
+                  {/* The heading is the engraved register the day headings use, one step
+                      up. An empty calendar is the first screen a new account sees, and a
+                      single centred sentence in the middle of a large space reads as a
+                      page that failed rather than a week that is free. */}
+                  <h2 className={styles.emptyTitle}>
+                    {page.withheldCount > 0
+                      ? 'Nothing here for this audience'
+                      : page.audience === 'owner'
+                        ? 'Nothing scheduled this week'
+                        : 'Nothing in this week for this audience'}
+                  </h2>
+                  {/* The NEXT ACTION, stated. Not cute and not apologetic: the owner gets
+                      a way in, and everyone else gets nothing extra, because a restricted
+                      audience has nothing to do here. */}
+                  {page.audience === 'owner' && page.withheldCount === 0 && canCompose && (
+                    <>
+                      <p className={styles.emptyLede}>
+                        Add the first one and it is encrypted on this device before it is
+                        saved.
+                      </p>
+                      <span className={styles.emptyAction}>
+                        <NewEventButton variant="block" onOpen={() => composeAt(null)} />
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
               {/* An empty week is the one place sample data helps — and the only place it
                   can come from is here, sealed in this browser with real keys. */}
               {page.audience === 'owner' &&
@@ -706,6 +925,9 @@ export function CalendarScreen({
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
               holidays={holidays}
               availability={availability}
+              onSaved={reportSaved}
+              onDeleted={reportDeleted}
+              savedEventId={savedNotice?.eventId ?? null}
             />
           )}
 
@@ -722,6 +944,9 @@ export function CalendarScreen({
               onComposeSlot={canCompose ? (date, time) => composeAt({ date, time }) : undefined}
               holidays={holidays}
               availability={availability}
+              onSaved={reportSaved}
+              onDeleted={reportDeleted}
+              savedEventId={savedNotice?.eventId ?? null}
             />
           )}
 
@@ -777,6 +1002,7 @@ export function CalendarScreen({
                       className={styles.event}
                       data-color={colorFor(occurrence.calendarId)}
                       data-time={occurrence.time}
+                      data-just-saved={occurrence.eventId === savedNotice?.eventId || undefined}
                       style={
                         {
                           '--i': Math.min((staggerBase.get(day) ?? 0) + index, 8),
@@ -807,6 +1033,8 @@ export function CalendarScreen({
                             start={occurrence.start}
                             end={occurrence.end}
                             label={`the event at ${timeOf(occurrence.start)}`}
+                            onSaved={reportSaved}
+                            onDeleted={reportDeleted}
                           >
                             <CloakedText
                               className={styles.eventTitle}
@@ -905,7 +1133,11 @@ export function CalendarScreen({
             ))}
           </ol>
           )}
-        </main>
+        </SealableMain>
+
+        {/* The cloak cover. A grid child in `main`'s area, AFTER it in DOM order so it paints
+            on top — see audience-transition.module.css. Narrowing only. */}
+        <AudienceCover />
 
         {/* MOBILE chrome only (CSS hides it from 900px, where the header's segmented
             control takes over): five slots, Cloak in the privileged centre — the board's
@@ -936,6 +1168,7 @@ export function CalendarScreen({
                 defaultDate={composeSlot?.date ?? composeDate}
                 defaultTime={composeSlot?.time ?? '09:00'}
                 demo={demoMode}
+                onSaved={reportSaved}
                 onClose={() => {
                   setComposeOpen(false)
                   // Forget the slot: the next plain-button compose should get the anchor
@@ -971,6 +1204,7 @@ export function CalendarScreen({
           </Suspense>
         )}
       </div>
+      </AudienceTransitionProvider>
     </CloakProvider>
   )
 }

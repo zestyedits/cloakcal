@@ -131,6 +131,7 @@ const MIGRATIONS = [
   '0028_billing_writer.sql',
   '0029_billing_writer_limits.sql',
   '0030_no_user_workspace_delete.sql',
+  '0031_restore_cloaked_event.sql',
 ] as const
 
 export interface QueryResult {

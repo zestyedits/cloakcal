@@ -1,9 +1,9 @@
 'use client'
 
 import { useId } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import type { DisclosureLevel } from '@cloakcal/policy'
-import { audienceHref, audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { useAudienceSwitch } from './audience-transition'
 import { useAudienceNames } from './use-audience-names'
 import { PrivacyChip } from './ui/privacy-chip'
 import styles from './calendar-screen.module.css'
@@ -33,8 +33,10 @@ export function ViewAsBar({
   current: string
   baselineLevel?: DisclosureLevel | undefined
 }) {
-  const router = useRouter()
-  const params = useSearchParams()
+  // The ONE audience door. This used to build the href and push it itself, which is how
+  // three surfaces ended up with three copies of one gesture — and a copy that forgot to
+  // seal would leave the owner's titles on screen through the whole fetch.
+  const { switchTo } = useAudienceSwitch()
   // useId, not a literal: this renders in the sidebar AND in the Cloak sheet, and two
   // controls sharing id="view-as" would break the label association on both.
   const selectId = useId()
@@ -44,9 +46,6 @@ export function ViewAsBar({
   // why this needs a hook returning strings instead of the usual `<CloakedText>`.
   const labelFor = useAudienceNames(audiences)
 
-  const select = (id: string) => {
-    router.push(audienceHref(params.toString(), id))
-  }
 
   return (
     // The accent border stays: it marks the control that put you in this mode, which is
@@ -59,7 +58,12 @@ export function ViewAsBar({
         id={selectId}
         className={styles.viewAsSelect}
         value={current}
-        onChange={(event) => select(event.target.value)}
+        onChange={(event) => {
+          // The label is resolved HERE because only this client can read it: contact names
+          // are ciphertext (ADR 0004) and the transition announces the name, never the id.
+          const chosen = audiences.find((option) => audienceIdOf(option) === event.target.value)
+          switchTo(event.target.value, chosen === undefined ? 'someone else' : labelFor(chosen))
+        }}
       >
         {audiences.map((audience) => (
           <option key={audience.id} value={audienceIdOf(audience)}>

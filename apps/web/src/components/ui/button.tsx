@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithRef, ComponentPropsWithoutRef } from 'react'
 import styles from './button.module.css'
 
 /**
@@ -30,6 +30,15 @@ const classes = ({ variant = 'primary', size = 'base', className }: StyleProps):
     .filter(Boolean)
     .join(' ')
 
+/*
+ * `ComponentPropsWithRef`, not `WithoutRef`, and no forwardRef anywhere.
+ *
+ * React 19 passes `ref` to a function component as an ordinary prop, so it lands in `...rest`
+ * and spreads onto the element with no wrapper — the forwardRef ceremony this would have
+ * needed on 18 is simply gone. Only the TYPE had to widen, which is why this looked like it
+ * already worked until something asked for a ref (the undo strip, which focuses itself after
+ * a keyboard-initiated delete).
+ */
 export function Button({
   variant,
   size,
@@ -38,7 +47,7 @@ export function Button({
   disabled = false,
   type = 'button',
   ...rest
-}: StyleProps & { busy?: boolean } & ComponentPropsWithoutRef<'button'>) {
+}: StyleProps & { busy?: boolean } & ComponentPropsWithRef<'button'>) {
   return (
     <button
       {...rest}

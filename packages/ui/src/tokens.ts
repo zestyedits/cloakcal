@@ -302,6 +302,22 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
    */
   { name: 'dark/accent as UI on base', foreground: DARK.accent, background: DARK.surfaceBase, minimum: 3 },
   /*
+   * Accent as UI on RAISED, and this was a gap the moment a write started leaving a mark.
+   *
+   * Two things draw it: the saved ring, an inset 2px accent on an agenda row and on a week
+   * block (both grounded on --surface-raised), and the result strip's leading spine. Both are
+   * graphical objects carrying meaning, so both owe 3:1 under WCAG 1.4.11 — and neither is
+   * covered by the `on base` pair above, because raised is LIGHTER than base in dark and the
+   * accent is dark in both themes, so the ratio moves the wrong way.
+   *
+   * It measures 3.19:1 on dark raised, which passes and does not pass comfortably. That is
+   * worth knowing rather than discovering: this pair is the reason --surface-overlay is not
+   * an acceptable ground for the ring (2.95:1, the same figure --ring-today-ground exists to
+   * avoid), so a hover state that swapped a saved row onto overlay would fail. The row's
+   * hover uses --field-bg-hover, which is DARKER than raised and therefore safe.
+   */
+  { name: 'dark/accent as UI on raised', foreground: DARK.accent, background: DARK.surfaceRaised, minimum: 3 },
+  /*
    * Text ON the accent — the filled-button case, and the gap that let a real AA failure
    * ship. The pair above checks the accent as a SHAPE against the page (3:1, correct for a
    * non-text element); nothing checked the label sitting on top of it, so white-on-#6D5CFF
@@ -363,6 +379,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { name: 'light/secondary on raised', foreground: LIGHT.textSecondary, background: LIGHT.surfaceRaised, minimum: 4.5 },
   { name: 'light/accent text on raised', foreground: LIGHT.accentText, background: LIGHT.surfaceRaised, minimum: 4.5 },
   { name: 'light/accent as UI on base', foreground: LIGHT.accent, background: LIGHT.surfaceBase, minimum: 3 },
+  { name: 'light/accent as UI on raised', foreground: LIGHT.accent, background: LIGHT.surfaceRaised, minimum: 3 },
   { name: 'light/label on accent', foreground: DARK.textPrimary, background: LIGHT.accent, minimum: 4.5 },
   { name: 'light/label on accent hover', foreground: DARK.textPrimary, background: LIGHT.accentHover, minimum: 4.5 },
   { name: 'light/success chip on raised', foreground: LIGHT.success, background: LIGHT.surfaceRaised, minimum: 3 },

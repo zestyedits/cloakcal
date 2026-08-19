@@ -1,6 +1,8 @@
 'use client'
 
 import { useId, useState, type ReactNode } from 'react'
+import { Temporal } from '@js-temporal/polyfill'
+import { wallTimeLabel } from '@/lib/wall-time'
 import styles from './event-fields.module.css'
 
 /**
@@ -60,6 +62,7 @@ export function EventFields({
 }) {
   const id = useId()
   const durations = [...new Set([...DURATIONS, ...extraDurations])].sort((a, b) => a - b)
+  const span = resolveSpan(values.date, values.time, values.duration)
 
   // Custom-duration mode. Opened by the select's last option, closed by picking any
   // preset. The raw text is kept separately from values.duration so someone can clear the
@@ -182,6 +185,22 @@ export function EventFields({
 
             {children}
           </div>
+
+          {/* WHEN IT ENDS, said out loud. `aria-live` on this line alone rather than on the
+              whole timing group: a duration change should announce the new span, not
+              re-read three fields the user is already in.
+
+              Absent rather than blank while the fields are mid-edit -- an empty dash where a
+              time belongs reads as a broken readout, and `Temporal.from` throws on a partly
+              typed date, which is exactly the state a form is in most of the time. */}
+          {span !== null && (
+            <p className={styles.timing} aria-live="polite">
+              <span>
+                {span.from} &ndash; {span.to}
+              </span>
+              {span.nextDay && <span className={styles.timingNote}>ends the next day</span>}
+            </p>
+          )}
         </>
       )}
 
@@ -243,6 +262,36 @@ export function Field({
 }
 
 export { styles as eventFieldStyles }
+
+/**
+ * The wall-clock span the form currently describes, or null when it does not describe one.
+ *
+ * PlainDateTime arithmetic, never `new Date()`: these are local wall values and a Date would
+ * reintroduce the host timezone, which is the trap ADR 0001 exists to keep out of this
+ * codebase. No zone is needed anyway -- "09:00 plus 30 minutes" is a question about a wall
+ * clock, and the answer does not change with a DST rule.
+ *
+ * Returns null rather than throwing on a half-typed date, which is the normal state of a
+ * form. The caller renders nothing at all in that case.
+ */
+function resolveSpan(
+  date: string,
+  time: string,
+  duration: number,
+): { from: string; to: string; nextDay: boolean } | null {
+  if (date === '' || time === '' || !Number.isFinite(duration) || duration < 1) return null
+  try {
+    const start = Temporal.PlainDateTime.from(`${date}T${time}:00`)
+    const end = start.add({ minutes: duration })
+    return {
+      from: wallTimeLabel(start.toString()),
+      to: wallTimeLabel(end.toString()),
+      nextDay: Temporal.PlainDate.compare(end.toPlainDate(), start.toPlainDate()) > 0,
+    }
+  } catch {
+    return null
+  }
+}
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`

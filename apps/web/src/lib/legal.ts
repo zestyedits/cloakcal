@@ -188,6 +188,8 @@ export const PRIVACY: LegalDocument = {
       heading: 'How long we keep things',
       body: [
         'Your data stays until you delete it or delete your account. There is no archive, no soft-delete tier we keep for ourselves, and no backup we would restore your content from after you asked us to erase it.',
+        'Deleting an event moves it to Trash, in Settings under Security and data, where it stays until you put it back or remove it permanently. Nothing expires it on a timer, and we would rather tell you that than call it something that implies one. Its content is still encrypted the whole time it sits there, exactly as it was before you deleted it.',
+        'Removing an event permanently erases its encrypted content: the title, location, notes and attendees. Neither you nor we can recover it afterwards. One thing survives, and we would rather name it here than let you discover it later. A record that an event existed and was deleted stays in your account log. That record holds no content of any kind, and it is append-only, so nobody can alter or remove it, including us.',
         'Backups exist for disaster recovery and roll off on their own schedule. Deleted content may persist in a backup briefly before ageing out.',
       ],
     },

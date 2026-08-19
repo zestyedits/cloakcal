@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { audienceHref, audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { useAudienceSwitch } from './audience-transition'
 import { useAudienceNames } from './use-audience-names'
 import { Button } from './ui/button'
 import styles from './preview-bar.module.css'
@@ -34,8 +34,7 @@ export function PreviewBar({
   audiences: readonly AudienceOption[]
   current: string
 }) {
-  const router = useRouter()
-  const params = useSearchParams()
+  const { switchTo } = useAudienceSwitch()
 
   // Contact names are Cloaked (ADR 0004), so the server sent an id and this opens it.
   // Before unlock it reads `Contact 4f2a…`, which is what the server itself can see.
@@ -55,7 +54,9 @@ export function PreviewBar({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(audienceHref(params.toString(), 'owner'))}
+        // Widening: no cover, because showing less than you are entitled to is never a
+        // disclosure error. The restricted view is retained and a pending line says so.
+        onClick={() => switchTo('owner', 'your own')}
       >
         Back to my view
       </Button>

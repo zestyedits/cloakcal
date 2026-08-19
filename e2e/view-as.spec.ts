@@ -46,9 +46,12 @@ test('the public sees nothing, and is told so plainly', async ({ page }) => {
   // No number, by decision (2026-08-18) — see preview-bar.tsx. What must survive is that
   // the three empty states stay tellable apart by WORDING, which is now the only thing
   // separating "this audience sees nothing" from "this week is empty".
-  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
-    timeout: 15_000,
-  })
+  // A HEADING now, not a sentence, so no terminal period — the empty state was rebuilt from
+  // one centred line into a title, a lede and (for the owner) the way in. Matched by role so
+  // this asserts the structure as well as the words.
+  await expect(
+    page.getByRole('heading', { name: 'Nothing here for this audience' }),
+  ).toBeVisible({ timeout: 15_000 })
 
   const html = await page.content()
   expect(CANARIES.filter((c) => html.includes(c))).toEqual([])
@@ -73,9 +76,12 @@ test('no preview surface puts a number on what it is hiding', async ({ page }) =
    * counting.
    */
   await page.goto('/?as=public')
-  await expect(page.getByText('Nothing here for this audience.')).toBeVisible({
-    timeout: 15_000,
-  })
+  // A HEADING now, not a sentence, so no terminal period — the empty state was rebuilt from
+  // one centred line into a title, a lede and (for the owner) the way in. Matched by role so
+  // this asserts the structure as well as the words.
+  await expect(
+    page.getByRole('heading', { name: 'Nothing here for this audience' }),
+  ).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/hidden from them entirely/i)).toHaveCount(0)
   await expect(page.getByText(/\d+ events? (is|are) hidden/i)).toHaveCount(0)
 })

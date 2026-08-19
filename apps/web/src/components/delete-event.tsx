@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
+import type { DeletedEvent } from '@/lib/saved-event'
 import { Button } from './ui/button'
 import { InlineError } from './ui/inline-error'
 import styles from './delete-event.module.css'
@@ -66,6 +67,7 @@ export function DeleteEvent({
   occurrenceLocal,
   label,
   onDone,
+  onDeleted,
 }: {
   eventId: string
   version: number
@@ -85,6 +87,11 @@ export function DeleteEvent({
    * pass nothing and behave exactly as they always did.
    */
   onDone?: (() => void) | undefined
+  /**
+   * Reported after the RPC succeeds, so the screen can offer an undo. Carries the version this
+   * component was RENDERED with — the one 0031 wants — never the incremented one.
+   */
+  onDeleted?: ((info: DeletedEvent) => void) | undefined
 }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
@@ -94,7 +101,13 @@ export function DeleteEvent({
   // clicks Delete again almost never means every Tuesday.
   const [scope, setScope] = useState<Scope>('occurrence')
 
-  const remove = async () => {
+  /**
+   * `detail === 0` on a click means it was not produced by a pointer — Enter or Space on a
+   * focused button, or an assistive activation. It is the only signal available here, and it
+   * decides one thing: whether the undo strip takes focus. See DeletedEvent.keyboard.
+   */
+  const remove = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    const keyboard = event.detail === 0
     setBusy(true)
     setError(null)
     try {
@@ -113,6 +126,15 @@ export function DeleteEvent({
       if (rpcError !== null) throw rpcError
 
       setConfirming(false)
+      // Before onDone, which closes the sheet this lives in — the same ordering NewEvent uses
+      // for onSaved, and for the same reason: this component is about to unmount.
+      onDeleted?.({
+        eventId,
+        deletedFromVersion: version,
+        occurrenceLocal: recurring && scope === 'occurrence' ? occurrenceLocal : null,
+        label,
+        keyboard,
+      })
       onDone?.()
       router.refresh()
     } catch (caught) {
@@ -183,7 +205,7 @@ export function DeleteEvent({
         >
           Keep
         </Button>
-        <Button variant="danger" size="sm" busy={busy} onClick={remove}>
+        <Button variant="danger" size="sm" busy={busy} onClick={(event) => void remove(event)}>
           {busy ? 'Deleting' : 'Delete'}
         </Button>
       </div>

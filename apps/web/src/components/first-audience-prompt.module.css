@@ -1,0 +1,31 @@
+/*
+ * The first-contact invitation. One row, and it must never look like an alert.
+ *
+ * Quieter than the result strip beside it: no accent spine, no raised plate. This is a
+ * suggestion about something the user has not done, and a result is a statement about
+ * something they have — giving the two the same weight would make the suggestion shout.
+ */
+
+.prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  /* A dashed edge on the sunken ground: the visual grammar of a slot with nothing in it,
+     which is exactly what "no audiences yet" is. Border colour is a decorative shape here,
+     not an identifying boundary, so it carries no 3:1 obligation and does not claim one. */
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+
+.text {
+  margin: 0;
+  flex: 1 1 18rem;
+  min-width: 0;
+  font-size: var(--text-sm);
+  /* Secondary on sunken, a pair CONTRAST_PAIRS already holds in both themes. */
+  color: var(--text-secondary);
+}

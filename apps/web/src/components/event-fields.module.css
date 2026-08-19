@@ -24,20 +24,77 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * THE FIELD PASS NEVER REACHED THIS FILE, and it is the form it mattered most on.
+ *
+ * `--field-bg` / `--field-border` / `--radius-control` landed in auth, settings, billing and
+ * the calendar chrome. This stylesheet was "moved verbatim" out of new-event.module.css and
+ * kept `--surface-overlay` with a `--border-default` hairline -- which in the LIGHT theme is
+ * #ffffff on #ffffff (the sheet around it is --surface-raised, also #ffffff) behind a
+ * rgba(11,13,20,0.14) outline measuring about 1.6:1. A control boundary owes 3:1 under WCAG
+ * 1.4.11, so the create and edit sheets -- the most-used form in the product -- had invisible
+ * fields in the one theme the references actually draw the calendar in.
+ *
+ * Nothing was ever going to catch it: axe measures TEXT contrast, so compose.spec.ts and
+ * edit-event.spec.ts both run axe against this sheet open and both pass. It is the exact
+ * failure tokens.css predicts where it introduces --field-bg, including the reason ("whoever
+ * builds it is looking at dark").
+ */
 .input {
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--surface-overlay);
+  /* The radius a thing you TYPE IN wears, one step tighter than the card holding it. */
+  border-radius: var(--radius-control);
+  /* The fill says "type here"; the border is what identifies the control, and it is pinned
+     at 3:1 against that fill. Both, not either: a borderless filled field only satisfies
+     1.4.11 when the fill itself clears 3:1 against the page, which this palette cannot do
+     without a slab that reads as disabled. */
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--text-primary);
   font: inherit;
   font-size: var(--text-base);
   width: 100%;
 }
 
+.input:hover:not(:disabled) {
+  background: var(--field-bg-hover);
+}
+
 .input:disabled {
   opacity: 0.55;
+}
+
+/*
+ * The resulting end time, stated rather than left to be worked out.
+ *
+ * The form collected a start and a duration and never once said when the event would END,
+ * which is the difference between describing an event and seeing one -- and the source of the
+ * commonest create-time mistake, picking "90 min" and misjudging where it lands.
+ *
+ * Numeral face in the index ink, the same metal as the hour gutter and the agenda's time
+ * column, because this IS a time even though it is derived. Derived and never authoritative:
+ * the fields above remain the only things that decide what is saved.
+ */
+.timing {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-numeral);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-numeral);
+  color: var(--numeral-ink);
+}
+
+/* Crossing midnight is the one thing about a derived end time that can surprise, so it is
+   said in words rather than left to a date the readout does not show. Sans face: it is a
+   note about the numerals, not one of them. */
+.timingNote {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: normal;
+  color: var(--text-secondary);
 }
 
 /* Temporal values render in the numeral face even while being edited — the one place a

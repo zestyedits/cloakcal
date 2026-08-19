@@ -435,6 +435,25 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/*
+ * THE SAVED RING — what a write leaves behind.
+ *
+ * Persistent, not a flash: it stays until the notice above it is dismissed or the user
+ * navigates away from the day it belongs to. A highlight that fades on a timer is a toast
+ * wearing a border, and it loses the same people a toast loses.
+ *
+ * An INSET ring rather than an outline, because these rows sit flush inside one shared plate
+ * (see .events) and an outline would be clipped by it exactly as the focus ring was until
+ * overflow-clip-margin was added. Accent as a SHAPE at 3:1 against the row's ground, never as
+ * ink -- the row's own text is unchanged, and the ring carries no meaning the notice does not
+ * already state in words.
+ *
+ * No animation, so it is its own reduced-motion equivalent.
+ */
+.event[data-just-saved] {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 /* Hover and press are a GROUND change rather than a transform. A row that slid sideways
    made sense when it was a free-standing plate; inside a shared surface the same 2px would
    shear the row off the edge it now sits flush against.
@@ -841,11 +860,50 @@
   color: var(--text-secondary);
 }
 
+/*
+ * The empty week, rebuilt as a place to start rather than a notice.
+ *
+ * It was one centred sentence at --space-12, which on a new account is the FIRST screen of
+ * the product: a short grey line floating in a large space, reading as a page that failed to
+ * load rather than as a week that is free. It now states the situation, says the one true
+ * thing about what happens next, and offers the action.
+ *
+ * Still centred and still narrow. The measure is what keeps it from becoming a banner, and
+ * the action inside it is what keeps it from being decoration.
+ */
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
   margin: var(--space-12) auto;
-  max-width: 32ch;
+  max-width: 34ch;
   text-align: center;
   color: var(--text-secondary);
+}
+
+/* The engraved register the day headings use, one step up in size and out of caps: this is a
+   statement about the week, not another index label. Marcellus has ONE weight, so emphasis
+   comes from size and tracking rather than from a bold that would be synthesised. */
+.emptyTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+  color: var(--text-primary);
+}
+
+.emptyLede {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* The button's own width rules live in new-event.module.css; this only stops the flex column
+   stretching it to the full measure, which would make one control look like a banner. */
+.emptyAction {
+  display: inline-flex;
 }
 
 /* A busy block is visually quieter: there is nothing to read, and it should not compete

@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1311 unit tests
-pnpm test:e2e            # 485 Playwright tests, runs its own dev server
+pnpm test                # 1350 unit tests
+pnpm test:e2e            # 531 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
@@ -164,6 +164,13 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 is no accordion: /settings is four doors and every control has a page — see the 2026-08-18
 pass below.)*
 
+**0031 IS IN GIT AND IS NOT APPLIED TO PRODUCTION.** It adds `restore_cloaked_event`,
+`uncancel_occurrence` and `purge_cloaked_event` — the undo the trash has been paying for
+since 0008. Code first, then push, then apply by hand: the reverse is what made 0028 a
+mistake worth not repeating. The client tolerates the gap on purpose — PostgREST answers an
+unknown function with `PGRST202`, which the undo strip and the Trash page each map to a
+plain "not available on this deployment yet" that also says the event is still in the trash.
+
 **Migrations 0001–0028 are ALL applied to production**, verified 2026-08-16 against the live
 schema rather than assumed: `workspaces.holiday_region` exists, `availability_windows` exists
 with RLS enabled, `set_workspace_prefs` takes `p_holiday_region`, `set_availability` exists,
@@ -234,9 +241,17 @@ generate from that one SVG. Inter is loaded for the first time. `docs/brand.md` 
 parts of the mark the references specify and which are extrapolated.
 
 **Ported to RPCs so far:** `create_cloaked_event` (0007), `trash_cloaked_event` (0008),
-`update_cloaked_event` (0011), `split_cloaked_event` (0013), `cancel_occurrence` (0014). All
-SECURITY INVOKER, so RLS decides what they can touch; all version-guarded; all audited without
-naming anything. Follow that shape for the next one — one RPC per user action, an expected
+`update_cloaked_event` (0011), `split_cloaked_event` (0013), `cancel_occurrence` (0014),
+`restore_cloaked_event` / `uncancel_occurrence` / `purge_cloaked_event` (0031). All
+SECURITY INVOKER, so RLS decides what they can touch; all audited without naming anything.
+All version-guarded EXCEPT `uncancel_occurrence`, which is deliberate and is explained at
+length above the function: a trashed EVENT is frozen, so `version - 1` recovers the delete
+version from a plain read and restore can check it, but a SERIES is not — cancel two
+occurrences and the first one's delete version is unrecoverable from anything that only sees
+the row now, which is exactly the position the Trash page is in. A guard only the undo strip
+could satisfy would turn the durable route into a permanent false conflict, and there is
+nothing for it to protect: removing one exception row cannot clobber an edit. Same call 0017
+makes for visibility rules. Follow that shape for the next one — one RPC per user action, an expected
 version in, a distinguishable slug out.
 
 **Series splits work.** Editing a repeating event asks which occurrences to change — this
@@ -623,6 +638,57 @@ true fact, and nothing else. Every control moved to a page.
   stay head counts and never name `cloaked_fields`, `ciphertext` or a wrap column — is a source
   sweep in the same file, proved by injecting both violations and watching it fail.
 
+**The 2026-08-19 finish pass: the cloak moved to the surface it is about, a write leaves a
+mark, and delete became reversible in the product rather than only in the schema.**
+
+- **THE COVER IS OPAQUE AND `inert`, AND THAT IS CORRECTNESS RATHER THAN STYLE.** An
+  audience switch is a server navigation on a force-dynamic route, so the OLD frame is on
+  screen for the whole round trip. The first draft held it at `opacity: 0.5; blur(2px)`,
+  which is not redaction: a 2px blur leaves a title legible and does NOTHING to the
+  accessibility tree, so the owner's full titles would have stayed readable to a screen
+  reader for the entire fetch while the arriving frame said "Previewing as Dana". The plate
+  is `--surface-base` at full opacity and `<main>` is marked `inert` on the same tick.
+  `inert` ALONE, never plus `aria-hidden` — per spec inert already removes the subtree from
+  the accessibility tree and is strictly stronger, and stacking both invites a false
+  `aria-hidden-focus` finding from axe.
+- **The wipe is `clip-path` ONLY, and must never regain an opacity stop.** The first
+  keyframe faded 0.6 → 1 alongside it, which makes the cover a FOG for 420ms — the same
+  defect wearing an animation. `e2e/cloak-transition.spec.ts` samples the computed opacity
+  mid-wipe; it read 0.607 and now reads 1.
+- **Direction is the meaning: narrowing covers, widening retains.** Showing LESS than you
+  are entitled to is never a disclosure error, so going back to your own view keeps the
+  restricted one until the fuller one arrives — with a status line, because no cover must
+  not mean no feedback. `lib/view-transition.ts`'s refusal to bracket a server navigation in
+  `startViewTransition` STANDS: this is an outgoing gesture concurrent with the fetch, not a
+  cross-fade, so it costs zero added latency instead of freezing the old frame.
+- **`useAudienceSwitch` is the one audience door.** Three surfaces used to call
+  `router.push(audienceHref(...))` themselves; a fourth that forgot to seal would silently
+  reopen the gap.
+- **A write leaves a mark, and create and edit are different promises.** Create may navigate
+  to what you made and takes focus; EDIT NEVER NAVIGATES — it names where the event went and
+  offers a door. Both leave the sheet open with every field intact on failure. The row wears
+  a persistent inset accent ring; nothing is timed, and `--z-toast` stays the offline
+  banner's. A toast dismisses on a wall clock, which is the mistake `nav-feel.spec.ts`
+  already paid for.
+- **Undo, plus a Trash page, because a strip dies on reload.** `/settings/security` lists
+  trashed events AND cancelled occurrences. It is called **Trash** and never "Recently
+  deleted": nothing expires, and a name implying a window that does not exist is the export
+  claim's mistake in a different sentence. The retention truth shipped in `lib/legal.ts` in
+  the same commit, paired by a `legal-claims.server.test.ts` capability.
+- **A cancelled occurrence offers Restore ONLY.** It is a subtraction, not a row: the series
+  owns the ciphertext, so there is nothing separate to erase and deleting the exception IS
+  the restore. One whose series is itself trashed is not listed twice.
+- **Focus is not stolen.** The undo strip is `aria-live="polite"`; focus moves to Undo only
+  when the delete was keyboard-initiated (`event.detail === 0`), where the sheet has just
+  unmounted and focus would otherwise land on `<body>`.
+- **Seeding is `Promise.allSettled` and reports partial success** ("Added 6 of 8"), retrying
+  only the specs that failed. It can no longer rest in "Adding…" or claim completion.
+- **One inline first-run prompt**, on five conditions (owner, armed by a first successful
+  save, a non-empty page, zero contacts, not dismissed), opening the Event Visibility sheet
+  so adding a person and choosing what they see happen together. No re-arm path at all.
+  **Nothing in the repo can render it** — the fixture ships demo audiences, so the
+  zero-contacts condition is false on every Playwright project.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + per-contact share links — the next dedicated phase, and **NOT gated on the
@@ -682,6 +748,13 @@ for no gain, and opening a door without running it ships an unread assumption.
   with `.is('event_id', null)` matches what the Privacy page lists, and whether the
   `root_key_wraps` count survives its own policy. A wrong count here is silent and plausible,
   which is the family the contact-name ingest bug and the bytea spelling bug both belong to.
+- **Before the undo strip or the Trash page are trusted:** apply 0031, then run the
+  throwaway-account recipe. Everything about them is verified in code and unverified on the
+  wire. The fixture has no session, so `TrashSection` has never issued one of its queries
+  against PostgREST — whether RLS scopes each list to the caller, whether `recurrence_
+  exceptions` is readable at all under its policy, and whether the private CloakStore opens a
+  real trashed title are all unrun. Same family as the contact-name ingest bug: fixture-only
+  green is not evidence for a path the fixture cannot take.
 - **Before `CLOAKCAL_BILLING=1`:** the four items under item 4 above, unchanged.
 - **Before public launch:** the independent security review, unchanged.
 
@@ -740,6 +813,43 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **AN EM DASH CAN ENTER USER-FACING COPY AS `\u2014` AND GREP WILL NOT SEE IT.** Six e2e
+  specs assert no em dash renders, and they are right to — but they check the DOM, and a
+  `grep -c` over the source counts characters. A `'\u2014'` escape inside a TypeScript string
+  literal IS an em dash at runtime and is invisible to every source scan looking for the
+  glyph. Introduced by a patch script and caught only because the assertion that was supposed
+  to fail did not. Grep for `u2014` as well as for the character.
+- **THE FIELD PASS NEVER REACHED `event-fields.module.css`, the most-used form in the
+  product.** `--field-bg` / `--field-border` / `--radius-control` landed in auth, settings,
+  billing and the calendar chrome; the create and edit sheets kept `--surface-overlay` with a
+  `--border-default` hairline, which in LIGHT is #ffffff on #ffffff behind a ~1.6:1 outline —
+  a WCAG 1.4.11 failure on every compose and edit. **axe cannot see it**: it measures TEXT
+  contrast, so `compose.spec.ts` and `edit-event.spec.ts` both ran axe against this sheet
+  open and both passed. Exactly the failure tokens.css predicts where it introduces
+  --field-bg, including the reason ("whoever builds it is looking at dark").
+- **`cloaked_fields` HAS NO FOREIGN KEY TO `events`.** It is polymorphic on (subject_type,
+  subject_id) and its only FK is workspace_id, so `delete from events` does not touch the
+  ciphertext. Any purge written the obvious way drops the row, passes every other test, and
+  leaves the encrypted title, location and notes in the database forever while the product
+  says they were permanently removed. 0031 deletes them explicitly and a db test asserts the
+  count is zero. `visibility_rules.event_id` and `recurrence_exceptions.series_id` DO cascade;
+  `audit_log` does not and cannot, because the table is append-only — which is why the
+  privacy policy qualifies "permanently" instead of stating it flat.
+- **`recurrence_exceptions` has a constraint that makes a naive purge fail.**
+  `replacement_event_id` is `on delete set null` AND the table checks
+  `(kind = 'moved') = (replacement_event_id is not null)`, so deleting an event a split
+  detached would null the pointer and violate the check. Deleting the exception row instead
+  is worse: the occurrence would REAPPEAR in its series. 0031 converts it to `cancelled`.
+- **THERE ARE NO `-win32` VISUAL BASELINES, so `pnpm test:visual` is skipped on Windows.**
+  Only `-darwin` and `-linux` are committed, and `playwright test --project=visual` reports
+  "No tests found" rather than saying it skipped — which reads like a broken config. CLAUDE.md
+  said "every committed baseline was -win32" for a long time and that has not been true since
+  the darwin/linux sets landed. A change that alters the agenda or the landing cannot be
+  screenshot-verified from a Windows machine at all; CI on ubuntu is the only check.
+- **`ui/Button` now takes a `ref`, with no forwardRef.** React 19 passes `ref` to a function
+  component as an ordinary prop, so only the TYPE had to widen
+  (`ComponentPropsWithRef`) — which is why it looked like it already worked until the undo
+  strip asked for one to focus itself.
 - **A TRANSIENT UI STATE HELD OPEN BY A WALL-CLOCK DELAY IS A FLAKY TEST, and the flake shows
   up only in the full suite.** `e2e/nav-feel.spec.ts` asserts on two states that exist solely
   while a server navigation is in flight, and made them observable by holding the request for a

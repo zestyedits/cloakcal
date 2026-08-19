@@ -6,6 +6,7 @@ import { primaryHoliday, type HolidayMap } from '@cloakcal/domain'
 import type { AvailabilityWeek } from '@/server/availability'
 import type { DisclosureLevel } from '@cloakcal/policy'
 import type { RedactedOccurrence } from '@/server/audience'
+import type { DeletedEvent, SavedEvent } from '@/lib/saved-event'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
 import { Icon, type IconName } from './ui/icons'
@@ -151,6 +152,9 @@ export function WeekGrid({
   onComposeSlot,
   holidays = {},
   availability = {},
+  onSaved,
+  onDeleted,
+  savedEventId = null,
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant for the first day of the week. */
@@ -195,6 +199,15 @@ export function WeekGrid({
    * why widening the span to cover availability would be the wrong call.
    */
   availability?: AvailabilityWeek
+  /** Forwarded to each block's edit sheet, the same way onOpenVisibility already is. */
+  onSaved?: ((result: SavedEvent) => void) | undefined
+  /** Forwarded to each block's Delete flow, so a delete from the grid can be undone. */
+  onDeleted?: ((info: DeletedEvent) => void) | undefined
+  /**
+   * The event just written, so its block can wear the saved ring. A prop rather than a
+   * context because that is how every other screen-level concern reaches this grid.
+   */
+  savedEventId?: string | null
 }) {
   const days = useMemo(() => {
     // Built from the range rather than from the data, so an empty Wednesday still gets a
@@ -326,6 +339,8 @@ export function WeekGrid({
                         start={occurrence.start}
                         end={occurrence.end}
                         label={`the all-day event on ${day}`}
+                        onSaved={onSaved}
+                        onDeleted={onDeleted}
                       />
                     )}
                     {occurrence.time === 'busy' ? (
@@ -400,9 +415,15 @@ export function WeekGrid({
                     key={hour}
                     type="button"
                     className={styles.hourSlot}
+                    // The name describes the CELL, and the sheet then shows the value it
+                    // actually resolved -- see slotMinute for why those are not the same
+                    // sentence and why that is honest rather than a lie.
                     aria-label={`New event on ${day} at ${formatHour(hour)}`}
-                    onClick={() =>
-                      onComposeSlot(day, `${String(((hour % 24) + 24) % 24).padStart(2, '0')}:00`)
+                    onClick={(event) =>
+                      onComposeSlot(
+                        day,
+                        `${String(((hour % 24) + 24) % 24).padStart(2, '0')}:${slotMinute(event)}`,
+                      )
                     }
                   />
                 ),
@@ -423,6 +444,7 @@ export function WeekGrid({
                     data-color={colorFor(occurrence.calendarId)}
                     data-time={occurrence.time}
                     data-busy={occurrence.busy ?? 'busy'}
+                    data-just-saved={occurrence.eventId === savedEventId || undefined}
                     style={{
                       top: `${top}%`,
                       height: `${height}%`,
@@ -449,6 +471,8 @@ export function WeekGrid({
                         start={occurrence.start}
                         end={occurrence.end}
                         label={`the event at ${timeLabel}`}
+                        onSaved={onSaved}
+                        onDeleted={onDeleted}
                       />
                     )}
                     <span className={styles.eventTime}>{timeLabel}</span>
@@ -537,6 +561,36 @@ export function WeekGrid({
       </div>
     </div>
   )
+}
+
+/**
+ * Which half of the hour a click landed in, as `00` or `30`.
+ *
+ * WHY NOT TWO BUTTONS PER HOUR. Splitting the cell would put 182 controls on the densest
+ * surface in the app, for a week people mostly read rather than click. Reading the position
+ * keeps the count at 91 and costs nothing.
+ *
+ * WHY HALVES AND NOT QUARTERS. Quarters were the first attempt and they are over-precise for
+ * a single click: nobody aims at 9:15, and the extra resolution only widens the gap between
+ * what the control is NAMED and what it does.
+ *
+ * WHY THE MIDPOINT BELONGS TO THE HOUR, which is the part worth keeping. The cell's
+ * accessible name is "New event on Tuesday at 9 AM", so the AMBIGUOUS case has to resolve to
+ * 9 AM or the name is a lie in exactly the situation where the user had no strong intent.
+ * `<= 0.5` is therefore deliberate rather than an off-by-one: the upper half INCLUDING dead
+ * centre is the hour, and only a clearly low click asks for the half hour. Caught by the
+ * compose spec, which clicks element centres and started producing 9:30 for a test named
+ * "composes at that day and hour".
+ *
+ * `detail === 0` is a keyboard or assistive activation, with no pointer position to read at
+ * all; those land on :00, exactly what the name promises. Either way the sheet then shows the
+ * resolved time in an editable field, so nothing is written that was not confirmed on screen.
+ */
+function slotMinute(event: React.MouseEvent<HTMLButtonElement>): string {
+  if (event.detail === 0) return '00'
+  const rect = event.currentTarget.getBoundingClientRect()
+  if (rect.height === 0) return '00'
+  return (event.clientY - rect.top) / rect.height > 0.5 ? '30' : '00'
 }
 
 /** 12-hour labels without the minutes, which are noise in an hour gutter. */

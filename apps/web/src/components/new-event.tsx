@@ -8,6 +8,7 @@ import { EventSheet } from './event-sheet'
 import { EventFields, Field, eventFieldStyles, type EventFieldValues } from './event-fields'
 import { sealFields } from '@/lib/cloaked-fields'
 import { resolveOwnWorkspace } from '@/lib/own-workspace'
+import type { SavedEvent } from '@/lib/saved-event'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { useCloakedLabels } from './use-cloaked-labels'
 import { Button } from './ui/button'
@@ -106,6 +107,7 @@ export function NewEvent({
   defaultDate,
   defaultTime = '09:00',
   demo = false,
+  onSaved,
   onClose,
 }: {
   timezone: string
@@ -120,6 +122,15 @@ export function NewEvent({
    * finally open the create path at all — axe had never seen this sheet.
    */
   demo?: boolean
+  /**
+   * Reported on success, before onClose. The screen decides what to do with it — see
+   * CalendarScreen.reportSaved. Absent in the fixture, where nothing can be written anyway.
+   *
+   * NOTE THAT THE FAILURE PATH ALREADY DOES THE RIGHT THING and must keep doing it: onClose
+   * is inside the try, after the RPC, so a rejected write leaves the sheet open with every
+   * field exactly as typed. An edit that says "reload the page" throws away work.
+   */
+  onSaved?: ((result: SavedEvent) => void) | undefined
   onClose: () => void
 }) {
   const store = useCloakStore()
@@ -216,6 +227,9 @@ export function NewEvent({
       })
       if (rpcError !== null) throw rpcError
 
+      // Before onClose, so the screen has the result even though this component is about to
+      // unmount. The date is the one the user chose, not the one the calendar is showing.
+      onSaved?.({ eventId, date: values.date, kind: 'created' })
       onClose()
       setValues(EMPTY(defaultDate, defaultTime))
       setDetailed(false)

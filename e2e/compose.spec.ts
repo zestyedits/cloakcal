@@ -68,6 +68,58 @@ test('an empty week-grid slot composes at that day and hour', async ({ page }) =
   await expect(dialog.getByLabel('Starts')).toHaveValue('15:00')
 })
 
+test('the lower half of a slot asks for the half hour, the midpoint does not', async ({
+  page,
+}) => {
+  /*
+   * Position snapping, and the reason the midpoint belongs to the HOUR.
+   *
+   * The cell is named "at 3 PM", so an ambiguous activation has to resolve to 3 PM or the
+   * accessible name is wrong in exactly the case where the user had no strong intent.
+   * Playwright clicks element centres, so the test above IS the midpoint case and it
+   * asserts 15:00 — this one proves the other half is reachable rather than the snapping
+   * being decorative.
+   */
+  await page.goto('/?view=week')
+  await settle(page)
+
+  const slot = page.getByRole('button', { name: 'New event on 2026-05-19 at 3 PM' })
+  const box = await slot.boundingBox()
+  if (box === null) throw new Error('the 3 PM slot has no box to click in')
+  // Three quarters down, which is unambiguously the lower half.
+  await slot.click({ position: { x: box.width / 2, y: box.height * 0.75 } })
+
+  const dialog = await settleSheet(page)
+  await expect(dialog.getByLabel('Day')).toHaveValue('2026-05-19')
+  await expect(dialog.getByLabel('Starts')).toHaveValue('15:30')
+})
+
+test('the sheet states when the event would end, and says so when it crosses midnight', async ({
+  page,
+}) => {
+  /*
+   * The form collected a start and a duration and never once said when the event would
+   * END — the difference between describing an event and seeing one, and the source of the
+   * commonest create-time mistake.
+   */
+  await page.goto('/?view=week')
+  await settle(page)
+  await page.getByRole('button', { name: 'New event on 2026-05-19 at 3 PM' }).click()
+  const dialog = await settleSheet(page)
+
+  await expect(dialog.getByText('15:00 \u2013 15:30')).toBeVisible()
+
+  // A duration change moves it, which is the whole point of it being derived.
+  await dialog.getByLabel('For').selectOption('120')
+  await expect(dialog.getByText('15:00 \u2013 17:00')).toBeVisible()
+
+  // Crossing midnight is the one surprise a derived end time can hold, so it is said in
+  // words rather than left to a date the readout does not show.
+  await dialog.getByLabel('Starts').fill('23:30')
+  await expect(dialog.getByText('23:30 \u2013 01:30')).toBeVisible()
+  await expect(dialog.getByText('ends the next day')).toBeVisible()
+})
+
 test('the day view inherits slot composing, and a later compose forgets the slot', async ({
   page,
 }) => {

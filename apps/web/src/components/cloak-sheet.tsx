@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import {
   decisionToLevel,
   evaluate,
@@ -10,7 +9,8 @@ import {
   type ViewerIdentity,
   type VisibilityRule,
 } from '@cloakcal/policy'
-import { audienceHref, audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { useAudienceSwitch } from './audience-transition'
 import { useAudienceNames } from './use-audience-names'
 import { PrivacyChip } from './ui/privacy-chip'
 import { Button, ButtonLink } from './ui/button'
@@ -55,8 +55,7 @@ export function CloakSheet({
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
-  const router = useRouter()
-  const params = useSearchParams()
+  const { switchTo } = useAudienceSwitch()
 
   useEffect(() => {
     const dialog = ref.current
@@ -64,6 +63,8 @@ export function CloakSheet({
   }, [])
 
   const rows = audiences.filter((a) => a.kind !== 'owner')
+  // Declared above `preview`, which calls it: the transition announces the decrypted name
+  // rather than the id, and contact names are ciphertext the server never sees.
   const nameOf = useAudienceNames(audiences)
 
   const now = useMemo(() => new Date().toISOString(), [])
@@ -78,7 +79,9 @@ export function CloakSheet({
    */
   const preview = (option: AudienceOption) => {
     ref.current?.close()
-    router.push(audienceHref(params.toString(), audienceIdOf(option)))
+    // Through the shared door, so this route seals exactly like the sidebar's picker. The
+    // name is resolved here because only this client can read it.
+    switchTo(audienceIdOf(option), nameOf(option))
   }
 
   const decisionFor = (option: AudienceOption) => {
@@ -169,7 +172,7 @@ export function CloakSheet({
             className={styles.exitPreview}
             onClick={() => {
               ref.current?.close()
-              router.push(audienceHref(params.toString(), 'owner'))
+              switchTo('owner', 'your own')
             }}
           >
             Back to my own view

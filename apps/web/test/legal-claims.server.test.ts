@@ -133,6 +133,25 @@ const CAPABILITIES: readonly Capability[] = [
     why: 'the same shape as the export claim, caught before it shipped',
   },
   {
+    name: 'Trash and permanent deletion',
+    /*
+     * A LIVE CLAIM, added with the control rather than after it -- which is the whole
+     * lesson of the export sentence that sat here false for months.
+     *
+     * Making the trash VISIBLE turns indefinite retention from an implementation detail
+     * into a promise: the policy now says an event waits there until you act, and that a
+     * permanent removal erases the ciphertext while leaving a content-free audit row. All
+     * three halves have to move together, so the pairing is asserted rather than trusted.
+     *
+     * The backing is the RPC NAME, not a component or a heading. Prose never calls an
+     * RPC, and purge is the only thing in the product that destroys ciphertext -- if it
+     * is ever removed, this sentence must go with it.
+     */
+    claim: /moves it to Trash|remove it permanently|erases its encrypted content/i,
+    backing: /purge_cloaked_event/,
+    why: 'the retention promise a visible trash creates',
+  },
+  {
     name: 'Cancelling a subscription from Settings',
     claim: /cancel from Settings/i,
     backing: /cancelAtPeriodEnd|kind: 'cancel'/,

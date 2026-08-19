@@ -8,6 +8,7 @@ import { ExportCalendar } from '../export-calendar'
 import { PasskeysSection } from '../passkeys-section'
 import { ReissueRecoveryPhrase } from '../reissue-recovery-phrase'
 import { SignOutButton } from '../sign-out-button'
+import { TrashSection } from './trash-section'
 import { SettingsSiblings } from './settings-doors'
 import styles from './settings.module.css'
 
@@ -160,6 +161,15 @@ export function SecurityScreen({
               permanently: charging to leave is not something a privacy product gets to do.
             </p>
             <ExportCalendar />
+          </div>
+
+          {/* BETWEEN export and account deletion, which is the order of consequence: getting a
+              copy out, getting one thing back, getting rid of everything. "Trash" and never
+              "Recently deleted" — nothing here expires, and a heading implying a window that
+              does not exist is the export claim's mistake wearing a different sentence. */}
+          <div className={styles.subSection}>
+            <h3 className={styles.panelTitle}>Trash</h3>
+            <TrashSection demo={demo} />
           </div>
 
           <div className={styles.subSection}>

@@ -1,0 +1,94 @@
+/*
+ * The cloak cover — the product's signature motion, on the surface it is about.
+ *
+ * See audience-transition.tsx for why this is not a View Transition, why it is opaque rather
+ * than blurred, and why only the narrowing direction draws it.
+ */
+
+/*
+ * A grid child in the same area as `<main>`, so it overlaps it with no absolute positioning
+ * and no measured offsets — the shell has two different layouts (stacked below 900px,
+ * two-column above) and `grid-area` is correct in both without a media query here.
+ *
+ * OPAQUE, and that is the whole point: --surface-base, not an alpha wash and not a blur.
+ * A translucent cover would leave the owner's titles legible, and a blur would leave them
+ * legible AND leave them in the accessibility tree untouched. The stale subtree is marked
+ * `inert` in calendar-screen.tsx at the same instant this paints.
+ */
+.cover {
+  grid-area: main;
+  /* Above `<main>`'s own content; below --z-sheet, because an event sheet that is somehow
+     open during a switch must still be the top thing on screen. */
+  z-index: 1;
+  background: var(--surface-base);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+
+  /*
+   * THE RESEAL: a right-to-left wipe, the exact mirror of the uncloak in
+   * cloaked-text.module.css, which runs left-to-right. One is content opening and one is the
+   * calendar closing, and they are the two halves of a single idea rather than two ideas —
+   * which is why they share --duration-cloak and why nothing else in the app may spend it.
+   *
+   * `both` holds the end state: this plate must not fade back out on its own. It is removed
+   * when the navigation commits, which is the only thing that should ever reveal what is
+   * under it.
+   *
+   * Compositor-only (clip-path alone; see the keyframe), so no layout. Reduced motion collapses
+   * --duration-cloak to 1ms in tokens.css, which leaves the cover appearing instantly — the
+   * correct degradation, because the cover is the correctness half and the wipe is the
+   * gesture half.
+   */
+  animation: reseal var(--duration-cloak) var(--ease-accelerate) both;
+}
+
+/*
+ * CLIP-PATH ONLY. There is no opacity in this animation and there must never be one.
+ *
+ * The first version faded 0.6 -> 1 alongside the wipe, which turns the cover into a FOG for
+ * the length of the gesture: every pixel of the calendar underneath stays partly legible for
+ * 420ms. That is the same defect as the blurred rest state this file exists to argue against,
+ * just wearing an animation. Caught by e2e/cloak-transition.spec.ts sampling the computed
+ * opacity mid-wipe and getting 0.607.
+ *
+ * Wiping at full opacity means a pixel is either not covered yet or covered COMPLETELY, which
+ * is what a curtain does and what a haze does not. The accessibility half does not wait for
+ * any of it: `inert` is applied on the same tick the plate mounts.
+ */
+@keyframes reseal {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/*
+ * The sentence on the plate. Secondary ink on the base surface — a pair CONTRAST_PAIRS
+ * already holds — and deliberately not the display face: this is a transient status, not a
+ * heading, and engraving it would give a 300ms message the weight of a page title.
+ */
+.label {
+  margin: 0;
+  max-width: 28ch;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/*
+ * The widening acknowledgment: a line above retained content, never a plate.
+ *
+ * Same ink and the same quiet register as the cover's label, so the two directions read as
+ * one system with one of them simply not hiding anything.
+ */
+.widening {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

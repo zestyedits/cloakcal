@@ -1,0 +1,46 @@
+/*
+ * The result strip. See calendar-notice.tsx for why this is not a toast.
+ *
+ * A plate in the content flow, wearing the same machined language as an agenda day group:
+ * raised surface, hairline, the two-edge chamfer. It pushes content down rather than covering
+ * it, which is the whole difference between a message you can read and one you have to catch.
+ */
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+
+  /*
+   * The accent as a SHAPE, on the leading edge — the same spine an agenda row uses for its
+   * calendar colour, so a result reads as belonging to the list it is about. Never accent as
+   * ink: the text below is ordinary primary ink on a pair CONTRAST_PAIRS already holds.
+   *
+   * NO ENTRANCE ANIMATION, deliberately. This appears at the same moment the thing it
+   * describes appears, and two motions starting together read as one stutter. It is also the
+   * reduced-motion equivalent of itself, which is what a static result is for.
+   */
+  border-left: 3px solid var(--accent);
+}
+
+.text {
+  margin: 0;
+  /* Takes the slack so the action and Dismiss stay together at the end of the row, and wraps
+     under them on a narrow phone rather than squeezing them off the plate. */
+  flex: 1 1 16rem;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+/* Quiet, because dismissing is never the thing you came here to do. */
+.dismiss {
+  flex: none;
+}
