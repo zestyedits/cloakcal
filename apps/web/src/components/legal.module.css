@@ -102,3 +102,37 @@
   line-height: var(--leading-relaxed);
   color: var(--text-secondary);
 }
+
+/* --------------------------------------------------------------------------
+   The way out
+   -------------------------------------------------------------------------- */
+
+/*
+ * Both documents tell the reader to email us, and until this line neither page linked
+ * anywhere. Set apart from the last section by a rule rather than by spacing alone, so it does
+ * not read as a tenth clause of the policy.
+ */
+.contact {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+.contact a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.contact a:hover {
+  color: var(--text-primary);
+}
+
+.contact a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

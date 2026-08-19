@@ -1,7 +1,14 @@
 'use client'
 
+import Link from 'next/link'
 import type { SettingsDevice } from '@/server/settings'
-import { SUPPORT_EMAIL } from '@/lib/legal'
+/*
+ * `@/lib/contact`, not `@/lib/legal`. This is a `'use client'` module, and the address used to
+ * be declared in the same file as ten sections of privacy policy and seven of terms — several
+ * kilobytes of prose reachable from a client bundle to print one string. `lib/contact.ts` is
+ * a handful of constants, and it is also the module a capability check is allowed to look at.
+ */
+import { DELETE_ACCOUNT_SUBJECT, SUPPORT_EMAIL, mailtoFor } from '@/lib/contact'
 import { PageMasthead, PageShell } from '../page-shell'
 import { ChangePassword } from '../change-password'
 import { ExportCalendar } from '../export-calendar'
@@ -195,12 +202,18 @@ export function SecurityScreen({
               you at something that only looks finished.
             </p>
             <p className={styles.rowNote}>
-              <a
-                className={styles.mailLink}
-                href={`mailto:${SUPPORT_EMAIL}?subject=Delete my account`}
-              >
+              <a className={styles.mailLink} href={mailtoFor(DELETE_ACCOUNT_SUBJECT)}>
                 {SUPPORT_EMAIL}
               </a>
+            </p>
+            {/* A `mailto:` does nothing at all on a machine with no mail client registered,
+                and it fails SILENTLY — the click simply does not land. This was the only route
+                out of the product, so that failure was the whole flow. The contact page states
+                the address as copyable text and carries the rest of the reasoning. */}
+            <p className={styles.rowNote}>
+              <Link className={styles.mailLink} href="/contact" prefetch={false}>
+                Contact page
+              </Link>
             </p>
           </div>
         </section>

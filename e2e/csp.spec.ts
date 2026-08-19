@@ -43,10 +43,16 @@ function watchViolations(page: Page): string[] {
 }
 
 test('every document response carries the policy', async ({ page }) => {
+  // Six cold route compiles do not fit in one 30s budget on a dev server eight workers
+  // share. Same call the sub-page walk below already made.
+  test.slow()
   // Including the auth pages, which stopped being prerendered for exactly this reason: a
   // per-request nonce cannot exist in a page built once. If any of these lost the header it
   // would be the pages handling passwords that lost it.
-  for (const path of ['/', '/sign-in', '/sign-up', '/recover', '/settings']) {
+  //
+  // And /contact, which is PUBLIC and reachable signed out. A route a stranger can load is
+  // the last one that should be trusted to have kept its header by accident.
+  for (const path of ['/', '/sign-in', '/sign-up', '/recover', '/settings', '/contact']) {
     const response = await page.goto(path)
     const header = response?.headers()[CSP]
     expect(header, `no CSP on ${path}`).toBeTruthy()

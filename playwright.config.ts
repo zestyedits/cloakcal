@@ -53,7 +53,25 @@ function isBootstrappingSnapshots(): boolean {
  * Between them both halves are covered, and neither required loosening the gate.
  */
 
-const PORT = 3100
+/*
+ * THE PORT IS OVERRIDABLE, AND THAT IS A BUG FIX RATHER THAN A CONVENIENCE.
+ *
+ * It was hardcoded, and `webServer.reuseExistingServer` is `!CI` — so a suite run while ANY
+ * other `next dev` holds 3100 silently attaches to that one instead of starting its own. That
+ * is harmless when the other server is your own. It stopped being harmless the moment this
+ * repo started running agents in git worktrees: a worktree's dev server is a DIFFERENT
+ * CHECKOUT of the same project on the same port, and Playwright cannot tell.
+ *
+ * The failure is quiet and deeply misleading. A full run against a worktree mid-edit reported
+ * 365 failures, an app regression in a file nothing had touched, and a leak-gate hit claiming
+ * decrypted event titles inside `app/page.css` — a canary that appears in no stylesheet, no
+ * source file and not in the fixture. Every one of those was the other checkout, and the time
+ * went into hunting a regression in this one.
+ *
+ * So: `CLOAKCAL_E2E_PORT=3200 pnpm test:e2e` in a worktree, and the two never meet. The
+ * default is unchanged, so nothing about a normal run moves.
+ */
+const PORT = Number(process.env['CLOAKCAL_E2E_PORT'] ?? 3100)
 const BASE_URL = `http://127.0.0.1:${PORT}`
 
 export default defineConfig({
@@ -89,12 +107,12 @@ export default defineConfig({
     // project claim them would demand one baseline set per device for no added coverage.
     {
       name: 'mobile',
-      testMatch: /(availability|billing|cloak-transition|compose|csp|export|legal|grid-interactions|holidays|hotkeys|landing|leak|nav-feel|people|plan|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
+      testMatch: /(availability|billing|cloak-transition|compose|contact|csp|export|legal|grid-interactions|holidays|hotkeys|landing|leak|nav-feel|people|plan|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
       use: { ...devices['Pixel 7'] },
     },
     {
       name: 'desktop',
-      testMatch: /(availability|billing|cloak-transition|compose|csp|export|legal|grid-interactions|holidays|hotkeys|landing|leak|nav-feel|people|plan|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
+      testMatch: /(availability|billing|cloak-transition|compose|contact|csp|export|legal|grid-interactions|holidays|hotkeys|landing|leak|nav-feel|people|plan|prelaunch|view-as|edit-event|delete-event|fallbacks|settings|shell|visibility-sheet|views)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
     },
     {
@@ -184,7 +202,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: 'pnpm --filter @cloakcal/web dev --port 3100',
+    command: `pnpm --filter @cloakcal/web dev --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env['CI'],
     timeout: 180_000,

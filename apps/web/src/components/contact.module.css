@@ -1,0 +1,142 @@
+/*
+ * /contact.
+ *
+ * A READING MEASURE, not an app screen, and deliberately the same one `legal.module.css` sets:
+ * this page is read immediately before or immediately after the privacy policy in almost every
+ * case, and two documents that answer each other should not change typographic weight between
+ * them. It is a separate file rather than a shared one because the two pages have different
+ * furniture (a table of contents there, a foregrounded address here) and a stylesheet serving
+ * both would grow modifier classes for the halves that differ.
+ */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  /* ~68 characters, matching the legal pages. */
+  max-width: 38rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved);
+  color: var(--text-primary);
+}
+
+.paragraph {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   The address
+   -------------------------------------------------------------------------- */
+
+/*
+ * SET LARGE AND GIVEN ITS OWN PANEL, because on a page whose entire content is one address,
+ * an address styled like a sentence is the thing a reader has to hunt for. It is also the one
+ * string on this page somebody will select with a mouse rather than click.
+ *
+ * `overflow-wrap: anywhere` rather than a nowrap: an address that cannot break is a page that
+ * scrolls sideways at 390px, which is the exact failure the settings rail shipped once and
+ * which `never scrolls sideways` now guards on every page that grows a long unbreakable
+ * string. A wrapped address is ugly; a horizontally scrolling document is broken.
+ */
+.address {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.addressLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  color: var(--accent-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.addressLink:hover {
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   Links
+   -------------------------------------------------------------------------- */
+
+/*
+ * 44px, which the landing footer and the auth footer both paid for by shipping without it.
+ * These are `mailto:` anchors rather than buttons on purpose — they navigate the user's mail
+ * client, they are meaningful to a middle-click and a long-press, and dressing a navigation
+ * as a button is how a page ends up needing JavaScript it never wanted.
+ */
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.actionLink:hover {
+  border-color: var(--border-strong);
+  background: var(--field-bg-hover);
+}
+
+/*
+ * NOT given the 44px floor, and the reason is the one `legal.module.css` states about its
+ * table of contents: these sit inside running prose, where a 44px inline target would open a
+ * visible gap in the middle of a paragraph. The a11y sweep measures `a[href]`, so someone will
+ * ask — the answer is that an inline link inside a sentence is text, and every destination it
+ * offers is also reachable from the footers, which do take the floor.
+ */
+.inlineLink {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inlineLink:hover {
+  color: var(--text-primary);
+}
+
+.footNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.addressLink:focus-visible,
+.actionLink:focus-visible,
+.inlineLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

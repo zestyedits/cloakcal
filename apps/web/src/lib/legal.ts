@@ -32,15 +32,15 @@
  */
 
 /**
- * THE support address, in one place, because two surfaces now print it.
+ * The address is imported rather than declared here, and that is not tidying.
  *
- * Deletion is by email and has to stay that way — `auth.users` is unreachable in-band, so a
- * "Delete account" button would clear a calendar and leave an email address and a user id on
- * file. That makes this address the whole mechanism behind a statutory obligation, and an
- * address that drifts between the terms and the settings page is a deletion request sent
- * somewhere nobody reads.
+ * `legal-claims.server.test.ts` excludes this module from its source sweep by name, so that a
+ * claim in this file can never be the evidence that the same claim is backed. Anything the
+ * app genuinely ACTS on therefore has to live outside it, or the guard goes blind the moment
+ * a capability is defined in the document that describes it. `lib/contact.ts` is where the
+ * address, the route and the reasoning about forms live.
  */
-export const SUPPORT_EMAIL = 'hello@cloakcal.com'
+import { SUPPORT_EMAIL } from './contact'
 
 export interface LegalSection {
   readonly id: string
@@ -60,8 +60,18 @@ export interface LegalDocument {
   readonly sections: readonly LegalSection[]
 }
 
-/** Changing this without changing the documents is worse than leaving it stale. */
-const UPDATED = '16 August 2026'
+/**
+ * Changing this without changing the documents is worse than leaving it stale, and the
+ * converse is what moved it here: this pass added a THIRD PARTY (Zoho, which receives anything
+ * you email us) and a section describing what we get when you write. The "Changes to this
+ * policy" section below promises to say so and date the change, so a documents edit that left
+ * the date alone would falsify the one clause whose whole subject is edits.
+ *
+ * The same clause promises an email for a material change rather than a silent one. Nothing is
+ * owed here: sign-ups are closed, so there is nobody to tell. The day that stops being true,
+ * this constant moving is the reminder that the obligation attached.
+ */
+const UPDATED = '19 August 2026'
 
 /**
  * Every plaintext fact the server holds, named.
@@ -162,6 +172,7 @@ export const PRIVACY: LegalDocument = {
         'Supabase hosts our database and handles sign-in. They hold the same data we do, in the same form, including the encrypted content they cannot read.',
         'Vercel hosts and serves the site.',
         'Resend sends transactional email: confirmations, password resets, and nothing else.',
+        'Zoho hosts the mailbox behind our contact address. If you write to us, Zoho receives and stores that message, in the same way your own provider does at your end. It holds nothing else about you, and nothing from your calendar ever passes through it.',
         'Stripe processes payments for the Pro plan. If you subscribe, Stripe receives your card details and the email address you give them at checkout, which does not have to be the one you sign in with. We receive an identifier for you at Stripe, whether the subscription is active, and when it renews. Your card number never reaches us.',
       ],
     },
@@ -175,12 +186,36 @@ export const PRIVACY: LegalDocument = {
       ],
     },
     {
+      /*
+       * THE SECTION THAT HAD TO ARRIVE WITH THE CONTACT PAGE, NOT AFTER IT.
+       *
+       * Making the address findable to a signed-out visitor is the point of that page, and the
+       * moment a route in is advertised, what happens to what arrives through it is a
+       * disclosure obligation rather than an implementation detail. Everything here is a fact
+       * about ordinary email, which is exactly why it is worth stating: a reader who chose
+       * this product specifically because its content is sealed will reasonably assume writing
+       * to us is sealed too, and it is not.
+       *
+       * The first paragraph also records WHY there is no form, because "why is there no
+       * contact form on a modern product" is a question a cautious reader asks, and the answer
+       * is a privacy answer rather than an unfinished one. The engineering half of the same
+       * reasoning is in `lib/contact.ts`.
+       */
+      id: 'writing-to-us',
+      heading: 'If you write to us',
+      body: [
+        'There is no contact form on this site, and that is a decision rather than a gap. A form would put whatever you typed onto our servers before a person ever read it, which is one more copy of your words sitting in the clear somewhere you did not choose. So there is an address instead, on our contact page, and your message travels the way any other email does.',
+        'What we receive is your email address and whatever you decide to write, in ordinary readable form. Email is not protected the way your event content is: your mail provider can read it, our mail provider can read it, and so can we. Please do not paste something into a message to us that you picked CloakCal specifically to keep out of one, and never send us your password or your recovery phrase. There is nothing we could do with either except be somewhere they leaked from.',
+        'We keep a message for as long as it takes to answer you, plus whatever record we need of anything we did to your account on the strength of it, and we delete it after that. Nothing enforces that on a timer, and we would rather say so than imply a machine is doing it: it is a person deleting a thread. If you want yours gone sooner, ask in it.',
+      ],
+    },
+    {
       id: 'your-rights',
       heading: 'What you can do',
       body: [
         'You can export your calendar as a standard .ics file from Settings, under Security and data. It is assembled in your browser from your own decrypted content, so the file holds things our servers have never seen, and it never goes back to us. Repeating events keep their rule rather than being flattened into copies. Export is free permanently: charging to leave is not something a privacy product gets to do.',
-        'You can have your account deleted by emailing us. That erases every event, calendar, contact, rule and setting we hold for you, and it cannot be undone. There is no button for this yet, and we would rather say so than point you at one that is not there.',
-        'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. Where there is a control above, that is how we meet them. Where there is not one yet, email us and we will do it by hand, which is how deletion works today. For anything else, contact us.',
+        'You can have your account deleted by emailing us, from the address you sign in with. That erases every event, calendar, contact, rule and setting we hold for you, and it cannot be undone. There is no button for this yet, and we would rather say so than point you at one that is not there. The address is on our contact page, along with why we ask you to write from that particular one.',
+        'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. Where there is a control above, that is how we meet them. Where there is not one yet, email us and we will do it by hand, which is how deletion works today. For anything else, the address is on our contact page.',
       ],
     },
     {
@@ -261,7 +296,7 @@ export const TERMS: LegalDocument = {
       id: 'ending',
       heading: 'Ending it',
       body: [
-        'You can have your account deleted at any time by emailing us. It takes your data with it and cannot be undone. There is no self-serve button for this yet.',
+        'You can have your account deleted at any time by emailing us, from the address you sign in with. It takes your data with it and cannot be undone. There is no self-serve button for this yet, and our contact page says why as well as where to write.',
         'We may suspend or close an account that is being used to break the law or to attack the service. We will tell you why unless we are legally prevented from doing so.',
       ],
     },
@@ -269,7 +304,7 @@ export const TERMS: LegalDocument = {
       id: 'contact',
       heading: 'Contact',
       body: [
-        `Questions about these terms, the privacy policy, or your data: reach us at ${SUPPORT_EMAIL}.`,
+        `Questions about these terms, the privacy policy, or your data: write to ${SUPPORT_EMAIL}. Our contact page has the same address, plus the two things it cannot do for you.`,
       ],
     },
   ],

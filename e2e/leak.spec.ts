@@ -47,11 +47,28 @@ test.describe('decryption actually happens', () => {
   test('renders Cloaked titles only after hydration', async ({ page }) => {
     // Guards every other assertion in this file: if nothing ever decrypted, the leak
     // tests below would pass for the wrong reason.
-    const responses: string[] = []
-    page.on('response', async (response) => {
-      if (response.url().startsWith('http')) {
-        responses.push(await response.text().catch(() => ''))
-      }
+    /*
+     * URLS ARE COLLECTED IN THE HANDLER; BODIES ARE FETCHED AFTERWARDS.
+     *
+     * This used to `await response.text()` INSIDE the listener, which is the exact race the
+     * sibling test below documents having been rewritten to avoid: reading a body
+     * asynchronously from a response event competes with navigation, and Playwright will
+     * resolve that promise against a buffer that is no longer the one you asked for.
+     *
+     * It does not fail loudly. It fails by ATTRIBUTING CONTENT TO THE WRONG RESPONSE, and the
+     * shape that took here was worse than useless: a run reported decrypted event titles
+     * inside `app/page.css` and `app/loading.css`. Those strings are in no stylesheet, in no
+     * source file, and not in the fixture, which stores ciphertext only and says so on its
+     * first line. The same run passed on retry with nothing changed.
+     *
+     * A privacy gate that cries leak about a CSS file is a gate nobody believes the third
+     * time, which is how a real one eventually gets waved through. Collecting the URL
+     * synchronously and fetching each body afterwards removes the race, and costs one extra
+     * request per asset on a page that has already loaded them.
+     */
+    const urls: string[] = []
+    page.on('response', (response) => {
+      if (response.url().startsWith('http')) urls.push(response.url())
     })
 
     await loadDecrypted(page)
@@ -59,8 +76,17 @@ test.describe('decryption actually happens', () => {
     await expect(page.getByText('Bramblewick handover')).toBeVisible()
     await expect(page.getByText('Lunch with Sarah')).toBeVisible()
 
+    const bodies = await Promise.all(
+      [...new Set(urls)].map((url) =>
+        page.request
+          .get(url)
+          .then((response) => response.text())
+          .catch(() => ''),
+      ),
+    )
+
     // ...and none of it came from the server.
-    expect(findCanaries(responses.join('\n'))).toEqual([])
+    expect(findCanaries(bodies.join('\n'))).toEqual([])
   })
 
   /**
@@ -72,6 +98,23 @@ test.describe('decryption actually happens', () => {
    * catch that for the prerendered ones; nothing did once they stopped being prerendered.
    */
   test('no route serves plaintext in its HTML or its Flight payload', async ({ page }) => {
+    /*
+     * SLOW, for the same reason csp.spec.ts is, and here it matters more.
+     *
+     * This walk makes two requests per route -- the HTML and the Flight payload -- against
+     * a `next dev` server that compiles on first request and is shared by eight workers.
+     * At eight routes that is sixteen possible cold compiles inside one 30s budget, and it
+     * started expiring the moment /contact added a ninth route for the workers to fight
+     * over. It passes in isolation every time.
+     *
+     * The thing that makes this worth a comment rather than a bigger number: a privacy
+     * gate that times out is a gate that DID NOT RUN, and it reports identically to a
+     * broken product. Twenty-one failures in one full-suite run were all this class, and
+     * the tempting reading of them is "the suite is flaky" rather than "the leak scan
+     * stopped executing". Trimming the list would be worse still: it would drop exactly
+     * the routes this test exists to cover.
+     */
+    test.slow()
     /*
      * /settings/privacy IS THE HIGHEST-VALUE ENTRY IN THIS LIST. It renders contact
      * ciphertext, group labels and engine decisions, and it would have been silently absent

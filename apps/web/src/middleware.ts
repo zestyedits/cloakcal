@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { NONCE_HEADER, SECURITY_HEADERS, buildCsp, createNonce } from '@/lib/csp'
+import { CONTACT_PATH } from '@/lib/contact'
 
 /**
  * Session refresh, and the route guard.
@@ -44,6 +45,17 @@ export const PUBLIC_PATHS = [
   // session either.
   '/privacy',
   '/terms',
+  /*
+   * THE PEOPLE WHO MOST NEED THIS PAGE ARE THE ONES WHO CANNOT SIGN IN. Somebody locked out of
+   * their account, a stranger deciding whether to hand over a password, and a regulator asking
+   * how to reach a controller all arrive with no session. A contact page behind the session
+   * guard would answer every one of them with a sign-in form, which is the same shape of
+   * failure as the three routes below and above this list.
+   *
+   * It is deliberately NOT in SIGNED_IN_ELSEWHERE: an account holder writing about their
+   * account is the most likely sender there is.
+   */
+  CONTACT_PATH,
   /*
    * THE FOURTH APPEARANCE OF ONE SHAPE: a route that must run for somebody with NO session,
    * guarded by the thing that checks for a session. `/auth/callback`, `/opengraph-image` and
