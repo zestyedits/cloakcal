@@ -35,3 +35,6 @@ apps/web/next-env.d.ts
 # Generated previews of the transactional emails (tools/render-email-templates.ts).
 # Artefacts of email-templates.ts; committing them would create a second copy to drift.
 .email-preview/
+
+# Agent worktrees are scratch space, never part of the repo.
+.claude/worktrees/
