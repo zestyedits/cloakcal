@@ -824,6 +824,24 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A WORKTREE'S DEV SERVER WILL STEAL YOUR E2E RUN, AND PLAYWRIGHT CANNOT TELL.**
+  `webServer.reuseExistingServer` is `!CI`, so a suite run while ANY other `next dev` holds
+  the port attaches to that one instead of starting its own. Harmless when the other server
+  is yours. Not harmless once agents run in git worktrees: a worktree is a DIFFERENT CHECKOUT
+  of the same project on the same port. One night of this produced a full run reporting 365
+  failures, an app regression in a file nothing had touched, and a LEAK-GATE HIT claiming
+  decrypted event titles inside `app/page.css` -- a canary that appears in no stylesheet, no
+  source file and not in the fixture, which stores ciphertext only and says so on its first
+  line. Every one of those was the other checkout, and the hours went into hunting a
+  regression in this one. **Before believing any e2e failure, check what is on the port**
+  (`netstat -ano | grep 3100`, then the PID's command line). Use
+  `CLOAKCAL_E2E_PORT=3200 pnpm test:e2e` in a worktree.
+- **`tail` ON A PLAYWRIGHT LOG HIDES THE FAILURE COUNT, AND A BACKGROUNDED COMMAND'S EXIT
+  CODE IS THE WRAPPER'S.** Playwright prints `N failed` and its list ABOVE `skipped` and
+  `passed`, so `tail -14` shows "540 passed" on a run that failed 21 -- and the harness's
+  "[exited with code 0]" is the background wrapper, not pnpm. Both fired at once here and a
+  red run was reported as clean. Grep `^  [0-9]+ (failed|passed|skipped|flaky)` and echo `$?`
+  from inside the command.
 - **AN EM DASH CAN ENTER USER-FACING COPY AS `\u2014` AND GREP WILL NOT SEE IT.** Six e2e
   specs assert no em dash renders, and they are right to — but they check the DOM, and a
   `grep -c` over the source counts characters. A `'\u2014'` escape inside a TypeScript string
