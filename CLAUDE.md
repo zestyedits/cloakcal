@@ -70,7 +70,7 @@ apps/web/                Next.js 15 App Router
 packages/policy/         THE visibility engine + shared JSON vectors
 packages/crypto/         Cloak boundary: AES-GCM, HKDF, key wrapping, recovery, pairing
 packages/cloak-store/    Browser-only decryption store + IndexedDB key vault
-packages/domain/         Recurrence, DST, edit scopes, iCalendar. Pure, no I/O.
+packages/domain/         Recurrence, DST, edit scopes, RRULE/UNTIL conversion. Pure, no I/O.
 packages/db/             Migrations + CRUD service, tested against PGlite (no Docker)
 tools/                   email-setup (Resend/Porkbun/Supabase), fixture generator,
                          render-brand-assets (icons; output committed)
@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1269 unit tests
+pnpm test                # 1282 unit tests
 pnpm test:e2e            # 466 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -857,6 +857,23 @@ and re-add.
   cloak-mark.ts` is the only place the mark's geometry exists; `pnpm brand:assets` rasterises
   the favicon, `.ico`, apple icon, PWA tiles and social card from it. Nothing in CI or on
   Vercel runs it. See `docs/brand.md`.
+- **THE PRIVACY POLICY CLAIMED A FEATURE THAT DOES NOT EXIST, AND IT SAT IN THE STATUTORY
+  RIGHTS SECTION.** `lib/legal.ts` said "You can export your calendar as a standard .ics file
+  at any time, from Settings" — in the present tense, naming a location — while
+  `settings-screen.tsx` said "Export — Coming soon" and no such control had ever been built.
+  Two lines below it, the same section invokes UK/EU/California portability rights, so the
+  false sentence was the page's answer to a statutory obligation. **The bullet directly above
+  it gets deletion exactly right** ("There is no button for this yet, and we would rather say
+  so than point you at one that is not there"), which is the tell: one author held the rule
+  and the paragraph beside it did not. The product UI was honest everywhere; only the legal
+  document overstated. `legal-claims.server.test.ts` now pairs every present-tense capability
+  claim in that file against the control or flag backing it, because prose is the one surface
+  in this repo with no compiler and no test — which is exactly why it drifted first.
+- **`packages/domain/src/ical.ts` is NOT an .ics exporter**, whatever its name suggests. It
+  converts a series spec to and from an RRULE, and exists for one hazard: `DTSTART` is
+  local-with-TZID while `UNTIL` must be UTC and is inclusive. There is no `VEVENT` or
+  `VCALENDAR` emitter anywhere. ADR 0007 said the file "is already written" and that reads as
+  "export is nearly done"; it is the hard sub-problem, not the feature.
 - **Never declare `metadata.icons`.** Next merges the `app/icon.*` and `app/apple-icon.*` file
   conventions only when that key is undefined — the merge is guarded by
   `if (!resolvedMetadata.icons)`. Setting it anywhere silently deletes every tag those files

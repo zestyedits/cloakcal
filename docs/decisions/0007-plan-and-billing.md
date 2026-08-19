@@ -45,14 +45,19 @@ none of them touches the privacy promise.
 
 | Planned for Pro | Why it is not here yet |
 |---|---|
-| Booking pages and clients | Gated on the share-key crypto ADR, unwritten |
+| Booking pages and clients | Not started. **Gated on nothing** — see ADR 0008 |
 | External calendar sync | Deferred by design, no schema |
 | Shared calendars | Deferred by design; ADR 0003 pins single-owner |
 | Automations around a booking | Deferred by design |
 
 **Export stays on Free, permanently.** Data portability behind a paywall from a privacy
-product is indefensible, and `packages/domain/src/ical.ts` is already written. It is listed
-under Free's roadmap, not Pro's.
+product is indefensible. It is listed under Free's roadmap, not Pro's.
+
+This line used to say `packages/domain/src/ical.ts` "is already written", which read as though
+export were nearly done. That file solves one hazard — `DTSTART` is local-with-TZID while
+`UNTIL` must be UTC and is inclusive — and nothing else. There is no `VEVENT` or `VCALENDAR`
+serializer in the repo, no whole-account read, and no download. The hard sub-problem is
+solved; the feature is not started.
 
 **No published limits, on either tier.** Nothing in the product counts anything, and there is
 nowhere to enforce a count: the browser holds a real PostgREST token and can insert straight

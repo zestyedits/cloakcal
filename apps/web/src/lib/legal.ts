@@ -167,9 +167,9 @@ export const PRIVACY: LegalDocument = {
       id: 'your-rights',
       heading: 'What you can do',
       body: [
-        'You can export your calendar as a standard .ics file at any time, from Settings. It is built in your browser from your own decrypted content, so the file contains things our servers have never seen. Export is free permanently: charging to leave is not something a privacy product gets to do.',
+        'Export is not built yet. When it is, your calendar will come out as a standard .ics file, assembled in your browser from your own decrypted content, so the file will hold things our servers have never seen. There is no button for it today, and we would rather say so than point you at one that is not there. It will be free permanently: charging to leave is not something a privacy product gets to do.',
         'You can have your account deleted by emailing us. That erases every event, calendar, contact, rule and setting we hold for you, and it cannot be undone. There is no button for this yet, and we would rather say so than point you at one that is not there.',
-        'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. The tools above are how we meet them. For anything they do not cover, contact us.',
+        'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. Where there is a control above, that is how we meet them. Where there is not one yet, email us and we will do it by hand, which is how export and deletion work today. For anything else, contact us.',
       ],
     },
     {
