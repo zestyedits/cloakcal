@@ -735,6 +735,16 @@ and re-add.
   as long as the assertion needs. That is strictly better than a bigger timeout: it takes the
   artificial delay off the critical path, and it makes the mid-flight state something the test
   proves it observed rather than something it hoped to be fast enough to catch.
+- **`expect` WAITS 15s, NOT PLAYWRIGHT'S 5s, AND THAT IS ABOUT `next dev` RATHER THAN ABOUT
+  SLOW ASSERTIONS.** The test server compiles a route on FIRST REQUEST and eight workers share
+  one of them, so a `toHaveURL` after a click into a cold route is waiting on a compile with no
+  ceiling under load. Deflaking nav-feel surfaced a second spec failing the same way on the
+  next run, which is what settled it: over seven full-suite runs, two different specs failed on
+  three of them, always with the mechanism working and only the wait expiring, and always
+  passing in isolation. There are 34 bare `toHaveURL` assertions in `e2e/`, so fixing them one
+  at a time is patching a class. **A failure in isolation means something different from a
+  failure in the full suite** — check both before calling anything flaky, and if only the full
+  suite fails, suspect a budget rather than a bug.
 - **AN INLINE `= []` PROP DEFAULT IN A DEPENDENCY ARRAY IS AN UNBOUNDED EFFECT LOOP, AND IT
   PRESENTS AS CLICKS DOING NOTHING.** `CloakProvider` had `extraFields = []`, and
   `extraFields` is in its unlock effect's deps — a new array identity every render, so the

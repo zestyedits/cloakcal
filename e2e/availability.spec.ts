@@ -29,7 +29,14 @@ test('the calendar page states the schedule and points at the editor', async ({ 
   const link = page.getByRole('link', { name: 'Open Availability' })
   await expect(link).toBeVisible()
   await link.click()
-  await expect(page).toHaveURL(/\/settings\/availability$/)
+  /*
+   * A LONGER BUDGET BECAUSE THIS IS A COLD ROUTE, not because the assertion is unsure.
+   * `toHaveURL` defaults to 5s, and the test server is `next dev`, which compiles a route on
+   * first request — with eight workers on one server that can exceed five seconds, and it did:
+   * one full-suite run in three. The same family as the wall-clock holds in nav-feel.spec.ts,
+   * and the same lesson: a wait budgeted for an idle machine is a flake on a busy one.
+   */
+  await expect(page).toHaveURL(/\/settings\/availability$/, { timeout: 20_000 })
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Availability')
 })
 

@@ -137,6 +137,25 @@ export default defineConfig({
   ],
 
   expect: {
+    /*
+     * FIFTEEN SECONDS, NOT PLAYWRIGHT'S FIVE, AND THE REASON IS THE TEST SERVER.
+     *
+     * This suite runs against `next dev`, which compiles a route on FIRST REQUEST, and eight
+     * workers share one of them. A `toHaveURL` after a click into a cold route is therefore
+     * waiting on a compile whose duration has no ceiling under load — and the default budget
+     * was set for an assertion about a page that is already there.
+     *
+     * Measured rather than assumed: over seven full-suite runs, two different specs failed
+     * this way on three of them, always with the mechanism working and only the wait expiring,
+     * and always passing in isolation. That is the shape that reads as flaky infrastructure
+     * and is really a budget set for an idle machine. There are 34 bare `toHaveURL` assertions
+     * in `e2e/`, so fixing them one at a time is patching a class.
+     *
+     * The cost is that a genuinely failing assertion takes 15s rather than 5s to report, which
+     * only matters when something is already broken. `retries: 1` on CI stays as the backstop
+     * for contention this cannot absorb.
+     */
+    timeout: 15_000,
     toHaveScreenshot: {
       // Font rasterisation differs slightly between machines of the SAME platform (OS point
       // releases, GPU), so some tolerance is needed. 2% of a 1280x900 page is ~23,000 pixels
