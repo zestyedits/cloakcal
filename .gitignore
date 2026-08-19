@@ -38,3 +38,6 @@ apps/web/next-env.d.ts
 
 # Agent worktrees are scratch space, never part of the repo.
 .claude/worktrees/
+
+# Throwaway probes. One of these was committed by accident and shipped for weeks.
+*.tmp.mjs
