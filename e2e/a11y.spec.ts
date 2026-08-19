@@ -244,6 +244,13 @@ for (const [label, path] of [
   ['week', '/?view=week'],
   ['month', '/?view=month'],
   ['settings', '/settings'],
+  /*
+   * BOTH NEW CHILDREN, and this is not optional. /settings is four links now, so scanning it
+   * alone would scan four links and nothing else — every control in the product's settings
+   * moved onto these two pages, and neither existed to any axe run until this line.
+   */
+  ['settings privacy', '/settings/privacy'],
+  ['settings calendar', '/settings/calendar'],
   ['security', '/settings/security'],
   ['availability', '/settings/availability'],
   ['people', '/people'],
@@ -335,17 +342,23 @@ for (const [label, path] of [
  * invisible in dark.
  */
 test('the export control scans clean in the LIGHT theme', async ({ page }) => {
-  await page.goto('/settings')
+  /*
+   * KEPT, not deleted, when export moved off the Calendars card. It is no longer behind a
+   * disclosure — /settings/security renders it outright — so the "control behind a click"
+   * argument no longer applies to this one control; what still applies is that the button is
+   * a filled surface in the theme where every contrast failure this project has shipped was
+   * found, and the whole page is now in the light sweep above with it.
+   */
+  await page.goto('/settings/security')
   await page.getByRole('button', { name: 'Switch to light mode' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 
-  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
   const button = page.getByRole('button', { name: 'Export as .ics' })
   await expect(button).toBeVisible()
 
-  // The `<details>` opens over --duration-base; axe measures COMPOSITED colour, so scanning
-  // mid-animation reports the whole card as a contrast failure against a box that is not
-  // painted yet. Same bounded settle as the sweep above, and for the same three reasons.
+  // axe measures COMPOSITED colour, so scanning mid-animation reports a card as a contrast
+  // failure against a box that is not painted yet. Same bounded settle as the sweep above,
+  // and for the same three reasons.
   await page.evaluate(async () => {
     const settled = new Promise<void>((resolve) => setTimeout(resolve, 2_000))
     const painted = Promise.all(
@@ -362,8 +375,7 @@ test('the export control scans clean in the LIGHT theme', async ({ page }) => {
     .analyze()
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
 
-  // The 44px floor applies to a control that only exists after an interaction just as much
-  // as to one that is always there.
+  // The 44px floor, measured on the control itself rather than inferred from the page sweep.
   const box = await button.boundingBox()
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
 })

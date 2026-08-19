@@ -141,6 +141,12 @@ test('settings links to both, from inside the account', async ({ page }) => {
   // Someone deciding whether to KEEP trusting the product should not have to sign out to
   // re-read what they agreed to.
   await page.goto('/settings')
-  await expect(page.getByRole('link', { name: 'Privacy' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Terms' })).toBeVisible()
+  /*
+   * "Privacy policy" and "Terms of service", not "Privacy" and "Terms". There is a door named
+   * Privacy on this page now, and `getByRole('link', { name })` matches a case-insensitive
+   * SUBSTRING — so the old names made this assertion pass on the wrong element and made every
+   * negative assertion about that door ambiguous.
+   */
+  await expect(page.getByRole('link', { name: 'Privacy policy' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Terms of service' })).toBeVisible()
 })

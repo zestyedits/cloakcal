@@ -110,9 +110,25 @@ test('the calendar loads, decrypts and opens a sheet with no violation', async (
 })
 
 test('settings and its sub-pages raise no violation', async ({ page }) => {
+  /*
+   * SLOW, because this walks seven routes and the test server is `next dev`, which compiles
+   * each one on first request. The list grew from four when the settings accordion became a
+   * hub with children, and the seventh cold compile is what pushed it past the default 30s —
+   * a timeout that says nothing about CSP. Trebling the budget keeps the coverage; trimming
+   * the list to fit would drop exactly the new routes this test exists to cover.
+   */
+  test.slow()
   const violations = watchViolations(page)
 
-  for (const path of ['/settings', '/settings/plan', '/settings/availability', '/sign-in']) {
+  for (const path of [
+    '/settings',
+    '/settings/privacy',
+    '/settings/calendar',
+    '/settings/security',
+    '/settings/plan',
+    '/settings/availability',
+    '/sign-in',
+  ]) {
     await page.goto(path)
     await page.waitForLoadState('domcontentloaded')
   }

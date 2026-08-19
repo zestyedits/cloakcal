@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 
 /**
- * /account grew into /settings — its two cards (password, recovery phrase) live in the
- * Security section there. The route stays as a redirect because the address has been the
+ * /account grew into /settings — its two cards (password, recovery phrase) live on the
+ * Security & data page there. The route stays as a redirect because the address has been the
  * only link out of the calendar since M1 and may be bookmarked; deleting it would turn an
  * old bookmark into a 404 that looks like a lost account.
  *
@@ -12,5 +12,5 @@ import { redirect } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export default function AccountPage() {
-  redirect('/settings#security')
+  redirect('/settings/security')
 }

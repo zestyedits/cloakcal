@@ -2,7 +2,8 @@ import 'server-only'
 import { isHolidayPreference, type HolidayPreference } from '@cloakcal/domain'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isCalendarView } from '@/lib/calendar-views'
-import type { PlanId } from '@/lib/plans'
+import { planById } from '@/lib/plans'
+import type { SettingsSummary } from '@/lib/settings-sections'
 import type { CalendarView } from '@/components/calendar-screen'
 import type { WeekStart } from './range'
 import type { CiphertextField } from './events'
@@ -123,11 +124,15 @@ export async function loadWorkspacePrefs(): Promise<WorkspacePrefs | null> {
 }
 
 /**
- * Everything the settings screen renders, in one load.
+ * What each settings screen loads.
  *
  * Names come back as CIPHERTEXT throughout — calendar display names, contact names, group
- * labels — and are opened in the browser, exactly as the calendar does it. The server
- * component that calls this touches Tier A facts and sealed bytes only.
+ * labels — and are opened in the browser, exactly as the calendar does it. Every server
+ * component below touches Tier A facts and sealed bytes only.
+ *
+ * ONE LOADER PER SCREEN, since the seven-card accordion became four doors. `loadSettingsData`
+ * fetched calendars, visibility, plan and availability together because one page rendered all
+ * four; four pages now render disjoint subsets, and the hub renders none of them.
  */
 
 export interface SettingsCalendar {
@@ -145,49 +150,99 @@ export interface SettingsDevice {
 }
 
 /**
- * NO `devices` here. They moved to /settings/security with the flows that care about them,
- * and this kept fetching them for a screen that no longer renders one — a query nobody
- * read, awaited inside the Promise.all, on the page this pass exists to make feel quick.
- * `loadDevices()` below is the one caller's one query.
+ * THE HUB'S FOUR LINES, and nothing else.
+ *
+ * Every query here is a head count. The hub renders no calendar name, no contact name and no
+ * group label, so it needs no ciphertext, no CloakProvider and no client JavaScript — which
+ * is what lets a page of four links be a plain server component. Returning a name from here
+ * would quietly undo that.
+ *
+ * Null means there are no account facts to state: a signed-in user whose workspace row does
+ * not exist yet. The caller falls back to each door's `pending` line rather than printing a
+ * confident zero.
  */
-export interface SettingsData {
+export async function loadSettingsSummary(): Promise<SettingsSummary | null> {
+  const prefs = await loadWorkspacePrefs()
+  if (prefs === null) return null
+
+  const supabase = await supabaseServer()
+  const count = (table: string) => supabase.from(table).select('id', { count: 'exact', head: true })
+
+  const [calendars, contacts, rules, passkeys, plan] = await Promise.all([
+    count('calendars').eq('workspace_id', prefs.workspaceId).eq('lifecycle', 'active'),
+    count('contacts').eq('workspace_id', prefs.workspaceId),
+    /*
+     * `.is('event_id', null)` — WORKSPACE-SCOPED RULES ONLY, matching the split
+     * `partitionRules` makes. A bare count folds in every per-event rule as well, and the hub
+     * would print a number the Privacy page's own list contradicts.
+     */
+    count('visibility_rules').eq('workspace_id', prefs.workspaceId).is('event_id', null),
+    /*
+     * Passkeys are the honest answer to "can I still get in", and the only one on offer:
+     * nothing records whether a recovery phrase was ever written down, so the hub must not
+     * imply it does. Head count only, and the select stays `id` — a wrap row is key material
+     * and no summary line needs to see one. Same shape as cloak-session's last-way-in check.
+     */
+    count('root_key_wraps').eq('kind', 'passkey'),
+    loadPlan(prefs.workspaceId),
+  ])
+
+  const n = (result: { count: number | null }): number => result.count ?? 0
+  const plural = (value: number, one: string, many: string): string =>
+    `${value} ${value === 1 ? one : many}`
+
+  const people = n(contacts)
+  const passkeyCount = n(passkeys)
+
+  return {
+    privacy:
+      people === 0
+        ? 'Nobody yet'
+        : `${plural(people, 'person', 'people')} · ${plural(n(rules), 'default rule', 'default rules')}`,
+    calendar: `${plural(n(calendars), 'calendar', 'calendars')} · ${prefs.timezone.replaceAll('_', ' ')}`,
+    security:
+      passkeyCount === 0
+        ? 'Password and recovery phrase, no passkey'
+        : `Password, recovery phrase, ${plural(passkeyCount, 'passkey', 'passkeys')}`,
+    plan: planById(plan).name,
+  }
+}
+
+/** /settings/privacy: the default visibility rules, and the people they name. */
+export interface PrivacySettings {
+  readonly prefs: WorkspacePrefs | null
+  readonly visibility: WorkspaceVisibility | null
+}
+
+export async function loadPrivacySettings(): Promise<PrivacySettings> {
+  const prefs = await loadWorkspacePrefs()
+  if (prefs === null) return { prefs: null, visibility: null }
+  return { prefs, visibility: await loadWorkspaceVisibility(prefs.workspaceId) }
+}
+
+/** /settings/calendar: the calendars, the display preferences, and one availability line. */
+export interface CalendarSettings {
   readonly prefs: WorkspacePrefs | null
   readonly calendars: readonly SettingsCalendar[]
-  readonly visibility: WorkspaceVisibility | null
   /**
-   * The tier, for the Plan card's closed-row state. It rides in the Promise.all below
-   * rather than as a fifth round trip, and it is the SHORTEST of the four queries — a
-   * primary-key lookup on a table that is empty for every account today.
+   * The Availability row's state, e.g. "Mon to Fri, 9:00 AM to 5:00 PM".
    *
-   * The devices note above is the standing warning on this interface: if the Plan card ever
-   * stops rendering the tier, this comes out with it, exactly as devices did.
-   */
-  readonly plan: PlanId
-  /**
-   * The availability card's closed-row state, e.g. "Mon to Fri, 9:00 AM to 5:00 PM".
-   *
-   * A STRING, not the week: the card shows one line and the editor lives on its own route
-   * that loads its own copy. Shipping the whole schedule to a screen that renders a summary
-   * of it would be the same over-fetch the devices note above records.
+   * A STRING, not the week: this page shows one line and the editor lives on its own route
+   * that loads its own copy. Shipping the whole schedule to a screen rendering a summary of
+   * it is the same over-fetch that once had this module loading devices nothing rendered.
    */
   readonly availability: string
 }
 
-export async function loadSettingsData(): Promise<SettingsData> {
+export async function loadCalendarSettings(): Promise<CalendarSettings> {
   const prefs = await loadWorkspacePrefs()
   const supabase = await supabaseServer()
 
   if (prefs === null) {
-    return {
-      prefs: null,
-      calendars: [],
-      visibility: null,
-      plan: await loadPlan(null),
-      availability: describeWeek(await loadAvailability(null)),
-    }
+    return { prefs: null, calendars: [], availability: describeWeek(await loadAvailability(null)) }
   }
 
-  const [calendarResult, nameResult, visibility, plan, availability] = await Promise.all([
+  const [calendarResult, nameResult, availability] = await Promise.all([
     supabase
       .from('calendars')
       .select('id, color_token, is_default')
@@ -199,8 +254,6 @@ export async function loadSettingsData(): Promise<SettingsData> {
       .select('subject_id, field_name, ciphertext, nonce, alg, key_version')
       .eq('workspace_id', prefs.workspaceId)
       .eq('subject_type', 'calendar'),
-    loadWorkspaceVisibility(prefs.workspaceId),
-    loadPlan(prefs.workspaceId),
     loadAvailability(prefs.workspaceId),
   ])
 
@@ -238,7 +291,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
     fields: fieldsByCalendar.get(row.id) ?? [],
   }))
 
-  return { prefs, calendars, visibility, plan, availability: describeWeek(availability) }
+  return { prefs, calendars, availability: describeWeek(availability) }
 }
 
 /** Devices, for /settings/security — the only screen that renders them. */

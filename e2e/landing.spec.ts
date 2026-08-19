@@ -118,9 +118,21 @@ test('the calendar and settings pages carry no em dash either', async ({ page })
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
   expect(await page.content()).not.toContain('—')
 
-  await page.goto('/settings')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  expect(await page.content()).not.toContain('—')
+  /*
+   * EVERY settings route, not just the hub. The hub is four links; all the copy this sweep
+   * used to cover moved onto its children, so checking `/settings` alone would have kept
+   * passing while checking almost nothing.
+   */
+  for (const path of [
+    '/settings',
+    '/settings/privacy',
+    '/settings/calendar',
+    '/settings/security',
+  ]) {
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(await page.content(), path).not.toContain('—')
+  }
 })
 
 test('no horizontal scroll on a phone', async ({ page, isMobile }) => {

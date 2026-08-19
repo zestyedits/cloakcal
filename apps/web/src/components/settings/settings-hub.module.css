@@ -1,0 +1,218 @@
+/*
+ * THE SETTINGS HUB — four doors, and the sibling list every sub-page wears at its foot.
+ *
+ * Deliberately its own module rather than more of `settings.module.css`. That file is the
+ * shared vocabulary of the settings FORMS — bands, rows, fields, selects — and six screens
+ * import it. The hub has no forms on it at all, and mixing a page's one-off layout into a
+ * file five other pages read is how `.whatsNext` ended up carrying `grid-column: 2` for a
+ * grid that no longer had two columns.
+ */
+
+.hub {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/*
+ * ONE COLUMN OF WIDE ROWS, and it was two columns for exactly one screenshot.
+ *
+ * A two-up grid is the obvious answer to "a narrow rail in a huge empty canvas" and it is the
+ * wrong one here, because the door COUNT IS NOT FIXED: Billing renders only when billing is
+ * enabled, so the common case is three doors in a grid of four cells, and the hole in the
+ * bottom right reads as a page that failed to finish loading. That is the same "unfinished"
+ * impression the restructure exists to remove, reintroduced by the layout meant to fix it.
+ *
+ * Full-width rows fill the measure at any count, give the description room to sit on one line,
+ * and put every door's current state in a single column the eye can run down — which is what
+ * the readout band was reaching for when it printed four figures across the top.
+ */
+.doors {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * THE WHOLE CARD IS THE LINK, not a link inside a card.
+ *
+ * The stretched-pseudo-element trick would give the same click target and fail the 44px
+ * sweep, which measures the bounding box of `a[href]` itself — an anchor wrapping only its
+ * label is about 20px tall however far its ::after reaches. Making the anchor the card means
+ * the measured element and the pressable element are the same element.
+ */
+.door {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2) var(--space-5);
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg), var(--edge-highlight);
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+  animation: doorRise var(--duration-base) var(--ease-decelerate) backwards;
+}
+
+.door:hover {
+  background: var(--surface-overlay);
+  border-color: var(--border-default);
+}
+
+/* The same engraved caps a settings band's title wears, so a door and the page behind it
+   are recognisably the same product. */
+.doorLabel {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-engraved-caps);
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.doorChevron {
+  grid-column: 2;
+  grid-row: 1;
+  flex: none;
+  align-self: center;
+  color: var(--text-tertiary);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.door:hover .doorChevron {
+  transform: translateX(2px);
+}
+
+.doorAbout {
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+/*
+ * WHAT IS TRUE RIGHT NOW, in the register's own hand — the same mono-and-champagne treatment
+ * the old closed rows used for their state strings. This is the readout band's whole job,
+ * done once per door in a phrase instead of four times at display size as a figure with no
+ * verb attached to it.
+ *
+ * `min-width: 0` plus ellipsis because a timezone name is long and a grid item will happily
+ * grow past its track rather than truncate.
+ */
+/*
+ * Stacked under the description on a phone, and lifted into its own right-hand column once
+ * there is room. `minmax(0, 1fr)` on the first track and `min-width: 0` here are what let a
+ * long timezone name ellipsis instead of widening the row: a grid item's default min-width is
+ * its content, which this repo has shipped as horizontal overflow twice.
+ */
+.doorState {
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--numeral-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lateral movement from a sub-page. Quiet on purpose: the way UP is the shell's back link,
+   and this is the way ACROSS. */
+.siblings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sibling {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.sibling:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.legalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.legalRow a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.legalRow a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 720px) {
+  .door {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+  }
+
+  .doorLabel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .doorAbout {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .doorState {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    text-align: right;
+  }
+
+  .doorChevron {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
+@keyframes doorRise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door {
+    animation: none;
+  }
+  .door,
+  .doorChevron {
+    transition: none;
+  }
+}

@@ -1,8 +1,4 @@
 import {
-  annualMonthsFree,
-  annualPerMonth,
-  annualSavingPercent,
-  formatPlanPrice,
   planById,
   purchaseLabel,
   type PlanId,
@@ -15,7 +11,7 @@ import { PageMasthead, PageShell } from '../page-shell'
 import { Button } from '../ui/button'
 import { PlanBadge } from '../ui/plan-badge'
 import { BillingBand } from './billing-band'
-import { SettingsNav } from './settings-nav'
+import { SettingsSiblings } from './settings-doors'
 import settings from './settings.module.css'
 import styles from './plan.module.css'
 
@@ -38,14 +34,13 @@ import styles from './plan.module.css'
  * page was still unreadable, because a caveat repeated five times is not five times as honest,
  * it is a wall a reader skips. The facts below are the same facts; there is one copy of each.
  *
- * WIDE, and with the rail, like /settings/security: keeping the rail and swapping the panel
- * beside it is what makes a submenu part of its menu. `settings.layout` WITHOUT
- * `settings.scrollRoom` — that 45vh exists for the scrolling accordion on /settings and
- * would leave half a screen of nothing under this page's last band.
+ * WIDE, unlike the other settings sub-pages, and for one reason: the billing band lays its
+ * cadence cards out two up, and a 46rem measure stacks them. Every page here that is a single
+ * column of form controls is narrow instead.
  *
  * A SERVER COMPONENT, unlike security-screen. Nothing here holds state, and the only
- * interactive things are one disabled button and the rail, both of which are client islands
- * of their own rendered with serialisable props.
+ * interactive thing is one disabled button, which is a client island of its own rendered
+ * with serialisable props.
  *
  * IT RENDERS IN THE DEMO, and that is a testing decision as much as an honesty one, exactly
  * as the Passkeys card is: every Playwright project runs in fixture mode, so the price cards,
@@ -94,117 +89,113 @@ export function PlanScreen({
         lede="What your account includes today, and what Pro costs."
       />
 
-      <div className={settings.layout}>
-        <SettingsNav current="plan" scope="settings" />
+      <main id="main" className={settings.sections}>
+        <section className={settings.band}>
+          <div className={settings.panelHead}>
+            <h2 className={settings.panelTitle}>Your plan</h2>
+            {/* NOT rendered in the demo. A fixture has no account, so it has no plan for a
+                badge to state, and printing "Free" beside "there is no plan on file" is one
+                surface contradicting the other in the same view. The settings card reaches
+                the same conclusion by printing "Demo" instead of a tier.
 
-        <main id="main" className={settings.sections}>
-          <section className={settings.band}>
-            <div className={settings.panelHead}>
-              <h2 className={settings.panelTitle}>Your plan</h2>
-              {/* NOT rendered in the demo. A fixture has no account, so it has no plan for a
-                  badge to state, and printing "Free" beside "there is no plan on file" is one
-                  surface contradicting the other in the same view. The settings card reaches
-                  the same conclusion by printing "Demo" instead of a tier.
+                That leaves the badge with no rendered coverage anywhere, which is a real
+                cost and the honest one: it is the same position the sidebar badge is in,
+                and it is covered the same way — colour by CONTRAST_PAIRS, where CLAUDE.md
+                says colour belongs, and structure by plan-badge.server.test.ts. */}
+            {!demo && <PlanBadge plan={plan} />}
+          </div>
 
-                  That leaves the badge with no rendered coverage anywhere, which is a real
-                  cost and the honest one: it is the same position the sidebar badge is in,
-                  and it is covered the same way — colour by CONTRAST_PAIRS, where CLAUDE.md
-                  says colour belongs, and structure by plan-badge.server.test.ts. */}
-              {!demo && <PlanBadge plan={plan} />}
-            </div>
-
-            {/* ONE summary sentence, never two. The state-aware version wins whenever billing
-                is live, because "You are on Free. Everything CloakCal does today, for one
-                person." beside "Your Pro subscription ended on 3 March" is one surface
-                contradicting another in the same view — the same reason the badge is
-                suppressed in the demo. */}
-            {billing !== null ? (
-              <p className={settings.sectionLede}>
-                {describeBilling(billing.state, billing.renewsOn).summary}
-              </p>
-            ) : demo ? (
-              <p className={settings.lockedNote}>
-                Demo. There is no account here, so there is no plan on file. What follows is
-                what a real account gets.
-              </p>
-            ) : (
-              <p className={settings.sectionLede}>
-                You are on {current.name}. {current.tagline}
-              </p>
-            )}
-
-            <ul className={styles.includes}>
-              {current.includes.map((item) => (
-                <li key={item} className={styles.includeRow}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-
-            {/* What is coming to THIS tier, in the same quiet roadmap grammar Pro uses
-                below. It renders here rather than being left in the data unread, because
-                the two things in it are both promises worth being held to: passkeys are
-                built and waiting on a migration, and Export is the commitment that this
-                product will never charge you to leave. */}
-            {current.planned.length > 0 && (
-              <div className={styles.plannedBlock}>
-                <PlannedRows items={current.planned} tag />
-              </div>
-            )}
-
-            {/* Rule 1, and the one place on this page that states it. A privacy product that
-                overclaims is a privacy product that lies, and a pricing page is exactly
-                where the temptation to round "encrypted" up to "we cannot see anything"
-                lives. Two sentences rather than four: "content is encrypted in your browser"
-                was the first bullet in the list directly above, and "that is true on Free and
-                stays true on Pro" is what "on any plan" already says. */}
-            <p className={styles.note}>
-              Cloaking is not a paid feature and it will not become one, on any plan. CloakCal
-              is not zero knowledge: the server stores times, durations, repeats and calendar
-              names in the clear, because placing and repeating an event needs them.
+          {/* ONE summary sentence, never two. The state-aware version wins whenever billing
+              is live, because "You are on Free. Everything CloakCal does today, for one
+              person." beside "Your Pro subscription ended on 3 March" is one surface
+              contradicting another in the same view — the same reason the badge is
+              suppressed in the demo. */}
+          {billing !== null ? (
+            <p className={settings.sectionLede}>
+              {describeBilling(billing.state, billing.renewsOn).summary}
             </p>
-          </section>
+          ) : demo ? (
+            <p className={settings.lockedNote}>
+              Demo. There is no account here, so there is no plan on file. What follows is
+              what a real account gets.
+            </p>
+          ) : (
+            <p className={settings.sectionLede}>
+              You are on {current.name}. {current.tagline}
+            </p>
+          )}
 
-          {/* ALWAYS RENDERED, AND ALWAYS HERE. Everything above is a description of a tier;
-              everything in this band either spends money or explains why it cannot yet.
-              Keeping the heading in place whichever way the flag falls is what makes "where
-              do I manage my subscription" a question with one answer.
+          <ul className={styles.includes}>
+            {current.includes.map((item) => (
+              <li key={item} className={styles.includeRow}>
+                {item}
+              </li>
+            ))}
+          </ul>
 
-              It is also why a purchase control is never buried under the features list and the
-              privacy paragraph: the banners that say "test mode" and "nothing here is real"
-              have to arrive before the button, not after a screen of scrolling. */}
-          <section className={settings.band}>
-            <div className={settings.panelHead}>
-              <h2 className={settings.panelTitle}>Billing</h2>
+          {/* What is coming to THIS tier, in the same quiet roadmap grammar Pro uses
+              below. It renders here rather than being left in the data unread, because
+              the two things in it are both promises worth being held to: passkeys are
+              built and waiting on a migration, and Export is the commitment that this
+              product will never charge you to leave. */}
+          {current.planned.length > 0 && (
+            <div className={styles.plannedBlock}>
+              <PlannedRows items={current.planned} tag />
             </div>
+          )}
 
-            {billing !== null ? (
-              <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
-            ) : (
-              <div className={styles.billingRow}>
-                {/* Disabled AND the page says why, per the rule the passkeys card states.
-                    Rendered rather than omitted so the 44px sweep and the axe scan have a real
-                    control to measure, and so "where do I cancel" is answered on screen
-                    instead of being missing. */}
-                <Button variant="outline" disabled>
-                  Manage billing
-                </Button>
-                <p className={styles.note}>
-                  Billing opens when sign-ups do. There is no card on file and nothing to
-                  cancel.
-                </p>
-              </div>
-            )}
-          </section>
+          {/* Rule 1, and the one place on this page that states it. A privacy product that
+              overclaims is a privacy product that lies, and a pricing page is exactly
+              where the temptation to round "encrypted" up to "we cannot see anything"
+              lives. Two sentences rather than four: "content is encrypted in your browser"
+              was the first bullet in the list directly above, and "that is true on Free and
+              stays true on Pro" is what "on any plan" already says. */}
+          <p className={styles.note}>
+            Cloaking is not a paid feature and it will not become one, on any plan. CloakCal
+            is not zero knowledge: the server stores times, durations, repeats and calendar
+            names in the clear, because placing and repeating an event needs them.
+          </p>
+        </section>
 
-          {/* Pro's own price band is suppressed once billing is live, because the band above
-              has already drawn the price cards as a CONTROL. Two copies of $8 and $72 on one
-              page, one pressable and one not, is a page where somebody presses the wrong one.
-              The "what Pro will add" roadmap survives either way — it is the disclosure the
-              entitlement map is checked against. */}
-          <ProBand tier={pro} showPricing={billing === null} />
-        </main>
-      </div>
+        {/* ALWAYS RENDERED, AND ALWAYS HERE. Everything above is a description of a tier;
+            everything in this band either spends money or explains why it cannot yet.
+            Keeping the heading in place whichever way the flag falls is what makes "where
+            do I manage my subscription" a question with one answer.
+
+            It is also why a purchase control is never buried under the features list and the
+            privacy paragraph: the banners that say "test mode" and "nothing here is real"
+            have to arrive before the button, not after a screen of scrolling. */}
+        <section className={settings.band}>
+          <div className={settings.panelHead}>
+            <h2 className={settings.panelTitle}>Billing</h2>
+          </div>
+
+          {billing !== null ? (
+            <BillingBand view={billing} preview={billingPreview} checkout={checkout} />
+          ) : (
+            <div className={styles.billingRow}>
+              {/* Disabled AND the page says why, per the rule the passkeys card states.
+                  Rendered rather than omitted so the 44px sweep and the axe scan have a real
+                  control to measure, and so "where do I cancel" is answered on screen
+                  instead of being missing. */}
+              <Button variant="outline" disabled>
+                Manage billing
+              </Button>
+              <p className={styles.note}>
+                Billing opens when sign-ups do. There is no card on file and nothing to
+                cancel.
+              </p>
+            </div>
+          )}
+        </section>
+
+      {/* `comingSoon` is "billing is off", which is the only state in which this band has
+          to explain that Pro cannot be bought. It no longer gates a price, because there
+          is no longer a price here to gate. */}
+      <ProBand tier={pro} comingSoon={billing === null} />
+      </main>
+
+      <SettingsSiblings current="plan" billingEnabled={billing !== null} />
     </PageShell>
   )
 }
@@ -216,16 +207,18 @@ export function PlanScreen({
  * roadmap is now an h3 inside the band that names the tier it belongs to, which is what it
  * always was.
  *
- * The prices come out when `showPricing` is false, because the billing band above has already
- * drawn $8 and $72 as a CONTROL. Two copies on one page, one pressable and one not, is a page
- * where somebody presses the wrong one. The roadmap survives either way: it is the disclosure
- * `entitlements.server.test.ts` checks the entitlement map against.
+ * NO PRICE HERE, IN EITHER DIRECTION, and that is the correction rather than an omission.
+ * This band used to draw $8 and $72 whenever `billing === null` — which is to say the price
+ * was shown in exactly the state where nobody could pay it, and hidden in the state where
+ * the billing band draws the same figures as pressable controls. A number nobody can act on
+ * is not information, it is an invitation to doubt the rest of the page; and the one place a
+ * price belongs is on the thing that takes the money. `formatPlanPrice` and the annual
+ * arithmetic still live, in `billing-band.tsx`, where the cards are buttons.
+ *
+ * The tier is still NAMED, and still says plainly that it is not for sale. That is the honest
+ * half of what was here, and it costs nothing to keep.
  */
-function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }) {
-  const price = tier.price
-  if (price === null) return null
-
-  const monthsFree = annualMonthsFree(price)
+function ProBand({ tier, comingSoon }: { tier: PlanTier; comingSoon: boolean }) {
   // Through the exhaustive switch, so a third purchase state is a compile error here rather
   // than a tag that silently keeps saying "Coming soon" about something you can now buy.
   const label = purchaseLabel(tier.purchase)
@@ -247,7 +240,7 @@ function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }
          * `purchaseLabel` is still CALLED unconditionally, so the exhaustive switch keeps
          * being the compile error it exists to be. Only the rendering is gated.
          */}
-        {showPricing && label !== null && <span className={settings.soon}>{label}</span>}
+        {comingSoon && label !== null && <span className={settings.soon}>{label}</span>}
       </div>
 
       {/* The tagline, and the one sentence that says it is not for sale. The tag beside the
@@ -257,46 +250,8 @@ function ProBand({ tier, showPricing }: { tier: PlanTier; showPricing: boolean }
           about Pro. */}
       <p className={settings.sectionLede}>
         {tier.tagline}
-        {showPricing && ' It cannot be bought yet.'}
+        {comingSoon && ' It cannot be bought yet.'}
       </p>
-
-      {showPricing && (
-        <>
-          {/* Stacked cards, not a table. See plan.module.css. */}
-          <div className={styles.priceGrid}>
-            <div className={styles.priceCard}>
-              <h3 className={styles.priceTerm}>Monthly</h3>
-              <p className={styles.priceAmount}>
-                {formatPlanPrice(price, 'monthly')}
-                <span className={styles.pricePer}>a month</span>
-              </p>
-              <p className={styles.priceNote}>Billed every month.</p>
-            </div>
-
-            {/* Better value said three ways and never by colour alone: the flag word, the
-                arithmetic in the note, and the accent edge. */}
-            <div className={styles.priceCard} data-best="true">
-              <h3 className={styles.priceTerm}>
-                Yearly
-                <span className={styles.priceFlag}>Better value</span>
-              </h3>
-              <p className={styles.priceAmount}>
-                {formatPlanPrice(price, 'annual')}
-                <span className={styles.pricePer}>a year</span>
-              </p>
-              <p className={styles.priceNote}>
-                That works out at {annualPerMonth(price)} a month, so {monthsFree} months
-                free. Save {annualSavingPercent(price)} percent against paying monthly.
-              </p>
-            </div>
-          </div>
-
-          <p className={styles.note}>
-            US dollars, and what we plan to charge rather than a quote. They may change
-            before billing opens.
-          </p>
-        </>
-      )}
 
       {/* An h3, so the roadmap is filed UNDER the tier it belongs to rather than competing
           with it for an h2. The count keeps the register's grammar. */}

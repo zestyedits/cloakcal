@@ -818,3 +818,18 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
+
+/* The one mailto in the app. Deletion is by email and has to stay that way, so the address
+   is a control in every sense that matters — including the 44px sweep, which measures
+   `a[href]` and does not care that this one opens a mail client rather than a page. */
+.mailLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+.mailLink:hover {
+  text-decoration: underline;
+}

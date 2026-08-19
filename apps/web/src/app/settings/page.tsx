@@ -1,11 +1,9 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
-import { loadPlan } from '@/server/plan'
-import { readDemoPrefs } from '@/server/demo-prefs'
-import { loadSettingsData } from '@/server/settings'
-import { DEFAULT_WEEK, describeWeek } from '@/server/availability'
-import { SettingsScreen, type SettingsProps } from '@/components/settings/settings-screen'
+import { billingEnabled } from '@/server/billing/config'
+import { loadSettingsSummary } from '@/server/settings'
+import { SettingsHub } from '@/components/settings/settings-hub'
 
 export const metadata = { title: 'Settings · CloakCal' }
 
@@ -17,73 +15,49 @@ export const metadata = { title: 'Settings · CloakCal' }
 export const dynamic = 'force-dynamic'
 
 /**
- * One route, one scrollable page, anchored sections. Not nested routes: every extra server
- * route is another prerender trap and another e2e surface, and a two-level drill-down for
- * every toggle is hostile at 390px.
+ * THE HUB. Four doors, four one-line facts, and no controls at all.
  *
- * The email is resolved here because it is the KDF salt (see /account); everything else the
- * screen needs comes from one load. Nothing decrypted exists on this side of the boundary —
- * calendar names, contact names and group labels all travel as ciphertext.
+ * This route used to be the whole of settings: seven accordion cards, a four-figure readout
+ * band and a roadmap footer, on one page. Four of those seven already held nothing but a
+ * paragraph and a link, so the drill-down existed either way — it was simply hidden behind a
+ * disclosure triangle that made a signpost look like a control. Every control now has a page,
+ * and this one answers the only question a settings home should: what is true about my
+ * account right now.
+ *
+ * The comment this replaced argued against nested routes because "every extra server route is
+ * another prerender trap and another e2e surface". Both halves are still true and both are
+ * paid for below and in the specs; what changed is the other side of the ledger, once the
+ * accordion's cost was counted honestly.
  */
 export default async function SettingsPage() {
   const fixtureMode = isDevFixtureEnabled()
 
-  // The data load starts BEFORE the auth check resolves — both talk to Supabase as the
+  // The summary load starts BEFORE the auth check resolves — both talk to Supabase as the
   // request's cookie-scoped user, neither needs the other, and serialising them was a
   // visible chunk of the "settings freezes" complaint. If the auth check redirects, the
   // discarded promise is caught so a signed-out race cannot become an unhandled rejection.
-  const dataPromise = fixtureMode ? null : loadSettingsData()
-  dataPromise?.catch(() => undefined)
+  const summaryPromise = fixtureMode ? null : loadSettingsSummary()
+  summaryPromise?.catch(() => undefined)
 
-  let email = ''
   if (!fixtureMode) {
     const supabase = await supabaseServer()
     const { data } = await supabase.auth.getUser()
     // Middleware already guards this, but a Server Component must not assume middleware ran.
     if (data.user === null) redirect('/sign-in')
-    email = data.user.email ?? ''
   }
 
-  // The fixture has no workspace and no session, so everything that needs a row to write
-  // to stays disabled with honest copy. The four DISPLAY preferences are the exception:
-  // they come from a cookie instead (see lib/demo-prefs.ts), which is what stops this page
-  // from being a wall of grey controls when nobody is signed in.
-  const data =
-    dataPromise === null
-      ? {
-          prefs: null,
-          calendars: [],
-          visibility: null,
-          devices: [],
-          // The fixture has no account, so it has no plan on file. loadPlan says so with
-          // source 'demo' and still answers 'free', which is what the catalog describes.
-          plan: await loadPlan(null),
-          // The demo shows the example week the /settings/availability page renders, so the
-          // card's closed state and the page behind it agree.
-          availability: describeWeek(DEFAULT_WEEK),
-        }
-      : await dataPromise
-
-  const prefs = fixtureMode ? await readDemoPrefs() : data.prefs
-
-  // Maps do not cross the RSC boundary; the membership indexes flatten to plain records
-  // here, on the server, where they are still only ids about ids.
-  const props: SettingsProps = {
-    email,
-    fixtureMode,
-    prefs,
-    // Kept apart from the prefs themselves: a demo has no row, and code that needs an id
-    // to write with must not be handed a plausible-looking fake one.
-    workspaceId: data.prefs?.workspaceId ?? null,
-    calendars: data.calendars,
-    // Devices moved to /settings/security, where they are a security fact rather than a
-    // footnote under a list of features that do not exist yet.
-    audiences: data.visibility?.audiences ?? [],
-    workspaceRules: data.visibility?.workspaceRules ?? [],
-    groupsByContact: Object.fromEntries(data.visibility?.groupsByContact ?? []),
-    plan: data.plan,
-    availability: data.availability,
-  }
-
-  return <SettingsScreen {...props} />
+  /*
+   * NO EMAIL, and no CloakProvider. The old page resolved the address because it is the KDF
+   * salt and the screen opened ciphertext with it; this one renders four links and reads no
+   * sealed byte, so asking for either would be reaching for a key to open nothing.
+   */
+  return (
+    <SettingsHub
+      summaries={summaryPromise === null ? null : await summaryPromise}
+      fixtureMode={fixtureMode}
+      // Resolved here and passed down, so this page and `loading.tsx` — which calls the same
+      // function — cannot disagree about how many doors exist.
+      billingEnabled={billingEnabled()}
+    />
+  )
 }

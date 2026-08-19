@@ -13,8 +13,6 @@ import { sealFields } from '@/lib/cloaked-fields'
 import { CloakProvider, useCloakStore, type ExtraSealedField } from './cloak-provider'
 import { useCloakedLabels } from './use-cloaked-labels'
 import { PageMasthead, PageShell } from './page-shell'
-import { SettingsNav } from './settings/settings-nav'
-import settingsStyles from './settings/settings.module.css'
 import { workspaceDecisionFor } from './visibility-control'
 import { PrivacyChip } from './ui/privacy-chip'
 import { Button } from './ui/button'
@@ -57,35 +55,22 @@ export function PeopleShell({
   children,
   masthead,
   back = { href: '/', label: 'Calendar' },
-  rail = false,
 }: {
   children: React.ReactNode
   /** Sits OUTSIDE <main>, matching the settings pages — /people had its h1 inside. */
   masthead?: React.ReactNode
   /** Where "up" goes. A contact's file goes back to the register, not past it. */
   back?: { href: Route; label: string }
-  /**
-   * The settings rail. On for /people, which is reached from the People & sharing card and
-   * is a peer of the settings sections. OFF for a contact file: that is a level deeper, and
-   * its way up is the register rather than a settings section.
-   */
-  rail?: boolean
 }) {
   return (
-    <PageShell back={back} measure={rail ? 'wide' : 'narrow'}>
+    /* NARROW throughout now. /people used to be forced wide to leave room for the settings
+       rail beside it; the rail is gone, and a register at 64rem is a line-length problem
+       rather than a use of the space. Its way up is still the door it was opened from. */
+    <PageShell back={back} measure="narrow">
       {masthead}
-      {rail ? (
-        <div className={settingsStyles.layout}>
-          <SettingsNav current="sharing" scope="settings" />
-          <main id="main" className={styles.main}>
-            {children}
-          </main>
-        </div>
-      ) : (
-        <main id="main" className={styles.main}>
-          {children}
-        </main>
-      )}
+      <main id="main" className={styles.main}>
+        {children}
+      </main>
     </PageShell>
   )
 }
@@ -118,7 +103,6 @@ export function PeopleList({
   return (
     <CloakProvider page={page} email={email} extraFields={extraFields}>
       <PeopleShell
-        rail
         masthead={
           <PageMasthead
             title="People"

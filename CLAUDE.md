@@ -160,8 +160,9 @@ refuses rather than soften, `global-error` with zero imports, a text-free skelet
 that cannot distinguish "missing" from "not yours", an offline banner); and `/settings` —
 appearance, time & region, calendars (recolour live while locked, rename not — the privacy
 model made visible), people, visibility defaults, security, honest coming-soon rows.
-*(That last list is the ORIGINAL seven-card shape. It is five cards plus a footer now, and
-security is its own route — see the 2026-08-15 pass below.)*
+*(That last list is the ORIGINAL seven-card shape, and every later shape is gone too. There
+is no accordion: /settings is four doors and every control has a page — see the 2026-08-18
+pass below.)*
 
 **Migrations 0001–0028 are ALL applied to production**, verified 2026-08-16 against the live
 schema rather than assumed: `workspaces.holiday_region` exists, `availability_windows` exists
@@ -371,8 +372,9 @@ unit tests (DST-boundary grids). The chrome split per device: the five-slot bar 
 phone-only, desktop gets a segmented view control + compact Cloak button in a clustered
 header. `/` is PUBLIC and branches on the session: landing page signed out (its copy is
 bound by rule 1 — the honesty block states what the server can and cannot read), calendar
-signed in. Settings sections are `<details>` cards, closed by default, each summary row
-stating its current value; a `#section` deep link opens the card it points at.
+signed in. *(Settings was `<details>` cards with `#section` deep links when this was written.
+It is four doors and four routes now; the old anchors are forwarded on the client. See the
+2026-08-18 pass.)*
 
 **The 2026-08-13 pass: navigation, calendars and the keyboard.** Five parts, each merged
 green. The sidebar overhaul (mini-month days now OPEN that day rather than preserving the
@@ -419,7 +421,8 @@ Three things, all of them about a feature that existed and could not be found or
   resolved server-side before anything renders and a browser-only store could not reach that
   decision without a flash of the wrong view. This retired the `?? fixtureMode` special case
   on the keyboard opt-in — one preference had an escape hatch that no other preference got.
-- **Settings was restructured, not just repainted.** Seven cards to five: two of the seven
+- **Settings was restructured, not just repainted.** Seven cards to five *(and then to no
+  cards at all — the 2026-08-18 pass below made every one of them a route)*: two of the seven
   held no settings at all, and Security was an entire auth page pasted into a `<details>`,
   bringing its own lockup and its own `<h1>` so the page rendered two. It is
   `/settings/security` now, which is also where the device list moved from the bottom of the
@@ -566,6 +569,44 @@ availability.** Four things, and three of them found bugs nothing else could see
   boundary**: the RPC is SECURITY INVOKER, so the caller necessarily holds INSERT and can
   write overlapping rows directly — `server/availability.ts` MERGES rather than trusting.
 
+**The 2026-08-18 settings pass: four doors, and a price nobody could pay.**
+`/settings` was organised like an internal control panel — a four-figure readout band at
+display size, a seven-item numbered rail, a seven-card accordion and a roadmap footer, inside
+a 64rem column that stops growing at 1024px. It is a HUB now: four doors, each stating one
+true fact, and nothing else. Every control moved to a page.
+
+- **`/settings/privacy` and `/settings/calendar` are new**; security and availability already
+  had routes. Privacy is FIRST, because it is the product — the old page opened with a theme
+  picker. "People & sharing" is gone as a label: it promised sharing that is not built.
+- **The hub is a plain server component with no `CloakProvider` and no client JS** (2.05 kB).
+  It renders no calendar name, no contact name and no group label, which is why
+  `loadSettingsSummary` is head counts only. Keep it that way; a friendlier summary must not
+  re-add the provider or ask the server for a name it structurally cannot read.
+- **`SettingsNav` is deleted.** Its three jobs all evaporated with the accordion, and it had
+  shipped two defects nothing else could see (the numbered index at 3.46:1 in light; the
+  `min-width: 0` on the flex child instead of the grid item, illegible at 390px on four
+  pages). `SettingsDoors`/`SettingsSiblings` are static links — nothing to measure.
+- **Also deleted: `useOpenOnHash`, `useVisibleSection`, and `selectBand`'s sixty lines of
+  watching the document stop moving before it dared scroll.** A hash still works:
+  `LEGACY_SETTINGS_HASHES` + `legacy-hash-forward.tsx` map the seven old anchors to routes on
+  the client, because **a hash never reaches the server** and someone will try middleware.
+- **Export moved from the Calendars card to `/settings/security`, and `legal.ts:170` moved
+  with it in the same commit.** That page is "Security & data" now. It also gained the FIRST
+  `mailto:` in the product: deletion is by email, the privacy policy said "by emailing us"
+  and never gave an address, so the promise was honest and unusable. Still no button, and the
+  copy says why.
+- **The plan page quotes no price.** `ProBand` drew `$8`/`$72` whenever `billing === null` —
+  the price appeared in exactly the state where nobody could pay it, and vanished in the state
+  where the billing band draws the same figures as pressable controls. The arithmetic still
+  lives in `lib/plans.ts` and is still rendered by `billing-band.tsx`, where the cards are
+  buttons. **The Billing door itself renders only when `billingEnabled()`**; the route stays,
+  because Stripe's three return URLs point at it.
+- **The roadmap footer is gone.** Each gap is stated where it bites instead: calendars cannot
+  be deleted yet, beside the calendars list; device pairing, beside Passkeys.
+- **A two-up door grid lasted one screenshot.** The door COUNT is not fixed — Billing is
+  conditional — so the common case was three doors in four cells, and the hole read as a page
+  that failed to load. Full-width rows fill the measure at any count.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + per-contact share links — the next dedicated phase, and **NOT gated on the
@@ -664,6 +705,37 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **AN INLINE `= []` PROP DEFAULT IN A DEPENDENCY ARRAY IS AN UNBOUNDED EFFECT LOOP, AND IT
+  PRESENTS AS CLICKS DOING NOTHING.** `CloakProvider` had `extraFields = []`, and
+  `extraFields` is in its unlock effect's deps — a new array identity every render, so the
+  effect re-ran, `setStore` re-rendered, forever. Four of the five call sites passed a
+  memoised value as the JSDoc asks; the fifth omitted the prop, which reads like the one case
+  the instruction cannot be about. **Nothing looks wrong**: the page paints, frames stay at
+  16ms, `page.evaluate` answers instantly, and a synthetic `el.click()` works and does the
+  right thing. The only symptom is that the renderer never finishes acknowledging a REAL input
+  event, so every Playwright `click()` sits in its dispatch until the test times out with a
+  call log that stops after "performing click action" and names nothing. Finding it took
+  bisecting the page down to an empty `<main>` and watching it still fail. The default is a
+  frozen module constant now, and `effect-deps.server.test.ts` sweeps for the pattern — it
+  immediately found a second one, `holidays = {}` in `calendar-screen.tsx`, where it only
+  defeated a `useMemo` and therefore showed no symptom at all.
+- **`pnpm typecheck` DOES see typedRoutes, and that is worse than not seeing them.**
+  `apps/web/tsconfig.json` includes BOTH `.next/types/**/*.ts` and `.next-prod/types/**/*.ts`,
+  so the route union comes from whichever build wrote last — usually a stale `next dev` run.
+  A new route fails typecheck until something regenerates the types, and a DELETED route keeps
+  typechecking. `rm -rf apps/web/.next/types` then `pnpm build` is what resolves it. The
+  standing advice is unchanged and now has a mechanism: `next build` is the only authority.
+- **A local `pnpm test:e2e` used to need an untracked `apps/web/.env.local`, and failed four
+  specs across three files without it.** `supabaseBrowser()` throws when either Supabase
+  variable is absent, and `/recover` renders the form its specs look for only if it does not
+  throw — so a fresh clone, or a machine where that file was moved aside to reproduce a CI
+  build exactly as this file tells you to do, saw failures with nothing to do with the change
+  under test. `playwright.config.ts`'s `webServer.env` now supplies the same placeholders CI
+  does, with `??` so real values still win. The suite never reaches Supabase anyway.
+- **Seven cold route compiles do not fit in one 30s Playwright budget.** `next dev` compiles
+  on first request, and `csp.spec.ts`'s route walk grew from four routes to seven with the
+  settings hub. It times out on the last one, which says nothing about CSP. `test.slow()`,
+  not a shorter list — trimming would drop exactly the new routes the test exists to cover.
 - **THE KDF IS WEBASSEMBLY, AND THE PRODUCTION CSP BLOCKED IT, SO NOBODY COULD SIGN IN.**
   `packages/crypto/src/kdf.ts` derives the master secret with Argon2id from `hash-wasm`, which
   calls `WebAssembly.compile()` — and a `script-src` with neither `'unsafe-eval'` nor

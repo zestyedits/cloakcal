@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
+import { billingEnabled } from '@/server/billing/config'
 import { loadAvailability, DEFAULT_WEEK } from '@/server/availability'
 import { loadWorkspacePrefs } from '@/server/settings'
 import { safeTimezone } from '@/server/range'
@@ -29,6 +30,7 @@ export default async function AvailabilityPage() {
         workspaceId={null}
         timezone="America/New_York"
         week={DEFAULT_WEEK}
+        billingEnabled={billingEnabled()}
       />
     )
   }
@@ -47,6 +49,7 @@ export default async function AvailabilityPage() {
       workspaceId={prefs?.workspaceId ?? null}
       timezone={safeTimezone(prefs?.timezone)}
       week={week}
+      billingEnabled={billingEnabled()}
     />
   )
 }

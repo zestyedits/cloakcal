@@ -13,19 +13,18 @@ import { expect, test } from '@playwright/test'
  * slot is the same overclaim rule 1 forbids in the privacy copy.
  */
 
-test('the settings card states the schedule and points at the page', async ({ page }) => {
-  await page.goto('/settings#availability')
+test('the calendar page states the schedule and points at the editor', async ({ page }) => {
+  /*
+   * This used to open `/settings#availability` and assert the `<details>` it named was open,
+   * because a link inside a collapsed card is one `toBeEnabled()` would pass against and
+   * nobody could click. There is no collapsed card any more — Availability is a plain band on
+   * /settings/calendar — so the hazard is retired rather than worked around.
+   */
+  await page.goto('/settings/calendar')
 
-  // The deep link opens the card it points at. Without that the link is inside a collapsed
-  // <details> and toBeEnabled() would pass against something nobody can click — the exact
-  // mistake that sat green in settings.spec.ts for five commits.
-  const card = page.locator('#availability')
-  await expect(card).toHaveAttribute('open', '')
-
-  // The closed-row state is the formatted week, not a count: "Mon to Fri, 9:00 AM to 5:00 PM"
-  // is the whole setting at a glance.
-  await expect(card).toContainText('Mon to Fri')
-  await expect(card).toContainText('9:00 AM to 5:00 PM')
+  // The state line is the formatted week, not a count: "Mon to Fri, 9:00 AM to 5:00 PM" is the
+  // whole setting at a glance.
+  await expect(page.getByText('Mon to Fri, 9:00 AM to 5:00 PM')).toBeVisible()
 
   const link = page.getByRole('link', { name: 'Open Availability' })
   await expect(link).toBeVisible()

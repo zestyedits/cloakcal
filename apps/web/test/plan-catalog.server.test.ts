@@ -25,6 +25,31 @@ import {
 const free = planById('free')
 const pro = planById('pro')
 
+/**
+ * Comments stripped, in the house style of `billing-boundary.server.test.ts`.
+ *
+ * NOT optional, and it was caught by the guard below failing on its first run: ProBand's own
+ * doc comment explains that `formatPlanPrice` moved to the billing band, and a raw-source
+ * scan matched those words and reported the price as still being rendered here. A sweep
+ * satisfied — or in this case refused — by a sentence describing its own subject's absence
+ * is a sweep measuring prose.
+ *
+ * LINE COMMENTS COME OFF FIRST, AND THE ORDER IS LOAD-BEARING. Blocks-first is the obvious
+ * way round and it is wrong: a line comment mentioning a path opens a block the matcher then
+ * closes at the next block terminator it finds, swallowing everything between. That is not
+ * hypothetical — it ate 3,884 characters of `export-calendar.tsx` and made a sweep report a
+ * feature missing while it sat four lines below the comment that hid it.
+ */
+const code = (source: string): string =>
+  source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+
+const PLAN_SCREEN = code(
+  readFileSync(
+    fileURLToPath(new URL('../src/components/settings/plan-screen.tsx', import.meta.url)),
+    'utf8',
+  ),
+)
+
 describe('what the catalog may claim', () => {
   it('sells nothing, and says so in the data rather than only in the copy', () => {
     /*
@@ -52,18 +77,43 @@ describe('what the catalog may claim', () => {
 
   /**
    * The catalog's "Coming soon" tag and a live purchase control must never be on screen
-   * together, and the way that is guaranteed is structural: the tag lives inside `ProBand`'s
-   * price section, which `plan-screen.tsx` renders only when `billing === null`. Asserted
-   * against the source because no rendered test can hold both branches at once.
+   * together, and the way that is guaranteed is structural: the tag lives inside `ProBand`,
+   * which is told whether billing is off. Asserted against the source because no rendered
+   * test can hold both branches at once.
+   *
+   * The prop is matched by SHAPE rather than by name. This asserted the exact string
+   * `showPricing={billing === null}` and so failed on a rename that changed nothing it cares
+   * about — a guard that fires on its own subject moving is a guard people learn to edit
+   * without reading.
    */
   it('renders its purchase state only where billing is switched off', () => {
-    const screen = readFileSync(
-      fileURLToPath(new URL('../src/components/settings/plan-screen.tsx', import.meta.url)),
-      'utf8',
-    )
     // ProBand is what renders `purchaseLabel`, and it is told which branch it is in.
-    expect(screen).toMatch(/purchaseLabel\(tier\.purchase\)/)
-    expect(screen).toMatch(/<ProBand tier=\{pro\} showPricing=\{billing === null\} \/>/)
+    expect(PLAN_SCREEN).toMatch(/purchaseLabel\(tier\.purchase\)/)
+    expect(PLAN_SCREEN).toMatch(/<ProBand tier=\{pro\} \w+=\{billing === null\} \/>/)
+  })
+
+  /**
+   * NO PRICE ON THE PLAN PAGE OUTSIDE THE BILLING BAND, which is the durable version of the
+   * rule the test above only gestures at.
+   *
+   * `ProBand` used to draw $8 and $72 whenever `billing === null` — that is, the price was
+   * rendered in exactly the state where nobody could pay it, and hidden in the state where
+   * the billing band draws the same figures as pressable controls. A price for something
+   * unbuyable does not create demand; it invites the reader to doubt everything else on the
+   * page. The arithmetic still lives in `lib/plans.ts` and is still rendered, by
+   * `billing-band.tsx`, where the cards are buttons.
+   */
+  it('quotes no price outside the band that can take the money', () => {
+    const helpers = /formatPlanPrice|annualPerMonth|annualSavingPercent|annualMonthsFree/
+    expect(PLAN_SCREEN).not.toMatch(helpers)
+    // The control this is a claim ABOUT: the helpers exist and are used, one file over.
+    const band = code(
+      readFileSync(
+        fileURLToPath(new URL('../src/components/settings/billing-band.tsx', import.meta.url)),
+        'utf8',
+      ),
+    )
+    expect(band).toMatch(helpers)
   })
 
   it('puts everything shipped on the free tier and nothing on Pro', () => {

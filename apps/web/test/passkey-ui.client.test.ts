@@ -163,7 +163,7 @@ describe('the demo branch', () => {
     // see the demo branch, because Playwright has no session. A control rendered only for
     // signed-in users is a control no test has ever measured.
     const from = SECURITY_SCREEN.indexOf('{demo ? (')
-    const to = SECURITY_SCREEN.indexOf("email === '' ?")
+    const to = SECURITY_SCREEN.indexOf('!signedIn ? (')
     // Without these, a renamed marker gives indexOf -1, slice(a, -1) returns the rest of the
     // file — which contains the SIGNED-IN PasskeysSection — and the test passes vacuously
     // while the demo branch has nothing in it.

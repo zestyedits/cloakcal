@@ -20,20 +20,21 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible()
 })
 
-test('the settings card is a signpost that states the plan', async ({ page }) => {
+test('settings offers no door to it while nothing can be bought', async ({ page }) => {
+  /*
+   * THE PAGE STAYS REACHABLE AND STOPS BEING ADVERTISED, which is the whole of the gate.
+   *
+   * Stripe's success_url, cancel_url and return_url all point here, so deleting the route was
+   * never an option; what was wrong was putting a tier row in Settings for somebody who has
+   * nothing to decide. `settings-sections.ts` marks this door `gate: 'billing'` and the hub
+   * resolves it through `visibleDoors(billingEnabled())`, which is false everywhere today.
+   */
   await page.goto('/settings')
-  // Scoped inside the card: the rail also carries a link named "Plan".
-  const card = page.locator('#plan')
-  const heading = card.getByRole('heading', { level: 2, name: 'Plan' })
-  // The h2 lives in the summary, so it is visible while the card is CLOSED — which every
-  // card here is by default. The body, and therefore the link, is not rendered until the
-  // <details> is opened, so the card has to be opened before anything inside it is reachable.
-  await expect(heading).toBeVisible()
-  await heading.click()
-  await expect(card).toHaveAttribute('open', '')
+  await expect(page.getByRole('heading', { level: 2, name: 'Billing' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Billing', exact: true })).toHaveCount(0)
 
-  await card.getByRole('link', { name: 'Open Plan' }).click()
-  await expect(page).toHaveURL(/\/settings\/plan$/)
+  // Still there, still honest, for anybody who types it or arrives back from a processor.
+  await page.goto('/settings/plan')
   await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible()
 })
 
@@ -71,9 +72,24 @@ test('renders no billing band at all while billing is switched off', async ({ pa
   await expect(page.getByText(/Billing preview/)).toHaveCount(0)
 })
 
-test('names Pro’s prices and says plainly that it cannot be bought', async ({ page }) => {
-  await expect(page.getByText('$8', { exact: false }).first()).toBeVisible()
-  await expect(page.getByText('$72', { exact: false }).first()).toBeVisible()
+test('quotes no price for something nobody can buy', async ({ page }) => {
+  /*
+   * INVERTED, and the old assertion was the defect rather than the guard.
+   *
+   * `ProBand` drew $8 and $72 whenever `billing === null` — that is, the price appeared in
+   * exactly the state where nobody could pay it, and vanished in the state where the billing
+   * band draws the same figures as pressable controls. A number nobody can act on is not
+   * information; it invites the reader to doubt the rest of the page. The arithmetic still
+   * lives in lib/plans.ts and is still rendered, by billing-band.tsx, where the cards are
+   * buttons — which `plan-catalog.server.test.ts` pins from the source side.
+   */
+  const body = (await page.locator('main').textContent()) ?? ''
+  expect(body).not.toContain('$8')
+  expect(body).not.toContain('$72')
+  expect(body).not.toMatch(/a month|a year/)
+
+  // The honest half survives: the tier is named, and the page says plainly it is not for sale.
+  await expect(page.getByRole('heading', { level: 2, name: 'Pro' })).toBeVisible()
   await expect(page.getByText(/cannot be bought yet/).first()).toBeVisible()
   await expect(page.getByText(/Billing opens when sign-ups do/)).toBeVisible()
 
@@ -142,11 +158,17 @@ test('says Pro is not for sale once, not five times', async ({ page }) => {
   expect(count(/Coming soon/g)).toBe(2)
 })
 
-test('annual is visibly the better value, and not only in colour', async ({ page }) => {
-  await expect(page.getByText('Better value')).toBeVisible()
-  // The arithmetic, spelled out, so the claim does not rest on an accent border.
-  await expect(page.getByText(/months free/)).toBeVisible()
-  await expect(page.getByText(/works out at \$6 a month/)).toBeVisible()
+test('makes no comparison between two things it is not selling', async ({ page }) => {
+  /*
+   * The other half of the price removal. "Better value" and "three months free" are claims
+   * about a CHOICE between two cadences, and there is no choice on offer here — the cadence
+   * cards that do offer one live in the billing band, where each is a radio you can press.
+   * This asserted all three strings were visible; it now asserts the comparison is not made
+   * anywhere a reader cannot act on it.
+   */
+  await expect(page.getByText('Better value')).toHaveCount(0)
+  await expect(page.getByText(/months free/)).toHaveCount(0)
+  await expect(page.getByText(/works out at/)).toHaveCount(0)
 })
 
 test('describes what is encrypted without widening it', async ({ page }) => {

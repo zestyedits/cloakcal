@@ -1,6 +1,20 @@
-/* Only the parts of the loading state that are NOT the real page: the shimmering stand-ins
-   for the closed section cards. Everything else comes from settings.module.css. */
+/* Only the parts of a settings loading state that are NOT the real page. Everything else
+   comes from settings-hub.module.css and settings.module.css, from the real components, so a
+   fallback cannot drift from the page it stands in for — which is how this file once drew a
+   five-chip rail the screen no longer had. */
 
+/* THE HUB. Each door's label and description are drawn for real, from the same constants the
+   page uses, so only the current-state line is unknown and only it shimmers. */
+.doorState {
+  grid-column: 1 / -1;
+  height: 0.8rem;
+  width: 11rem;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+}
+
+/* THE SUB-PAGES, whose bands genuinely have nothing to draw until their data lands. */
 .sectionRow {
   display: flex;
   align-items: center;

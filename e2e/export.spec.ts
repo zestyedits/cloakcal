@@ -15,21 +15,26 @@ import { expect, test } from '@playwright/test'
 
 const titles = ['Legal Call', 'Team Standup', 'Lunch with Sarah']
 
-/** Open Settings, expand Calendars, and hand back the export button. */
+/** Open Security & data and hand back the export button. */
 const exportButton = async (page: import('@playwright/test').Page) => {
-  await page.goto('/settings')
-  // A summary row, opened by clicking its h2 — not a button. The page opens ONE band at a
-  // time, so this is also what closes whatever was open.
-  await page.getByRole('heading', { level: 2, name: 'Calendars' }).click()
+  await page.goto('/settings/security')
   const button = page.getByRole('button', { name: 'Export as .ics' })
   await expect(button).toBeVisible()
   return button
 }
 
-test('the control lives in Settings, under Calendars', async ({ page }) => {
-  // Where the privacy policy says it is. The copy names this location, so a move that
-  // forgets the copy is a move that makes the policy wrong again.
+test('the control lives in Settings, under Security & data', async ({ page }) => {
+  /*
+   * WHERE THE PRIVACY POLICY SAYS IT IS. The copy names this location in the present tense,
+   * so a move that forgets the copy is a move that makes the policy wrong again — which that
+   * document has already done once, about this exact feature.
+   *
+   * It moved here from the Calendars card because export is data portability, and the page
+   * that answers "how do I get my data out, and how do I get rid of it" is where somebody
+   * looks for it. `legal.ts` moved in the same commit.
+   */
   await exportButton(page)
+  await expect(page.getByRole('heading', { level: 2, name: 'Your data' })).toBeVisible()
 })
 
 test('downloads a well formed calendar carrying the decrypted titles', async ({ page }) => {
@@ -84,7 +89,7 @@ test('builds the file without sending its contents anywhere', async ({ page }) =
 test('the export endpoint serves ciphertext and never a readable title', async ({ page }) => {
   // The companion to the test above, and it is what stops that one passing vacuously: the
   // server genuinely has this data, sealed, and hands it over sealed.
-  await page.goto('/settings')
+  await page.goto('/settings/security')
   const response = await page.request.get('/api/export')
   expect(response.ok()).toBe(true)
 

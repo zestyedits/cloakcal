@@ -72,7 +72,22 @@ test.describe('decryption actually happens', () => {
    * catch that for the prerendered ones; nothing did once they stopped being prerendered.
    */
   test('no route serves plaintext in its HTML or its Flight payload', async ({ page }) => {
-    const ROUTES = ['/', '/settings', '/settings/plan', '/settings/availability', '/people']
+    /*
+     * /settings/privacy IS THE HIGHEST-VALUE ENTRY IN THIS LIST. It renders contact
+     * ciphertext, group labels and engine decisions, and it would have been silently absent
+     * — the settings accordion that used to hold all of that was covered by `/settings`, and
+     * splitting the page moved the sealed material to a route nothing here named.
+     */
+    const ROUTES = [
+      '/',
+      '/settings',
+      '/settings/privacy',
+      '/settings/calendar',
+      '/settings/security',
+      '/settings/plan',
+      '/settings/availability',
+      '/people',
+    ]
 
     // Fetched directly rather than collected from a `response` listener. Reading bodies
     // asynchronously inside that event races navigation — the page can close underneath the

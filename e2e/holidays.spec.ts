@@ -112,11 +112,11 @@ test('the switch keeps a 44px target and states its own state', async ({ page })
 })
 
 test('Settings offers the region, and says nothing is fetched to work it out', async ({ page }) => {
-  await page.goto('/settings#time-region')
+  // Was `/settings#time-region`, which had to open the card it named before the select was
+  // reachable — a hidden control is one `toBeEnabled()` passes against, and that exact mistake
+  // sat green in settings.spec.ts for five commits. The band is simply on the page now.
+  await page.goto('/settings/calendar')
 
-  // The deep link opens the card it points at; without that the select is inside a collapsed
-  // <details> and toBeEnabled() would pass against a hidden control. That exact mistake sat
-  // green in settings.spec.ts for five commits.
   const select = page.getByLabel('Holidays')
   await expect(select).toBeVisible()
   await expect(select).toBeEnabled()
@@ -140,7 +140,7 @@ test('Settings offers the region, and says nothing is fetched to work it out', a
 })
 
 test('choosing a region in Settings changes what the calendar draws', async ({ page }) => {
-  await page.goto('/settings#time-region')
+  await page.goto('/settings/calendar')
   await page.getByLabel('Holidays').selectOption('GB')
 
   await page.goto(MONTH)
@@ -153,14 +153,15 @@ test('choosing a region in Settings changes what the calendar draws', async ({ p
   // proof the region switch reaches the rule table rather than just relabelling.
   await expect(page.getByTitle("Mother's Day")).toHaveCount(0)
 
-  await page.goto('/settings#time-region')
+  await page.goto('/settings/calendar')
   await page.getByLabel('Holidays').selectOption('auto')
 })
 
 test('no em dash anywhere the holiday copy renders', async ({ page }) => {
-  await page.goto('/settings#time-region')
-  // The repo-wide rule, asserted per surface because the landing spec's version never visits
-  // this card. A DOM assertion rather than review, per CLAUDE.md.
-  const text = await page.locator('#time-region').innerText()
+  await page.goto('/settings/calendar')
+  // The repo-wide rule, asserted per surface. A DOM assertion rather than review, per
+  // CLAUDE.md. Scoped to main rather than to the old `#time-region` card, which no longer
+  // exists — and `main` is the right scope anyway, since it covers the copy that moved.
+  const text = await page.locator('main').innerText()
   expect(text).not.toContain('—')
 })

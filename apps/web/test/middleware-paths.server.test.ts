@@ -64,9 +64,21 @@ describe('middleware path lists', () => {
       PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
     expect(isPublic('/')).toBe(true)
     expect(isPublic('/settings')).toBe(false)
-    // The nested route too: password changes and recovery-phrase re-issues live under
-    // /settings/security, and a nested segment must not slip past the prefix check.
-    expect(isPublic('/settings/security')).toBe(false)
+    /*
+     * EVERY nested settings route, not just one. Password changes live under
+     * /settings/security and the visibility defaults under /settings/privacy, and a nested
+     * segment must not slip past the prefix check — a settings hub whose children were public
+     * would be a privacy page reachable without a session.
+     */
+    for (const nested of [
+      '/settings/privacy',
+      '/settings/calendar',
+      '/settings/security',
+      '/settings/availability',
+      '/settings/plan',
+    ]) {
+      expect(isPublic(nested), nested).toBe(false)
+    }
   })
 
   it('does NOT bounce a signed-in user off the root', () => {
@@ -242,7 +254,14 @@ describe('guardFor', () => {
   })
 
   it('lets a signed-in user reach everything else', () => {
-    for (const path of ['/', '/settings', '/settings/plan', '/api/billing/checkout']) {
+    for (const path of [
+      '/',
+      '/settings',
+      '/settings/privacy',
+      '/settings/calendar',
+      '/settings/plan',
+      '/api/billing/checkout',
+    ]) {
       expect(guardFor(path, true)).toBe('allow')
     }
   })

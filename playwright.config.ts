@@ -162,6 +162,24 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK: '1',
+      /*
+       * PLACEHOLDER SUPABASE VALUES, so a local run does not depend on an untracked file.
+       *
+       * `supabaseBrowser()` throws when either variable is absent, and /recover renders the
+       * form its specs look for only if it does not throw. CI supplies these on the e2e step
+       * for exactly that reason; locally they came from `apps/web/.env.local`, so a fresh
+       * clone — or a machine where that file was moved aside to reproduce a CI build, which
+       * CLAUDE.md tells you to do — failed four specs across three files for a reason that
+       * has nothing to do with the change under test.
+       *
+       * `??`, not an override. Anyone who has real values keeps them; the suite never reaches
+       * Supabase anyway, because every project runs against the committed fixture.
+       */
+      NEXT_PUBLIC_SUPABASE_URL:
+        process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://placeholder.supabase.co',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ??
+        'sb_publishable_local_placeholder_not_a_real_key',
     },
   },
 })

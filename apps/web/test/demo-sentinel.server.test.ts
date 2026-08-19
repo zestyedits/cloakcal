@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -19,14 +20,27 @@ import { describe, expect, it } from 'vitest'
  * the branch that already works while leaving the broken one uncovered.
  *
  * The screens take an explicit `demo` prop now. This forbids the shortcut coming back.
+ *
+ * A SWEEP RATHER THAN A LIST, since the settings accordion became four pages. This named two
+ * files, one of which no longer exists, and the two new screens it should have covered would
+ * have been added to the tree with nothing checking them — the orphan problem `playwright.
+ * config.ts`'s testMatch and `packages/db/test/harness.ts` both have. Anything under
+ * `components/settings/` that renders demo copy is in scope automatically.
  */
 
 const read = (path: string) =>
   readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
 
 const SECURITY_SCREEN = read('../src/components/settings/security-screen.tsx')
-const SETTINGS_SCREEN = read('../src/components/settings/settings-screen.tsx')
 const SECURITY_PAGE = read('../src/app/settings/security/page.tsx')
+
+/** Every settings component that renders demo copy at all, so a new screen is covered by
+ *  existing rather than by being remembered. */
+const SETTINGS_DIR = fileURLToPath(new URL('../src/components/settings/', import.meta.url))
+const DEMO_SCREENS = readdirSync(SETTINGS_DIR)
+  .filter((name) => name.endsWith('.tsx'))
+  .map((name) => [name, readFileSync(join(SETTINGS_DIR, name), 'utf8')] as const)
+  .filter(([, source]) => source.includes('Demo.'))
 
 describe('the demo sentinel', () => {
   it('is an explicit flag on the security screen, passed by its page', () => {
@@ -38,10 +52,11 @@ describe('the demo sentinel', () => {
   it('never decides "demo" by testing the email for emptiness', () => {
     // An empty email is still a legitimate thing to BRANCH on — it means the flows below
     // cannot derive a key — but it must not be the thing that renders the demo copy.
-    for (const [name, source] of [
-      ['security-screen.tsx', SECURITY_SCREEN],
-      ['settings-screen.tsx', SETTINGS_SCREEN],
-    ] as const) {
+    // Anti-vacuous: a sweep that found nothing would pass while checking nothing, which is
+    // precisely how the list version would have failed once the files it named moved.
+    expect(DEMO_SCREENS.length).toBeGreaterThan(2)
+
+    for (const [name, source] of DEMO_SCREENS) {
       // [\s\S] rather than [^}]: the JSX between the two contains `{styles.lockedNote}`,
       // and a first draft that excluded braces matched nothing — passing against the very
       // source it was written to reject. Checked by running it against the old code.

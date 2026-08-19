@@ -5,7 +5,7 @@
  * server component that imports a plain value out of a `'use client'` module gets a
  * client-reference proxy rather than the value, and when that happens inside a Suspense
  * fallback it renders as a DOUBLED PAGE rather than as an error. Three modules read this
- * one, and `settings-screen.tsx` — a `'use client'` module — is among them, which is exactly
+ * one, and `privacy-screen.tsx` — a `'use client'` module — is among them, which is exactly
  * the shape that broke once already.
  *
  * WHAT IS ON EACH SIDE OF THE LINE, AND WHY.

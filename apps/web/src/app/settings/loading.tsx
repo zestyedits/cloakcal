@@ -1,46 +1,45 @@
 import { PageMasthead, PageShell } from '@/components/page-shell'
-import { SECTIONS } from '@/lib/settings-sections'
-import settingsStyles from '@/components/settings/settings.module.css'
+import { visibleDoors } from '@/lib/settings-sections'
+import { billingEnabled } from '@/server/billing/config'
+import hubStyles from '@/components/settings/settings-hub.module.css'
 import styles from './loading.module.css'
 
 /**
- * The settings page's loading state — and deliberately AS MUCH of the real page as can
- * exist without data. The first version was all grey bars, which read as a third, alien
- * page between the calendar and settings: a freeze, then a teleport. The chrome here is
- * the REAL chrome, from the REAL components (PageShell, PageMasthead, the same section
- * list), so the navigation reads as "settings, loading its rows" and the only things that
- * shimmer are the cards whose contents genuinely are not known yet.
+ * The hub's loading state — and deliberately AS MUCH of the real page as can exist without
+ * data. The first version of this file was all grey bars, which read as a third, alien page
+ * between the calendar and settings: a freeze, then a teleport. The chrome here is the REAL
+ * chrome from the REAL components, so the navigation reads as "settings, loading its lines",
+ * and the only thing that shimmers is the one part genuinely unknown — the current-state line
+ * under each door.
  *
- * The nav chips are inert spans: they cannot open a card that has not arrived. The hash
- * survives into the loaded page, whose deep-link effect opens the right card.
+ * THE LABELS AND DESCRIPTIONS ARE NOT SHIMMERED, because they are not unknown. They are the
+ * same four constants the hub renders, which means the door you are reaching for is already
+ * legible and already in its final position before the data lands.
+ *
+ * `visibleDoors(billingEnabled())` here and in `page.tsx`, from the same function. A skeleton
+ * of four rows settling to three is exactly the geometry jump this file exists to prevent.
  */
 export default function SettingsLoading() {
   return (
     <PageShell back={{ href: '/', label: 'Calendar' }}>
       <PageMasthead
         title="Settings"
-        lede="How your calendar looks and behaves, who can see what, and how you get back in."
+        lede="What is true about your account right now, and what you can change safely."
       />
 
-      <div className={settingsStyles.layout}>
-        <nav className={settingsStyles.nav} aria-label="Settings sections">
-          {SECTIONS.map((section) => (
-            <span key={section.id} className={settingsStyles.navLink}>
-              {section.label}
+      <div className={hubStyles.hub}>
+        <div className={hubStyles.doors} aria-busy="true" aria-label="Loading settings">
+          {visibleDoors(billingEnabled()).map((door) => (
+            /* A span, not a link: a door whose current state has not arrived is still a door,
+               but nothing here should look pressable before the page it belongs to is. */
+            <span key={door.id} className={hubStyles.door}>
+              <span className={hubStyles.doorLabel}>{door.label}</span>
+              <span className={hubStyles.doorAbout}>{door.description}</span>
+              <span
+                className={`${styles.doorState} ${styles.pulse}`}
+                aria-hidden="true"
+              />
             </span>
-          ))}
-        </nav>
-
-        <div className={settingsStyles.sections} aria-busy="true" aria-label="Loading settings">
-          {SECTIONS.map((section) => (
-            <div
-              key={section.id}
-              className={`${styles.sectionRow} ${styles.pulse}`}
-              aria-hidden="true"
-            >
-              <div className={styles.rowTitle} />
-              <div className={styles.rowState} />
-            </div>
           ))}
         </div>
       </div>

@@ -31,6 +31,17 @@
  * readable by a human. It needs review by someone qualified before sign-ups open.
  */
 
+/**
+ * THE support address, in one place, because two surfaces now print it.
+ *
+ * Deletion is by email and has to stay that way — `auth.users` is unreachable in-band, so a
+ * "Delete account" button would clear a calendar and leave an email address and a user id on
+ * file. That makes this address the whole mechanism behind a statutory obligation, and an
+ * address that drifts between the terms and the settings page is a deletion request sent
+ * somewhere nobody reads.
+ */
+export const SUPPORT_EMAIL = 'hello@cloakcal.com'
+
 export interface LegalSection {
   readonly id: string
   readonly heading: string
@@ -167,7 +178,7 @@ export const PRIVACY: LegalDocument = {
       id: 'your-rights',
       heading: 'What you can do',
       body: [
-        'You can export your calendar as a standard .ics file from Settings, under Calendars. It is assembled in your browser from your own decrypted content, so the file holds things our servers have never seen, and it never goes back to us. Repeating events keep their rule rather than being flattened into copies. Export is free permanently: charging to leave is not something a privacy product gets to do.',
+        'You can export your calendar as a standard .ics file from Settings, under Security and data. It is assembled in your browser from your own decrypted content, so the file holds things our servers have never seen, and it never goes back to us. Repeating events keep their rule rather than being flattened into copies. Export is free permanently: charging to leave is not something a privacy product gets to do.',
         'You can have your account deleted by emailing us. That erases every event, calendar, contact, rule and setting we hold for you, and it cannot be undone. There is no button for this yet, and we would rather say so than point you at one that is not there.',
         'If you are in the UK, EU or California, you have statutory rights to access, correct, export and erase your personal data. Where there is a control above, that is how we meet them. Where there is not one yet, email us and we will do it by hand, which is how deletion works today. For anything else, contact us.',
       ],
@@ -256,7 +267,7 @@ export const TERMS: LegalDocument = {
       id: 'contact',
       heading: 'Contact',
       body: [
-        'Questions about these terms, the privacy policy, or your data: reach us at hello@cloakcal.com.',
+        `Questions about these terms, the privacy policy, or your data: reach us at ${SUPPORT_EMAIL}.`,
       ],
     },
   ],

@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { isDevFixtureEnabled } from '@/server/dev-fixture'
+import { billingEnabled } from '@/server/billing/config'
 import { loadDevices } from '@/server/settings'
 import { SecurityScreen } from '@/components/settings/security-screen'
 
-export const metadata = { title: 'Security · CloakCal' }
+export const metadata = { title: 'Security & data · CloakCal' }
 
 /**
  * Never prerendered — reads the signed-in user. Same trap and same fix as /settings and
@@ -27,7 +28,8 @@ export const dynamic = 'force-dynamic'
 export default async function SecurityPage() {
   const fixtureMode = isDevFixtureEnabled()
 
-  if (fixtureMode) return <SecurityScreen demo email="" devices={[]} />
+  if (fixtureMode)
+    return <SecurityScreen demo email="" devices={[]} billingEnabled={billingEnabled()} />
 
   const devicesPromise = loadDevices()
   devicesPromise.catch(() => undefined)
@@ -41,6 +43,13 @@ export default async function SecurityPage() {
   // whose email is null is signed in, not demoing, and the screen owes them a different
   // sentence.
   return (
-    <SecurityScreen demo={false} email={data.user.email ?? ''} devices={await devicesPromise} />
+    <SecurityScreen
+      demo={false}
+      email={data.user.email ?? ''}
+      devices={await devicesPromise}
+      // Passed down so the sibling links at the foot of the page agree with the hub about
+      // whether a Billing door exists at all.
+      billingEnabled={billingEnabled()}
+    />
   )
 }

@@ -6,7 +6,7 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
 import type { AvailabilityWeek, AvailabilityWindow } from '@/server/availability'
 import { PageMasthead, PageShell } from '../page-shell'
-import { SettingsNav } from './settings-nav'
+import { SettingsSiblings } from './settings-doors'
 import { Button } from '../ui/button'
 import { InlineError } from '../ui/inline-error'
 import styles from './settings.module.css'
@@ -58,12 +58,15 @@ export function AvailabilityScreen({
   workspaceId,
   timezone,
   week,
+  billingEnabled,
 }: {
   /** The dev fixture, said out loud rather than inferred from an empty id (demo-sentinel). */
   demo: boolean
   workspaceId: string | null
   timezone: string
   week: AvailabilityWeek
+  /** Only so the sibling links agree with the hub about whether Billing is a door. */
+  billingEnabled: boolean
 }) {
   const router = useRouter()
   const [draft, setDraft] = useState<Draft>(() => toDraft(week))
@@ -140,121 +143,120 @@ export function AvailabilityScreen({
   }
 
   return (
-    <PageShell back={{ href: '/settings', label: 'Settings' }}>
+    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
       <PageMasthead
         title="Availability"
         lede="The hours you are open, and what the calendar shades outside them."
       />
-      <div className={styles.layout}>
-        <SettingsNav current="availability" scope="settings" />
-        <main className={styles.panel}>
-          <h2 className={styles.panelTitle}>The hours you are open</h2>
-          <p className={styles.sectionLede}>
-            Your calendar shades the hours outside these windows, so a week at a glance shows
-            when you are actually working. Times are local to {timezone.replaceAll('_', ' ')},
-            and they stay put across a daylight saving change.
+      <main id="main" className={styles.panel}>
+        <h2 className={styles.panelTitle}>The hours you are open</h2>
+        <p className={styles.sectionLede}>
+          Your calendar shades the hours outside these windows, so a week at a glance shows
+          when you are actually working. Times are local to {timezone.replaceAll('_', ' ')},
+          and they stay put across a daylight saving change.
+        </p>
+
+        {/*
+          The honest boundary. Availability is the first piece of booking and nothing else
+          reads it yet, so the page says so instead of letting a reader assume a client can
+          already pick a slot.
+        */}
+        <p className={local.scope}>
+          Nothing books itself yet. Booking pages are not built, so today this changes how
+          your own calendar is drawn and nothing more.
+        </p>
+
+        <InlineError>{error}</InlineError>
+
+        {demo && (
+          <p className={styles.lockedNote}>
+            Demo. Sign in to set your own hours. The week below is an example.
           </p>
+        )}
 
-          {/*
-            The honest boundary. Availability is the first piece of booking and nothing else
-            reads it yet, so the page says so instead of letting a reader assume a client can
-            already pick a slot.
-          */}
-          <p className={local.scope}>
-            Nothing books itself yet. Booking pages are not built, so today this changes how
-            your own calendar is drawn and nothing more.
-          </p>
+        <ul className={local.days}>
+          {DAYS.map(({ index, label }) => {
+            const windows = draft[index] ?? []
+            return (
+              <li key={index} className={local.day}>
+                <div className={local.dayHead}>
+                  <h3 className={local.dayName}>{label}</h3>
+                  <span className={local.dayState}>
+                    {windows.length === 0 ? 'Unavailable' : null}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addWindow(index)}
+                  >
+                    Add hours
+                  </Button>
+                </div>
 
-          <InlineError>{error}</InlineError>
+                {windows.map((window, position) => (
+                  <div key={position} className={local.window}>
+                    <label className={local.field}>
+                      <span className={styles.fieldLabel}>From</span>
+                      <select
+                        className={styles.select}
+                        value={window.startMinute}
+                        onChange={(event) =>
+                          setWindow(index, position, {
+                            startMinute: Number(event.target.value),
+                          })
+                        }
+                      >
+                        {CHOICES.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {optionLabel(minute)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-          {demo && (
-            <p className={styles.lockedNote}>
-              Demo. Sign in to set your own hours. The week below is an example.
-            </p>
-          )}
+                    <label className={local.field}>
+                      <span className={styles.fieldLabel}>To</span>
+                      <select
+                        className={styles.select}
+                        value={window.endMinute}
+                        onChange={(event) =>
+                          setWindow(index, position, { endMinute: Number(event.target.value) })
+                        }
+                      >
+                        {/* Ends run to 24:00 so a window can reach midnight; starts cannot,
+                            which the ordering check in the RPC already implies. */}
+                        {[...CHOICES.slice(1), 1440].map((minute) => (
+                          <option key={minute} value={minute}>
+                            {minute === 1440 ? '24:00' : optionLabel(minute)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-          <ul className={local.days}>
-            {DAYS.map(({ index, label }) => {
-              const windows = draft[index] ?? []
-              return (
-                <li key={index} className={local.day}>
-                  <div className={local.dayHead}>
-                    <h3 className={local.dayName}>{label}</h3>
-                    <span className={local.dayState}>
-                      {windows.length === 0 ? 'Unavailable' : null}
-                    </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => addWindow(index)}
+                      aria-label={`Remove ${label} hours ${position + 1}`}
+                      onClick={() => removeWindow(index, position)}
                     >
-                      Add hours
+                      Remove
                     </Button>
                   </div>
+                ))}
+              </li>
+            )
+          })}
+        </ul>
 
-                  {windows.map((window, position) => (
-                    <div key={position} className={local.window}>
-                      <label className={local.field}>
-                        <span className={styles.fieldLabel}>From</span>
-                        <select
-                          className={styles.select}
-                          value={window.startMinute}
-                          onChange={(event) =>
-                            setWindow(index, position, {
-                              startMinute: Number(event.target.value),
-                            })
-                          }
-                        >
-                          {CHOICES.map((minute) => (
-                            <option key={minute} value={minute}>
-                              {optionLabel(minute)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+        <div className={local.actions}>
+          <Button busy={busy} disabled={!canSave} onClick={() => void save()}>
+            Save hours
+          </Button>
+          {saved && <span className={local.saved}>Saved.</span>}
+        </div>
+      </main>
 
-                      <label className={local.field}>
-                        <span className={styles.fieldLabel}>To</span>
-                        <select
-                          className={styles.select}
-                          value={window.endMinute}
-                          onChange={(event) =>
-                            setWindow(index, position, { endMinute: Number(event.target.value) })
-                          }
-                        >
-                          {/* Ends run to 24:00 so a window can reach midnight; starts cannot,
-                              which the ordering check in the RPC already implies. */}
-                          {[...CHOICES.slice(1), 1440].map((minute) => (
-                            <option key={minute} value={minute}>
-                              {minute === 1440 ? '24:00' : optionLabel(minute)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Remove ${label} hours ${position + 1}`}
-                        onClick={() => removeWindow(index, position)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </li>
-              )
-            })}
-          </ul>
-
-          <div className={local.actions}>
-            <Button busy={busy} disabled={!canSave} onClick={() => void save()}>
-              Save hours
-            </Button>
-            {saved && <span className={local.saved}>Saved.</span>}
-          </div>
-        </main>
-      </div>
+      <SettingsSiblings current="calendar" billingEnabled={billingEnabled} />
     </PageShell>
   )
 }
