@@ -344,22 +344,24 @@ describe('the plan a workspace is on', () => {
       expect(rows).toEqual([{ plan: 'free' }])
     })
 
-    it('goes away with the workspace it belongs to, deleted BY THE USER', async () => {
+    it('cannot be destroyed by the user deleting their own workspace', async () => {
       /*
-       * Two things at once, and the second is the one worth writing down.
+       * THIS TEST USED TO PROVE THE OPPOSITE, and the inversion is the point.
        *
-       * The throwaway-account recipe in CLAUDE.md relies on the cascade taking everything, so
-       * a subscription left behind would be a row pointing at a workspace that is gone.
+       * `workspaces_delete` (0002) let an owner delete their workspace, and 0024 hung
+       * `subscriptions` off it with `on delete cascade`. A referential action runs internally,
+       * checking neither RLS nor the privileges on the referencing table — so 0024's own
+       * revoke, which refuses a direct delete three tests up, did nothing about this route.
+       * One request destroyed the local record of a paid subscription.
        *
-       * But this runs as USER_A rather than through db.raw, because it is the ONE WAY A USER
-       * CAN DESTROY THEIR OWN PLAN ROW. `workspaces_delete` (0002) lets an owner delete their
-       * workspace, and a referential action runs internally — checking neither RLS nor
-       * privileges on the referencing table, both of which refuse a direct delete three tests
-       * up. Doing it through raw would demonstrate the cascade while hiding the capability.
+       * The old version of this test demonstrated exactly that and called it "harmless today…
+       * It stops being harmless once Stripe is wired". 0030 closed it while that was still
+       * true: local row gone with the provider still charging is unreconcilable, and the
+       * webhook could not repair it either, because `billing_writer` cannot see `workspaces`.
        *
-       * Harmless today: it costs the whole workspace and every event in it, and there is no
-       * limit to dodge. It stops being harmless once Stripe is wired, which is why ADR 0007
-       * records that deleting an account must cancel its provider subscription first.
+       * Asserted as a REFUSAL, not as a surviving row. A delete that silently matched nothing
+       * would leave the row there too, and would satisfy the weaker check while the privilege
+       * sat waiting for someone to add a policy back.
        */
       const fresh = await db.as(
         USER_A,
@@ -369,7 +371,29 @@ describe('the plan a workspace is on', () => {
       const id = fresh.rows[0]!['id'] as string
       await db.raw(`insert into public.subscriptions (workspace_id, plan) values ($1, 'pro')`, [id])
 
-      await db.as(USER_A, 'delete from public.workspaces where id = $1', [id])
+      await expect(
+        db.as(USER_A, 'delete from public.workspaces where id = $1', [id]),
+      ).rejects.toThrow(/permission denied/i)
+
+      const { rows } = await db.raw(
+        'select workspace_id from public.subscriptions where workspace_id = $1',
+        [id],
+      )
+      expect(rows).toHaveLength(1)
+    })
+
+    it('still cascades when the row goes for a legitimate reason', async () => {
+      // The FK is unchanged and still does its job — an operator deleting an account by hand
+      // (the documented route, CLAUDE.md) must not strand a subscription pointing at nothing.
+      // Through db.raw, because that is now the only way a workspace row is ever removed.
+      const fresh = await db.raw(
+        'insert into public.workspaces (owner_id) values ($1) returning id',
+        [USER_A],
+      )
+      const id = fresh.rows[0]!['id'] as string
+      await db.raw(`insert into public.subscriptions (workspace_id, plan) values ($1, 'pro')`, [id])
+
+      await db.raw('delete from public.workspaces where id = $1', [id])
 
       const { rows } = await db.raw(
         'select workspace_id from public.subscriptions where workspace_id = $1',

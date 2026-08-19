@@ -216,6 +216,12 @@ describe('availability', () => {
   })
 
   it('goes away with its workspace', async () => {
+    /*
+     * The workspace delete runs through db.raw, not as USER_A, and that is not a shortcut:
+     * 0030 took DELETE on `workspaces` away from `authenticated` entirely, so an operator
+     * removing an account by hand is now the only way this row is ever removed. The cascade
+     * being tested is unchanged and still worth pinning; only who can trigger it moved.
+     */
     const { rows } = await db.as(
       USER_A,
       'insert into public.workspaces (owner_id) values ($1) returning id',
@@ -223,7 +229,7 @@ describe('availability', () => {
     )
     const doomed = rows[0]!['id'] as string
     await set(USER_A, doomed, [nineToFive(6)])
-    await db.as(USER_A, 'delete from public.workspaces where id = $1', [doomed])
+    await db.raw('delete from public.workspaces where id = $1', [doomed])
     const { rows: left } = await db.as(
       USER_A,
       'select count(*)::int as n from public.availability_windows where workspace_id = $1',

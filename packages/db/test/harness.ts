@@ -130,6 +130,7 @@ const MIGRATIONS = [
   '0027_availability.sql',
   '0028_billing_writer.sql',
   '0029_billing_writer_limits.sql',
+  '0030_no_user_workspace_delete.sql',
 ] as const
 
 export interface QueryResult {

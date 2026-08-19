@@ -123,6 +123,79 @@ describe('RLS coverage cannot regress', () => {
   })
 
   /**
+   * DELETE MUST BE REFUSED BY PRIVILEGE, NEVER BY A MISSING POLICY.
+   *
+   * Supabase's default ACL hands every new public table `arwd` to `authenticated`, so DELETE
+   * arrives granted. A table with no delete policy therefore looks safe — a delete matches no
+   * rows and quietly affects none — while the privilege sits there waiting for someone to add
+   * a permissive policy for an unrelated reason. That is denial by omission, and the day the
+   * policy lands the hole opens with it, silently, in a diff about something else.
+   *
+   * `profiles` was in exactly that state until 0030: DELETE granted since 0001, no delete
+   * policy, nothing to notice it. `workspaces` was the worse half — it had BOTH, and the
+   * cascade to `subscriptions` made one request destroy a paid plan's local record.
+   *
+   * So the invariant is stated the strong way round: if no policy admits a delete, the
+   * privilege must be absent too. Two locks or none.
+   *
+   * NOT the same question as the TRUNCATE sweep below. That one is about a verb RLS cannot
+   * filter at all. This one is about a verb RLS filters perfectly well — when a policy exists
+   * to do the filtering.
+   */
+  const KNOWN_DELETE_GRANT_DEBT: string[] = []
+
+  it('keeps the delete-grant debt list empty', () => {
+    // Same reasoning as the truncate list beside it: this exists so a genuine exception is a
+    // deliberate edit in front of an assertion, not a default nobody reads. A list things can
+    // be added to is a sweep that reports green while checking one fewer thing.
+    expect(KNOWN_DELETE_GRANT_DEBT).toEqual([])
+  })
+
+  it('grants DELETE to no table that has no policy admitting one', async () => {
+    const { rows } = await db.raw(`
+      select distinct t.table_name
+      from information_schema.table_privileges t
+      where t.table_schema = 'public'
+        and t.privilege_type = 'DELETE'
+        and t.grantee in ('anon', 'authenticated')
+        and not exists (
+          select 1 from pg_policies p
+          where p.schemaname = 'public'
+            and p.tablename = t.table_name
+            and p.cmd in ('DELETE', 'ALL')
+        )
+      order by 1
+    `)
+
+    const offenders = rows.map((r) => r['table_name'] as string)
+    expect(offenders.filter((t) => !KNOWN_DELETE_GRANT_DEBT.includes(t))).toEqual([])
+  })
+
+  it('still lets a user delete their own rows where that is the design', async () => {
+    /*
+     * The control, and it is not decoration. Every assertion above is satisfied by revoking
+     * DELETE everywhere, which would also break the product — deleting an event, a contact, a
+     * group membership and a passkey wrap are all real user actions. This fails if the sweep
+     * above is ever "fixed" by taking the verb away wholesale.
+     */
+    const { rows } = await db.raw(`
+      select distinct t.table_name
+      from information_schema.table_privileges t
+      where t.table_schema = 'public'
+        and t.privilege_type = 'DELETE'
+        and t.grantee = 'authenticated'
+      order by 1
+    `)
+    const deletable = rows.map((r) => r['table_name'])
+    expect(deletable).toContain('events')
+    expect(deletable).toContain('contacts')
+    expect(deletable).toContain('root_key_wraps')
+    // And the two 0030 closed are gone from it.
+    expect(deletable).not.toContain('workspaces')
+    expect(deletable).not.toContain('profiles')
+  })
+
+  /**
    * TRUNCATE is the one verb row level security cannot filter.
    *
    * Supabase's default ACL for a new public table is `authenticated=arwdDxtm` — SELECT,
