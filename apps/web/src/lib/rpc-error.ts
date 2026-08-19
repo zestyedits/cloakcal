@@ -85,6 +85,29 @@ export function rpcErrorMessage(error: unknown): string {
   // RLS refusing the write, rather than the function raising. There is no hint to carry.
   if (failure?.code === '42501') return 'You do not have permission to change this event.'
 
+  /*
+   * THE REQUEST NEVER REACHED POSTGRES, which is not a database error and must not read
+   * like one. postgrest-js does not throw when fetch fails: it resolves with a synthesised
+   * error carrying no code and no hint, whose message is the raw JavaScript one. So the
+   * fallback below was shipping the literal string "TypeError: Failed to fetch" into a
+   * role="alert" on every write surface in the product.
+   *
+   * Matched on the SHAPE first -- no code AND no hint, which no CloakCal RPC ever produces
+   * because every one of them sets a slug -- and then on the message, because the wording
+   * is per-engine ("Failed to fetch" in Chromium, "Load failed" in Safari, "NetworkError"
+   * in Firefox). Both halves are required: our own `throw new Error(...)` calls also carry
+   * no code, and their messages are written to be read.
+   */
+  if (
+    (failure?.code ?? '') === '' &&
+    (failure?.hint ?? '') === '' &&
+    /failed to fetch|load failed|networkerror|network request failed/i.test(
+      failure?.message ?? '',
+    )
+  ) {
+    return 'We could not reach the server, so nothing was saved. Check your connection and try again.'
+  }
+
   if (failure?.message != null && failure.message !== '') return failure.message
   return String(error)
 }

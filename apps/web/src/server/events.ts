@@ -143,7 +143,23 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
 
   const supabase = await supabaseServer()
 
-  const { data: workspace } = await supabase
+  /*
+   * THE ERROR IS NOT DROPPED, and the three queries below have always thrown -- this one
+   * was the outlier. `data === null` means two things here: "this user has no workspace"
+   * and "the query failed", and only the first is safe to render.
+   *
+   * An expired JWT, an RLS change, a 42703 or a transient 5xx would turn a four-hundred
+   * event calendar into "Nothing scheduled this week" with the sample-event seeder
+   * underneath it, which to the person looking at it is indistinguishable from total data
+   * loss. Throwing reaches error.tsx, which refuses rather than softens -- the right
+   * destination for a calendar we cannot vouch for.
+   *
+   * This is verbatim the bug server/settings.ts fixed for itself and wrote up: the prefs
+   * read destructured `data` and dropped the PostgREST error, so an unknown column arrived
+   * as "this user has no workspace" and would have silently reset every account's
+   * timezone, week start and default view.
+   */
+  const { data: workspace, error: workspaceError } = await supabase
     .from('workspaces')
     .select('id')
     .eq('lifecycle', 'active')
@@ -151,6 +167,7 @@ export async function getCalendarPage(range: CalendarRange, timezone: string): P
     .limit(1)
     .maybeSingle<{ id: string }>()
 
+  if (workspaceError !== null) throw workspaceError
   if (workspace === null) return EMPTY_PAGE(range, timezone)
 
   // Fetched together because they are one page of one calendar view; the alternative is a

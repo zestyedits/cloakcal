@@ -176,6 +176,17 @@ schema rather than assumed: `workspaces.holiday_region` exists, `availability_wi
 with RLS enabled, `set_workspace_prefs` takes `p_holiday_region`, `set_availability` exists,
 and the security advisor returns zero lints. Anon sweep clean.
 
+**0029 AND 0030 HAVE NO RECORDED PRODUCTION STATUS, WHICH IS ITSELF THE PROBLEM.** This file
+says 0001-0028 are applied and separately flags 0031 as not applied; the two in between are
+described as if they exist and never as applied or unapplied. 0030 is the fix for a real hole
+this file writes up at length: a signed-in user could `DELETE /rest/v1/workspaces?id=eq.<mine>`
+and the cascade took the billing row with it. **The status of a security migration must never
+be inferable only from silence.** Neither can be settled by the anon PostgREST probe, because
+both are about what `authenticated` may do and anon is refused either way; it needs the
+throwaway-account recipe (attempt the workspace delete and expect a refusal) or
+`supabase migration list` through the CLI. Until somebody runs one of those, assume 0030 is NOT
+applied and that production still carries the hole.
+
 **0028 went up BEFORE its code was committed, which is backwards and worth not repeating.**
 For a few hours production held the `billing_writer` role, the provider columns and
 `billing_events` with nothing in git explaining them. The usual drift in this project is code

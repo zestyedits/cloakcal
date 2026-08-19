@@ -87,6 +87,24 @@ interface CancelledOccurrence {
 
 type TrashRow = TrashedEvent | CancelledOccurrence
 
+/**
+ * PostgREST's spelling of a `timestamp without time zone`, turned into the app's.
+ *
+ * It returns `2026-05-26 09:00:00` with a SPACE, and everything downstream wants the `T`.
+ * Two failures, both silent then loud, and this component had both: `wallTimeLabel` tests
+ * `local.includes('T')` and returns the all-day fallback without one, so every row showed a
+ * date and no time; and `private.canonical_local` regex-validates for the `T` before it
+ * casts, so `uncancel_occurrence` raised `noncanonical_time` and the user was told
+ * "Something went wrong with the date on this event. Nothing was saved." while trying to
+ * RESTORE something. The occurrence half of this page did not work at all.
+ *
+ * Not a guess: `server/events.ts` and `server/export.ts` each do exactly this replace on
+ * `occurrence_local`, which is two independent votes on what the wire actually carries.
+ * Nothing here could have caught it, because the fixture has no session and never issues
+ * one of these queries.
+ */
+const fromPgLocal = (value: string): string => value.replace(' ', 'T')
+
 /** The date and time of a deleted thing, from its local wall string. Never an instant. */
 function whenOf(local: string | null): string {
   if (local === null || local === '') return 'Date unknown'
@@ -148,7 +166,7 @@ export function TrashSection({ demo }: { demo: boolean }) {
         kind: 'event',
         id: row.id,
         version: row.version,
-        dtstartLocal: row.dtstart_local,
+        dtstartLocal: row.dtstart_local === null ? null : fromPgLocal(row.dtstart_local),
         trashedAt: row.trashed_at,
       }))
       const occurrences: TrashRow[] = (exceptions ?? []).flatMap((row) =>
@@ -158,7 +176,7 @@ export function TrashSection({ demo }: { demo: boolean }) {
                 kind: 'occurrence' as const,
                 id: row.id,
                 seriesId: row.series_id,
-                occurrenceLocal: row.occurrence_local,
+                occurrenceLocal: fromPgLocal(row.occurrence_local),
               },
             ]
           : [],
@@ -172,7 +190,18 @@ export function TrashSection({ demo }: { demo: boolean }) {
         ...events.map((row) => row.id),
         ...occurrences.map((row) => (row as CancelledOccurrence).seriesId),
       ]
-      if (subjectIds.length > 0) await openTitles(subjectIds, setTitles)
+      if (subjectIds.length > 0) {
+        // Its own catch, and a DIFFERENT sentence: the list above is correct and useful
+        // without a single title, so a failure to open them must not blank the page. What
+        // it must not do either is stay silent, which would leave every row saying
+        // "Private event" -- byte-identical to the locked-account degradation -- on the
+        // screen where the user decides what to destroy.
+        await openTitles(subjectIds, setTitles).catch(() => {
+          setError(
+            'These are your deleted events, but their titles could not be opened on this device. Unlock your calendar, or take care: the rows below are identified by time only.',
+          )
+        })
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
       setRows([])
@@ -334,6 +363,10 @@ async function openTitles(
   subjectIds: readonly string[],
   setTitles: (next: Readonly<Record<string, string>>) => void,
 ): Promise<void> {
+  // Throws rather than returning quietly on a failed read: see the call site. A caught
+  // error there becomes a visible sentence, because rows reading "Private event" because
+  // the QUERY failed look exactly like rows reading it because the account is locked, and
+  // this is the screen where the user chooses what to erase permanently.
   const store = createCloakStore()
   try {
     if (isDevUnlockEnabled()) {
@@ -344,7 +377,7 @@ async function openTitles(
       await store.unlock(session.sessionKey)
     }
 
-    const { data } = await supabaseBrowser()
+    const { data, error: readError } = await supabaseBrowser()
       .from('cloaked_fields')
       .select('subject_id, field_name, ciphertext, nonce, alg, key_version')
       .eq('subject_type', 'event')
@@ -360,6 +393,7 @@ async function openTitles(
           key_version: number
         }[]
       >()
+    if (readError !== null) throw readError
     if (data === null) return
 
     const records: EncryptedFieldRecord[] = data.map((row) => ({

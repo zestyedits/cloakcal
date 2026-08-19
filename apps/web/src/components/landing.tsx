@@ -57,10 +57,16 @@ export function Landing() {
             <h1 className={styles.headline}>
               Not everything is for <em>everyone</em>.
             </h1>
+            {/* WHAT your events SAY, not the events. Rule 1, on the sentence a journalist
+                would quote: the server holds times, durations, recurrence and calendar
+                membership in plaintext because a calendar cannot place or repeat an event
+                without them. The honesty block 130 lines below already says so and does
+                not travel with this line, which is exactly how the same overstatement was
+                found and fixed in lib/plans.ts and never propagated here. */}
             <p className={styles.sub}>
-              CloakCal encrypts your events on your device, then shows each person exactly
-              as much as you choose. Your client sees a meeting. Your colleagues see busy.
-              Everyone else sees nothing.
+              CloakCal encrypts what your events say on your device, then shows each person
+              exactly as much as you choose. Your client sees a meeting. Your colleagues see
+              busy. Everyone else sees nothing.
             </p>
             {/* WHILE SIGN-UPS ARE CLOSED THE DEMO IS THE CALL TO ACTION, and there is no
                 button here at all. The hero and the header both used to render a "Sign in",

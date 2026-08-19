@@ -209,7 +209,11 @@ export function SeedSampleEvents({ from, timezone }: { from: string; timezone: s
         variant="outline"
         busy={busy}
         disabled={!unlocked}
-        title={unlocked ? undefined : 'Unlock your calendar first. Sample events are encrypted like real ones.'}
+        title={
+          unlocked
+            ? undefined
+            : 'Unlock your calendar first. What these samples say is sealed on this device, exactly like a real event.'
+        }
         onClick={() => void seed()}
       >
         {busy
@@ -223,7 +227,7 @@ export function SeedSampleEvents({ from, timezone }: { from: string; timezone: s
       <p className={styles.note}>
         {partial
           ? `Added ${added} of ${SEEDS.length}. ${remaining.length} could not be saved. The ones that landed are on your calendar and can stay.`
-          : 'Eight ordinary events, encrypted on this device like real ones. Delete them any time.'}
+          : 'Eight ordinary events. What they say is sealed on this device, exactly like a real one. Delete them any time.'}
       </p>
     </div>
   )
