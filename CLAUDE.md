@@ -81,7 +81,7 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1306 unit tests
+pnpm test                # 1311 unit tests
 pnpm test:e2e            # 485 Playwright tests, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
@@ -857,6 +857,44 @@ and re-add.
   cloak-mark.ts` is the only place the mark's geometry exists; `pnpm brand:assets` rasterises
   the favicon, `.ico`, apple icon, PWA tiles and social card from it. Nothing in CI or on
   Vercel runs it. See `docs/brand.md`.
+- **A SIGNED-IN USER COULD DELETE THEIR OWN WORKSPACE, AND THE CASCADE TOOK THE BILLING ROW
+  WITH IT.** `workspaces_delete` (0002) granted it and 0024 hung `subscriptions` off the
+  workspace with `on delete cascade`, so one request — `DELETE /rest/v1/workspaces?id=eq.<mine>`
+  — destroyed the local record of a paid subscription. **A referential action checks neither
+  RLS nor the privileges on the referencing table**, which is why 0024's own revoke on
+  `subscriptions` did nothing about this route. Harmless while nobody is charged; unreconcilable
+  the moment Stripe is wired, and `billing_writer` cannot repair it because it cannot see
+  `workspaces`. Closed by 0030, as an ALLOWLIST (`revoke all`, then `grant select, insert,
+  update`) plus dropping the policy — the grant is the enforcement, the policy is dropped so no
+  artifact implies a capability nobody holds. `subscription.test.ts` used to DEMONSTRATE this
+  delete and call it "harmless today"; it now asserts the refusal.
+- **Deletion is still by email, deliberately, and no button should say otherwise.**
+  `auth.users` is unreachable in-band: rule 4 bans the service key, `security-posture.test.ts`
+  bans SECURITY DEFINER, and `auth.users` has no RLS to scope a narrow role — so an
+  `account_deleter` role could destroy ANY account, inverting the exact property ADR 0007 uses
+  to justify `billing_writer`. `profiles` (no delete policy) and `audit_log` (`revoke update,
+  delete`) are equally out of reach, the latter by design. A "Delete account" button that
+  leaves an email and a user id on file is a worse lie than the honest sentence already there.
+  0030 removed the crude route, so content erasure is now a GAP rather than a duplicate — a
+  written trade, not an oversight.
+- **DELETE must be refused by PRIVILEGE, never by a missing policy.** `profiles` had DELETE
+  granted since 0001 with no delete policy, so a delete quietly matched nothing — and would
+  have opened the day anyone added a policy for an unrelated reason, in a diff about something
+  else. `security-posture.test.ts` now sweeps every public table for "DELETE granted, no policy
+  admitting one", with a debt list that must stay empty, plus a control asserting `events`,
+  `contacts` and `root_key_wraps` ARE still deletable — otherwise the sweep could be satisfied
+  by revoking the verb everywhere and breaking the product.
+- **`packages/db/test/harness.ts` carries a HARDCODED migration list**, so a new `.sql` file is
+  invisible to every DB test until it is added there. The suite goes green against a schema
+  that does not include your migration, which reads exactly like "my change broke nothing".
+  Same orphan shape as `playwright.config.ts`'s `testMatch` and the visual baselines.
+- **Five surfaces justified readable times with "because reminders need them"**, a feature that
+  is not merely unbuilt but UNWRITABLE — `create_cloaked_event` takes no reminder parameter,
+  `event-fields.tsx` has no control, and `reminder_offsets` has been `'{}'` on every row since
+  0001. Same family as the export claim: copy cashing a cheque on a capability that does not
+  exist. They now give the unconditional reason (a calendar cannot place, repeat or lay out an
+  event without times), and `legal-claims.server.test.ts` carries a `Reminders` capability so
+  the claim and an implementation have to move together.
 - **THE PRIVACY POLICY CLAIMED A FEATURE THAT DID NOT EXIST, AND IT SAT IN THE STATUTORY
   RIGHTS SECTION.** *(The claim is true now — export shipped — but the shape is the lesson.)* `lib/legal.ts` said "You can export your calendar as a standard .ics file
   at any time, from Settings" — in the present tense, naming a location — while

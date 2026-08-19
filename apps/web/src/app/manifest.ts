@@ -15,9 +15,11 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'CloakCal',
     short_name: 'CloakCal',
     // Deliberately the honest claim. CloakCal is NOT zero-knowledge: the server stores
-    // times, durations and recurrence in the clear so booking and reminders can work, and
-    // encrypts only the content. "Other people cannot see this" is true; "we cannot see
-    // anything" is not, and this string is the sort of place that lie gets told by accident.
+    // times, durations and recurrence in the clear so it can place, repeat and render events
+    // at all, and encrypts only the content. "Other people cannot see this" is true; "we
+    // cannot see anything" is not, and this string is the sort of place that lie gets told by
+    // accident. It used to say "so booking and reminders can work" — naming two unbuilt
+    // features as the reason, which is a smaller lie in the same family.
     description:
       'A privacy-first calendar. Event content is encrypted in your browser, and you choose ' +
       'how much of it each person sees.',

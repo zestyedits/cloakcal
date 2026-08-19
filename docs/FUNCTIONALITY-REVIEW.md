@@ -79,7 +79,7 @@ check in this document.
 | Table | Holds | Why it is not encrypted |
 |---|---|---|
 | `workspaces` | owner, lifecycle, timezone, week start, default view, holiday region, keyboard prefs | Display framing; the server resolves the view before render |
-| `events` | `start_utc`, `end_utc`, `timezone`, `all_day`, `rrule`, `exdates`, `busy`, `reminder_offsets`, `is_cloaked`, `lifecycle`, `version` | Booking, conflict detection and reminders need times |
+| `events` | `start_utc`, `end_utc`, `timezone`, `all_day`, `rrule`, `dtstart_local`, `busy`, `reminder_offsets`, `lifecycle`, `version` | Placing, repeating and laying out an event needs times. (`exdates` and `is_cloaked` were dropped by 0004 and listed here long after.) |
 | `calendars` | colour, position, lifecycle. **Name is ciphertext** | A colour is not content |
 | `recurrence_exceptions` | which occurrence, and whether it was moved or cancelled | Keyed by local wall time |
 | `visibility_rules` | which audience gets which level | The rule is not the content |

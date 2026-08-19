@@ -342,8 +342,8 @@ export function LandingCalendar() {
       </p>
 
       <p className={styles.caption}>
-        The times never move. Durations, repeats and free-busy stay readable, because
-        reminders and booking need them. Everything else is yours to give away or keep.
+        The times never move. Durations, repeats and free-busy stay readable, because a
+        calendar cannot lay them out otherwise. Everything else is yours to give away or keep.
       </p>
     </div>
   )

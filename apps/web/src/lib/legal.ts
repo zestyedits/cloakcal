@@ -94,7 +94,7 @@ export const PRIVACY: LegalDocument = {
       heading: 'The short version',
       body: [
         'The content of your events is encrypted in your browser, with keys derived from your password, before it is sent to us. We store the result and cannot read it. Nobody at CloakCal can, and neither can anyone who breaks into our servers or arrives with a court order.',
-        'We can see when your events happen. Times, durations, how often something repeats, and which calendar it belongs to are stored in the clear, because reminders, conflict checks and booking cannot work otherwise.',
+        'We can see when your events happen. Times, durations, how often something repeats, and which calendar it belongs to are stored in the clear, because a calendar cannot place, repeat or lay out an event without them. Features that would also need them, like reminders and booking, are planned rather than built.',
         'So the promise is exact: other people cannot read your content. It is not that we cannot see anything. CloakCal is not zero-knowledge and we will not describe it that way, because a privacy product that overclaims is a privacy product that lies.',
       ],
     },

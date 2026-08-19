@@ -113,6 +113,26 @@ const CAPABILITIES: readonly Capability[] = [
     why: 'deletion is by email today, and the copy says so',
   },
   {
+    name: 'Reminders',
+    /*
+     * Present tense only. "Features that would also need them, like reminders and booking,
+     * are planned rather than built" must NOT match — describing a plan is allowed, and is
+     * what the copy does now.
+     *
+     * Five surfaces used to justify readable times with "because reminders need them". Not
+     * false — it was the honest original design reason — but it is the export claim's shape:
+     * copy cashing a cheque on an unbuilt capability, on the pages whose whole job is to be
+     * believed. reminder_offsets is not merely unread, it is UNWRITABLE: create_cloaked_event
+     * takes no reminder parameter and event-fields.tsx has no control.
+     */
+    claim: /reminders? (?:will |can )?(?:remind|notify|alert)|we(?:'| a)?ll remind you|you can set a reminder/i,
+    // A scheduler or a notification path. Neither exists: no vercel.json crons key, no
+    // app/api/cron route, Resend is not a dependency of apps/web, and there is no service
+    // worker. Any of these appearing means reminders became real.
+    backing: /showNotification|requestPermission|serviceWorker|api\/cron/,
+    why: 'the same shape as the export claim, caught before it shipped',
+  },
+  {
     name: 'Cancelling a subscription from Settings',
     claim: /cancel from Settings/i,
     backing: /cancelAtPeriodEnd|kind: 'cancel'/,

@@ -182,7 +182,7 @@ export function Landing() {
                 </div>
               </div>
               <p className={styles.honestyNote}>
-                Times stay readable because reminders and busy checks need them to work.
+                Times stay readable because the calendar has to place and repeat your events.
                 The promise is exact: <strong>other people cannot see your content</strong>.
                 It is not &ldquo;we cannot see anything.&rdquo; A privacy product that
                 overclaims is a privacy product that lies.

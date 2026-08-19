@@ -110,6 +110,12 @@ create table public.events (
 
   -- Server must know an event is Cloaked to choose privacy-safe notification wording (D3).
   -- This is a flag, never content.
+  --
+  -- ANNOTATED LATER: 0004 DROPS THIS COLUMN. It was "the most revealing single bit in the
+  -- schema" — a per-event marker of what the user considers sensitive — and notifications now
+  -- default to safe wording for EVERY event instead. The DDL below stays as applied, because
+  -- a migration is history; this note is here so nobody designing reminders from 0001 alone
+  -- reaches for a bit that was deliberately destroyed.
   is_cloaked                boolean not null default false,
 
   lifecycle                 public.lifecycle_state not null default 'active',

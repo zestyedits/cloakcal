@@ -161,7 +161,7 @@ export function PlanScreen({
             <p className={styles.note}>
               Cloaking is not a paid feature and it will not become one, on any plan. CloakCal
               is not zero knowledge: the server stores times, durations, repeats and calendar
-              names in the clear, because reminders and conflict detection need them.
+              names in the clear, because placing and repeating an event needs them.
             </p>
           </section>
 
