@@ -23,5 +23,14 @@ test('a page that does not exist says so without saying why', async ({ page }) =
   // "does not exist, or is not visible to you" — for a privacy product the two must be
   // indistinguishable from outside, so the copy is pinned here.
   await expect(page.getByText(/does not exist, or is not visible to you/i)).toBeVisible()
-  await expect(page.getByRole('link', { name: /back to your calendar/i })).toBeVisible()
+  /*
+   * NAMES THE PRODUCT, NOT "YOUR CALENDAR", and that is pinned rather than incidental.
+   *
+   * `/` is public and branches on the session, so this page is reachable by someone with no
+   * account -- which is most people who hit a 404, since a bad link is how strangers arrive.
+   * "Back to your calendar" told them they had one. The destination is unchanged; only the
+   * promise it made was wrong.
+   */
+  await expect(page.getByRole('link', { name: /back to cloakcal/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /your calendar/i })).toHaveCount(0)
 })

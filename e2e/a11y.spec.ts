@@ -29,16 +29,44 @@ test('has no detectable WCAG A or AA violations', async ({ page }) => {
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
 })
 
-test('exposes one main landmark and a skip link that works', async ({ page }) => {
-  await expect(page.getByRole('main')).toHaveCount(1)
+/*
+ * THE SKIP LINK IS IN THE ROOT LAYOUT, SO IT MUST BE TESTED ON MORE THAN ONE PAGE.
+ *
+ * This test used to run only against `/` and assert `toHaveURL(/#main$/)` after pressing
+ * Enter. Both halves were weaker than the name "a skip link that works" claims:
+ *
+ *  - A fragment link sets `location.hash` whether or not ANYTHING carries that id. So the
+ *    URL assertion proved the link had been activated, never that it landed anywhere. Two
+ *    pages -- `not-found.tsx` and `error.tsx` -- rendered `<main>` with no `id`, so the
+ *    bypass link on the two pages a lost or broken-out user is most likely to be reading
+ *    went nowhere at all, and this assertion would have passed on both.
+ *  - Running on one route cannot see that, because the defect is per-page while the control
+ *    is global. The 404 is included below for exactly that reason: it is the cheapest page
+ *    in the app to reach that does not share the calendar's layout body.
+ *
+ * The target assertion is what makes this a test of the mechanism rather than of the click.
+ */
+const SKIP_TARGET_PAGES = ['/', '/this-path-does-not-exist'] as const
 
-  await page.keyboard.press('Tab')
-  const skip = page.getByRole('link', { name: /skip to calendar/i })
-  await expect(skip).toBeFocused()
+for (const path of SKIP_TARGET_PAGES) {
+  test(`exposes one main landmark and a skip link that lands on it (${path})`, async ({
+    page,
+  }) => {
+    await page.goto(path)
 
-  await skip.press('Enter')
-  await expect(page).toHaveURL(/#main$/)
-})
+    const main = page.getByRole('main')
+    await expect(main).toHaveCount(1)
+    // The link's destination, asserted to EXIST and to be the landmark it names.
+    await expect(main).toHaveAttribute('id', 'main')
+
+    await page.keyboard.press('Tab')
+    const skip = page.getByRole('link', { name: /skip to main content/i })
+    await expect(skip).toBeFocused()
+
+    await skip.press('Enter')
+    await expect(page).toHaveURL(/#main$/)
+  })
+}
 
 test('gives every interactive control a 44px touch target', async ({ page }) => {
   // --touch-min is a hard floor, not an aspiration (WCAG 2.2 / iOS HIG).

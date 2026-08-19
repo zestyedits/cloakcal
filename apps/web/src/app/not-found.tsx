@@ -10,13 +10,16 @@ import styles from './fallback.module.css'
  */
 export default function NotFound() {
   return (
-    <main className={styles.page}>
+    <main id="main" className={styles.page}>
       <div className={styles.card}>
         <CloakLockup size="sm" />
         <h1 className={styles.title}>There is nothing here</h1>
         <p className={styles.lede}>That page does not exist, or is not visible to you.</p>
+        {/* NOT "your calendar". `/` is public and branches on the session, so this page is
+            reachable by someone who has no account, and most 404s are. Naming the product
+            is true in both states; naming a calendar they may not have is not. */}
         <ButtonLink variant="primary" href="/">
-          Back to your calendar
+          Back to CloakCal
         </ButtonLink>
       </div>
     </main>

@@ -142,8 +142,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
+        {/*
+            NAMES THE LANDMARK, NOT THE CALENDAR. This lives in the ROOT layout, so it is on
+            the landing page, the three auth pages, every settings route, the legal pages and
+            both fallbacks. Only one of those is a calendar, and a bypass link that misnames
+            its destination is worse than a generic one: the user is told where they are going
+            and arrives somewhere else.
+        */}
         <a className="skip-link" href="#main">
-          Skip to calendar
+          Skip to main content
         </a>
         {/* Renders nothing while online. In the layout so every page gets it — losing the
             network matters on the auth screens exactly as much as on the calendar. */}

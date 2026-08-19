@@ -161,9 +161,21 @@ const MAX_PASSES = 3
 /** 12-hour clock without a library: this grid is 9 to 17 and nothing else. */
 const hourLabel = (hour: number): string => (hour === 12 ? 'noon' : hour > 12 ? `${hour - 12}` : `${hour}`)
 
+/*
+ * EACH LEVEL IS DEFINED BY WHAT IT WITHHOLDS, because a visitor arriving here does not yet
+ * have the vocabulary. "with limited details" is the product's own term and it named nothing:
+ * a stranger reading "1 with limited details" cannot tell which detail was kept. The demo
+ * renders exactly one field beyond the title, so the honest description of `limited` in THIS
+ * picture is the title without the place, which is what the DemoEvent.place comment above
+ * already says in code and what the caption never said out loud.
+ *
+ * These describe the grid rather than the feature. `limited` withholds notes and attendees in
+ * the real product too, and neither appears here, so naming them would be a claim about a
+ * picture that does not contain them.
+ */
 const LEVEL_WORD: Record<Level, string> = {
   full: 'in full',
-  limited: 'with limited details',
+  limited: 'with the title but not the place',
   busy: 'as busy only',
   hidden: 'hidden entirely',
 }

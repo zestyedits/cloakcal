@@ -1051,6 +1051,20 @@ and re-add.
   measure legibility, the 44px sweep passed because the heights were right, and `never scrolls
   sideways` passed because the squashing is precisely what stopped the page scrolling sideways.
   It took opening a screenshot.
+- **A FRAGMENT LINK SETS `location.hash` WHETHER OR NOT ANYTHING CARRIES THAT id, so asserting
+  the URL after clicking a skip link proves the CLICK and never the LANDING.** `a11y.spec.ts`
+  had a test called "a skip link that works" whose only outcome assertion was
+  `toHaveURL(/#main$/)` -- which passes on a page with no `#main` at all. It also ran on `/`
+  only, while the link itself lives in the ROOT layout and is therefore on the landing, the
+  three auth pages, every settings route, both legal pages and both fallbacks. The two that had
+  no `id="main"` were `not-found.tsx` and `error.tsx`: the bypass link was inert on exactly the
+  two pages a lost or broken-out user is most likely to be reading, and it had been that way
+  since the layout was written. **A global control needs a per-page assertion**, and the
+  assertion has to name the TARGET (`expect(getByRole('main')).toHaveAttribute('id', 'main')`),
+  not the side effect. Proved by deleting the id and watching the 404 case go red while `/`
+  stayed green. The copy was wrong too and in the same shape: it said "Skip to calendar" on
+  eleven routes, one of which is a calendar.
+
 - **`getByRole(role, { name })` matches the accessible name as a case-insensitive SUBSTRING.**
   A page-wide `/Switch to/` also matches the theme toggle's "Switch to light mode", which made
   four "this control must not exist here" assertions pass nothing. Scope a negative assertion

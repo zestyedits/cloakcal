@@ -27,7 +27,7 @@ export default function RouteError({
   reset: () => void
 }) {
   return (
-    <main className={styles.page}>
+    <main id="main" className={styles.page}>
       <div className={styles.card}>
         <CloakLockup size="sm" />
         <h1 className={styles.title}>Nothing was shown</h1>
