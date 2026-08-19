@@ -164,19 +164,24 @@ model made visible), people, visibility defaults, security, honest coming-soon r
 is no accordion: /settings is four doors and every control has a page — see the 2026-08-18
 pass below.)*
 
-**0031 IS IN GIT AND IS NOT APPLIED TO PRODUCTION.** It adds `restore_cloaked_event`,
-`uncancel_occurrence` and `purge_cloaked_event` — the undo the trash has been paying for
-since 0008. Code first, then push, then apply by hand: the reverse is what made 0028 a
-mistake worth not repeating. The client tolerates the gap on purpose — PostgREST answers an
-unknown function with `PGRST202`, which the undo strip and the Trash page each map to a
-plain "not available on this deployment yet" that also says the event is still in the trash.
+**Migrations 0001-0031 are ALL applied to production**, verified 2026-08-19 by
+`supabase migration list` against the live project: 31 remote versions, matching the 31 files
+in `packages/db/migrations/`.
 
-**Migrations 0001–0028 are ALL applied to production**, verified 2026-08-16 against the live
+**0029, 0030 AND 0031 were applied together on 2026-08-19, and 0030 had been outstanding since
+it was written.** This file said "0001-0028 are ALL applied" and separately flagged 0031; the
+two in between were described as if they existed and never as applied or unapplied, so the
+security fix in 0030 sat unapplied in production for days while the prose read as if the hole
+were closed. **The status of a security migration must never be inferable only from silence** -
+and the check is thirty seconds: `supabase link --project-ref bnjbgjzbddypqtoolunz` then
+`supabase migration list`, which prints local against remote side by side.
+
+**Superseded, kept for the dates it records.** Migrations 0001-0028 were verified 2026-08-16 against the live
 schema rather than assumed: `workspaces.holiday_region` exists, `availability_windows` exists
 with RLS enabled, `set_workspace_prefs` takes `p_holiday_region`, `set_availability` exists,
 and the security advisor returns zero lints. Anon sweep clean.
 
-**0029 AND 0030 HAVE NO RECORDED PRODUCTION STATUS, WHICH IS ITSELF THE PROBLEM.** This file
+**0029 AND 0030 HAD NO RECORDED PRODUCTION STATUS FOR DAYS, AND BOTH TURNED OUT TO BE UNAPPLIED** (fixed 2026-08-19; see the top of this section). The shape is the lesson: This file
 says 0001-0028 are applied and separately flags 0031 as not applied; the two in between are
 described as if they exist and never as applied or unapplied. 0030 is the fix for a real hole
 this file writes up at length: a signed-in user could `DELETE /rest/v1/workspaces?id=eq.<mine>`
@@ -759,7 +764,7 @@ for no gain, and opening a door without running it ships an unread assumption.
   with `.is('event_id', null)` matches what the Privacy page lists, and whether the
   `root_key_wraps` count survives its own policy. A wrong count here is silent and plausible,
   which is the family the contact-name ingest bug and the bytea spelling bug both belong to.
-- **Before the undo strip or the Trash page are trusted:** apply 0031, then run the
+- **Before the undo strip or the Trash page are trusted:** 0031 is applied now, so what remains is to run the
   throwaway-account recipe. Everything about them is verified in code and unverified on the
   wire. The fixture has no session, so `TrashSection` has never issued one of its queries
   against PostgREST — whether RLS scopes each list to the caller, whether `recurrence_
