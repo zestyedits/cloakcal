@@ -152,6 +152,28 @@ const CAPABILITIES: readonly Capability[] = [
     why: 'the retention promise a visible trash creates',
   },
   {
+    name: 'A contact page',
+    /*
+     * ADDED WITH THE PAGE, IN THE SAME CHANGE, WHICH IS THE ENTIRE LESSON OF THIS FILE.
+     *
+     * Both documents now send the reader to "our contact page" in four places, and one of
+     * those sentences is the privacy policy's answer to a statutory erasure request. That is
+     * the export sentence's exact position: a direction to a destination, sitting in the
+     * section a regulator reads. If the route is ever deleted or renamed, this goes red rather
+     * than leaving four dead pointers in the one document that cannot afford them.
+     */
+    claim: /contact page/i,
+    /*
+     * The route constant, which is what `PUBLIC_PATHS` and every link into the page actually
+     * use. Not the address — `SUPPORT_EMAIL` would be satisfied by the settings page's mailto,
+     * which existed before this work and is precisely the state the copy is no longer
+     * describing. Not a heading or a component name either: those are words, and words are
+     * what this file refuses to accept as evidence.
+     */
+    backing: /CONTACT_PATH/,
+    why: 'four sentences now point at a page, which is the shape the export claim failed in',
+  },
+  {
     name: 'Cancelling a subscription from Settings',
     claim: /cancel from Settings/i,
     backing: /cancelAtPeriodEnd|kind: 'cancel'/,
@@ -188,7 +210,16 @@ describe('pointing at a place implies something is there', () => {
      * reader where to go. A sentence naming a destination is the most damaging kind of false
      * claim, because the reader goes and looks.
      */
-    const directions = SENTENCES.filter((s) => /(?:from|in|on) Settings/i.test(s))
+    /*
+     * "our contact page" JOINED "from Settings" HERE, and it is the more dangerous of the two.
+     * A sentence sending somebody to Settings is read by an account holder who can see whether
+     * the thing is there. A sentence sending somebody to a contact page is read by a stranger
+     * with no account and, in the erasure paragraph, by a regulator — neither of whom has any
+     * other way to reach a human if the pointer is wrong.
+     */
+    const directions = SENTENCES.filter((s) =>
+      /(?:from|in|on) Settings|contact page/i.test(s),
+    )
     expect(directions.length).toBeGreaterThan(0)
 
     const unknown = directions.filter(

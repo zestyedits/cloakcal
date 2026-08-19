@@ -6,6 +6,7 @@ import {
   SIGNED_IN_ELSEWHERE,
   WEBHOOK_PATH,
 } from '../src/middleware'
+import { CONTACT_PATH } from '../src/lib/contact'
 
 /**
  * The two path lists, and the difference between them.
@@ -46,6 +47,30 @@ describe('middleware path lists', () => {
     // the generated `/opengraph-image` route each shipped once.
     expect(PUBLIC_PATHS).toContain('/privacy')
     expect(PUBLIC_PATHS).toContain('/terms')
+  })
+
+  it('serves the contact page to someone who cannot sign in', () => {
+    /*
+     * THE PEOPLE WHO MOST NEED THIS PAGE ARE THE ONES WITH NO WORKING SESSION: somebody locked
+     * out, a stranger deciding whether to hand over a password, a regulator asking how to
+     * reach a controller. Behind the guard, every one of them gets a sign-in form instead of
+     * an address — and for the locked-out user that is the sign-in form they just failed at.
+     *
+     * Same family as /auth/callback, /opengraph-image and the billing webhook, all three of
+     * which shipped broken, and all three invisible in dev and under Playwright because both
+     * take the dev-unlock early return before any redirect happens.
+     */
+    expect(PUBLIC_PATHS).toContain(CONTACT_PATH)
+    expect(CONTACT_PATH).toBe('/contact')
+    expect(guardFor(CONTACT_PATH, false)).toBe('allow')
+  })
+
+  it('does not bounce a signed-in user off the contact page', () => {
+    // An account holder writing about their own account is the likeliest sender there is, and
+    // deletion requests must come FROM a signed-in address. "Public" and "pointless once you
+    // have a session" are different questions; this is the /recover distinction again.
+    expect(SIGNED_IN_ELSEWHERE).not.toContain(CONTACT_PATH)
+    expect(guardFor(CONTACT_PATH, true)).toBe('allow')
   })
 
   it('does not bounce a signed-in user off the legal pages', () => {

@@ -224,6 +224,14 @@ export function Landing() {
         <Link className={styles.footerLink} href="/terms">
           Terms
         </Link>
+        {/* A prospective user with a question had nowhere to ask it: the address existed only
+            on a settings page behind a sign-up that is not open. This is the landing, so this
+            is where that person is standing. */}
+        {/* `prefetch={false}`: see `legal-footer.tsx`. This one matters most, because the
+            landing is the page with the widest audience and the lowest intent. */}
+        <Link className={styles.footerLink} href="/contact" prefetch={false}>
+          Contact
+        </Link>
       </footer>
     </div>
   )

@@ -63,6 +63,16 @@ export function SettingsHub({
         <p className={styles.legalRow}>
           <Link href="/privacy">Privacy policy</Link>
           <Link href="/terms">Terms of service</Link>
+          {/* "Contact us", not "Contact". There is no door named Contact on this page today,
+              but the substring rule that forced "Privacy policy" is a property of the whole
+              link list rather than of one collision, and a one-word link is the one most
+              likely to collide with a future door. */}
+          {/* `prefetch={false}` for the reason stated in full in `legal-footer.tsx`: a
+              footer link is in the viewport on load, so this would fetch a rarely-opened
+              route on every visit to the settings hub. */}
+          <Link href="/contact" prefetch={false}>
+            Contact us
+          </Link>
         </p>
       </main>
     </PageShell>

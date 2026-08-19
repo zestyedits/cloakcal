@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { LegalDocument } from '@/lib/legal'
 import { PageMasthead, PageShell } from './page-shell'
 import styles from './legal.module.css'
@@ -61,6 +62,24 @@ export function LegalScreen({ document }: { document: LegalDocument }) {
             )}
           </section>
         ))}
+
+        {/*
+          BOTH DOCUMENTS TELL THE READER TO EMAIL US, IN SEVERAL PLACES, AND UNTIL NOW NEITHER
+          PAGE CARRIED A ROUTE TO THE ADDRESS. The terms printed it inline once; the privacy
+          policy said "email us" three times and named nowhere. That is the export sentence's
+          family of defect in its milder form: a true instruction the reader cannot act on.
+
+          A link rather than the address itself, because the contact page carries the two
+          things the address alone does not — that we cannot recover a lost calendar, and that
+          a deletion request has to come from the account's own address.
+        */}
+        <p className={styles.contact}>
+          Anything here you want us to act on, or explain?{' '}
+          <Link href="/contact" prefetch={false}>
+            Contact us
+          </Link>
+          .
+        </p>
       </main>
     </PageShell>
   )
