@@ -113,16 +113,38 @@ function toRecords(page: RedactedPage): EncryptedFieldRecord[] {
   return records
 }
 
+/**
+ * THE DEFAULT, AS A MODULE CONSTANT, and that is load-bearing rather than tidy.
+ *
+ * `extraFields = []` as an inline default builds a NEW ARRAY ON EVERY RENDER, and this value
+ * is in the unlock effect's dependency array. So a caller that simply omitted the prop got:
+ * effect runs, `setStore` re-renders, fresh `[]`, effect runs again — an unbounded loop that
+ * costs nothing visible. The page paints, frames stay at 16ms and `evaluate` answers, because
+ * React keeps yielding; what it will not do is finish acknowledging an input event, so every
+ * real click on the page hung and only a synthetic `el.click()` worked.
+ *
+ * It took a bisect down to an empty screen to find, because nothing looks wrong. The JSDoc
+ * below has said "memoise in the caller" since this prop existed, and it was followed by four
+ * of the five call sites; the fifth omitted the prop entirely, which reads like the one case
+ * the instruction cannot be about. A stable default is what makes the instruction unnecessary
+ * for the empty case instead of merely unwritten.
+ */
+const NO_EXTRA_FIELDS: readonly ExtraSealedField[] = Object.freeze([])
+
 export function CloakProvider({
   page,
   email,
-  extraFields = [],
+  extraFields = NO_EXTRA_FIELDS,
   children,
 }: {
   page: RedactedPage
   /** Empty in tests and on the fixture path, where there is no signed-in user. */
   email?: string | undefined
-  /** Memoise in the caller: this participates in the effect's dependency array. */
+  /**
+   * Memoise in the caller: this participates in the effect's dependency array, so a fresh
+   * array identity per render is an infinite effect loop. Omitting it is safe — the default
+   * above is a single frozen instance.
+   */
   extraFields?: readonly ExtraSealedField[]
   children: ReactNode
 }) {

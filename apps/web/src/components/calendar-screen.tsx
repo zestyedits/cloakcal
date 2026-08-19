@@ -93,6 +93,14 @@ function groupByDay(occurrences: readonly RedactedOccurrence[]) {
   return [...days.entries()].sort(([a], [b]) => a.localeCompare(b))
 }
 
+/**
+ * A stable empty map, for the same reason `cloak-provider.tsx` has one: an inline `{}` default
+ * is a fresh identity on every render, and `holidays` is in the occurrence memo's dependency
+ * array. Here that only defeats the memo rather than looping an effect, so it costs a recompute
+ * per render and shows no symptom at all — which is why it survived until a sweep went looking.
+ */
+const NO_HOLIDAYS: HolidayMap = Object.freeze({})
+
 export function CalendarScreen({
   page,
   audiences,
@@ -113,7 +121,7 @@ export function CalendarScreen({
   defaultView = 'agenda',
   workspaceId = null,
   plan = 'free',
-  holidays = {},
+  holidays = NO_HOLIDAYS,
   holidayRegion = null,
   holidayPreference = 'auto',
   availability = {},
