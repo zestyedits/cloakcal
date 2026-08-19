@@ -154,6 +154,15 @@ export default defineConfig({
      * The cost is that a genuinely failing assertion takes 15s rather than 5s to report, which
      * only matters when something is already broken. `retries: 1` on CI stays as the backstop
      * for contention this cannot absorb.
+     *
+     * IT IS AN ALLOWANCE FOR THIS TEST SERVER AND NOTHING ELSE. It says a compile-on-demand dev
+     * server shared by eight workers may take that long; it says nothing whatever about what a
+     * navigation should cost a user, and it must never be cited as evidence that one is
+     * acceptable. Production is a built server with no compile step, and the thing that speaks
+     * to perceived navigation latency is `e2e/nav-feel.spec.ts` — which asserts the in-flight
+     * acknowledgement exists, deliberately holding a request open to create the window rather
+     * than waiting for a slow one. If real navigation ever needs a budget, it needs a measured
+     * one against `next start`, not this number.
      */
     timeout: 15_000,
     toHaveScreenshot: {

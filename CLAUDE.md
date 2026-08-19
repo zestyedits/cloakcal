@@ -668,6 +668,25 @@ true fact, and nothing else. Every control moved to a page.
 native iOS. **Payments are half-deferred now** — the plan surface and its schema exist, the
 processor does not; see the plan/pricing section below and ADR 0007. **Independent security review is a hard gate before public launch.**
 
+**Release prerequisites — things that must be checked against a REAL account before a door
+opens, not before a branch merges.** Everything here is verified in code and unverified on the
+wire, which is a normal state for this repo to be in and a bad one to forget it is in. The
+distinction matters both ways: holding a branch for a check nothing local can run stalls work
+for no gain, and opening a door without running it ships an unread assumption.
+
+- **Before `NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN=1`:** run `loadSettingsSummary` against a
+  throwaway account. The hub's four lines are pure-function tested for every branch, and their
+  six PostgREST head counts have never executed — the fixture has no session, so every door
+  reads "Demo" and the queries return nothing to compose. What a live pass would see and
+  nothing else can: whether RLS scopes each count to the caller, whether `visibility_rules`
+  with `.is('event_id', null)` matches what the Privacy page lists, and whether the
+  `root_key_wraps` count survives its own policy. A wrong count here is silent and plausible,
+  which is the family the contact-name ingest bug and the bytea spelling bug both belong to.
+- **Before `CLOAKCAL_BILLING=1`:** the four items under item 4 above, unchanged.
+- **Before public launch:** the independent security review, unchanged.
+
+Merging Settings does not wait on any of this. The branch is done; the door is not open.
+
 ## Deployment, as of 2026-08-16
 
 **Vercel auto-deploys `main`, and `cloakcal.com` is live.** The project had no Git integration
@@ -744,7 +763,11 @@ and re-add.
   passing in isolation. There are 34 bare `toHaveURL` assertions in `e2e/`, so fixing them one
   at a time is patching a class. **A failure in isolation means something different from a
   failure in the full suite** — check both before calling anything flaky, and if only the full
-  suite fails, suspect a budget rather than a bug.
+  suite fails, suspect a budget rather than a bug. **The 15s is an allowance for THIS test
+  server and is not a statement about production navigation**: it says a compile-on-demand dev
+  server shared by eight workers may take that long, and nothing about what a navigation should
+  cost a user. Perceived latency is `nav-feel.spec.ts`'s subject, and any real budget would have
+  to be measured against `next start`.
 - **AN INLINE `= []` PROP DEFAULT IN A DEPENDENCY ARRAY IS AN UNBOUNDED EFFECT LOOP, AND IT
   PRESENTS AS CLICKS DOING NOTHING.** `CloakProvider` had `extraFields = []`, and
   `extraFields` is in its unlock effect's deps — a new array identity every render, so the
