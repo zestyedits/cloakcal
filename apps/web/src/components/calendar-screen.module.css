@@ -190,6 +190,138 @@
      shrink, it widens the page. Wrapping is the degradation that cannot do that. */
 }
 
+/*
+ * THE PHONE'S TODAY CONTROL, WEARING THE DATE RANGE.
+ *
+ * `.today` below is desktop chrome — hidden under 640px, with nothing replacing it until this
+ * pass, so the commonest calendar action had no phone affordance at all. A new header row was
+ * the obvious fix and the wrong one: the audit's biggest finding is that the phone's prelude
+ * already costs 370px before the first event, and this control adds none of it. `min-height`
+ * matches the steppers either side, so the header does not grow by a pixel.
+ *
+ * IT INHERITS `.range`'S TWO PROHIBITIONS AND THEY ARE NOT NEGOTIABLE. No `min-width`, and no
+ * `white-space: nowrap` — read the note above `.range` for what each one cost. Both make this
+ * element's min-content the full date string, which propagates up the flex chain, and on a
+ * phone the layout viewport EXPANDS to fit rather than squeezing anything. `flex-wrap: wrap`
+ * plus `min-width: 0` is what lets the cue sit beside the date on a wide phone and drop below
+ * it on a narrow one, which is the degradation that cannot widen the page.
+ */
+.rangeToday {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  /* Takes the slack between the two steppers rather than shrinking to its own content and
+     then wrapping inside a box narrower than the cluster it sits in. */
+  flex: 1 1 auto;
+  gap: 2px var(--space-2);
+  min-height: var(--touch-min);
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  text-decoration: none;
+  text-align: center;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+/* Hover is desktop's, and this control is not shown there — but the guard is the house rule
+   now: an unguarded :hover applies on tap and sticks. */
+@media (hover: hover) {
+  .rangeToday:hover {
+    background: var(--surface-overlay);
+  }
+}
+
+.rangeToday:active {
+  transform: translateY(1px);
+}
+
+/* The date reads exactly as it does when it is inert text: same face, same size, same
+   letterspacing. Becoming a control must not restyle the thing the user is reading. */
+/*
+ * `--text-sm`, not `--text-base` like `.range`, and the reason is arithmetic rather than taste.
+ * This control exists only below 640px — it is `display: none` above — so these ARE the phone
+ * styles and need no media query. Between two 44px steppers, a lockup and a theme toggle there
+ * are about 146px left at 390px, and "May 18 - 24, 2026" set in Marcellus at 16px needs about
+ * 150 before the cue is added at all. At 16px the control took three lines and grew the header
+ * by 34px, which is the opposite of what this pass is for; at 14px the date holds one line and
+ * the cue takes a second, so the header grows by about 4px.
+ *
+ * Still the display face, still the same tracking: it must read as the same thing it was when
+ * it was inert text. Above --text-xs, so it is not in tokens.css's "never smaller for reading
+ * text" territory.
+ */
+.rangeTodayLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-numeral);
+}
+
+/*
+ * The verb the date cannot carry. Text rather than a glyph, because an arrow here would be
+ * indistinguishable from the two steppers it sits between; `--accent-text` rather than
+ * `--accent`, which is a shape colour and fails as ink.
+ */
+.rangeTodayCue {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  color: var(--accent-text);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+}
+
+/*
+ * NO `display: none` PAIR HERE, and that is the fix rather than an omission. This started as
+ * "render both, let CSS choose", which is the house pattern for the nav and the view switch --
+ * and it was wrong for this one, because the two shapes share the heading TEXT. `display: none`
+ * keeps a duplicate out of the accessibility tree but not out of the document, so `getByText`
+ * saw two nodes and ten e2e assertions went red on strict mode, desktop included.
+ *
+ * `calendar-screen.tsx` picks the shape from a `matchMedia` read after hydration, so the
+ * heading is in the DOM exactly once at any width.
+ */
+
+/*
+ * The phone's Settings door. Hidden from 900px, where the sidebar's account row -- which also
+ * carries the email and the plan badge -- takes over. Icon-only is acceptable HERE and nowhere
+ * else in this pass: the link carries `aria-label="Settings"`, a gear is the single most
+ * conventional icon in software, and the header has no room for a word beside a date range
+ * that already wraps. The Today cue is text precisely because "jump to today" has no such
+ * icon.
+ */
+.headerSettings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .headerSettings:hover {
+    background: var(--surface-overlay);
+    color: var(--text-primary);
+  }
+}
+
+.headerSettings:active {
+  transform: translateY(1px);
+}
+
+@media (min-width: 900px) {
+  .headerSettings {
+    display: none;
+  }
+}
+
 /* Week stepping. Thumb-sized on mobile because it is the most-used control on the screen. */
 .weekNav {
   display: flex;
@@ -292,6 +424,29 @@
 .sidebar .calendarAdd,
 .sidebar .holidayRow {
   display: none;
+}
+
+/*
+ * THE PRELUDE CUT. Same rule as the block above, applied to the two things that were costing
+ * the most: the "Make <view> my default view" row and the account cluster (Settings + Sign
+ * out). Both are stacked ABOVE the calendar on a phone, and the audit measured the result --
+ * the first event sat 370px down an 844px screen, 449px with the offline banner up.
+ *
+ * NEITHER IS MERELY HIDDEN. Settings moved into the header as `.headerSettings`, a labelled
+ * 44px link on every calendar screen; Sign out already lives on /settings/security. The rule
+ * this pass is written against is that a control hidden below a breakpoint needs a stated
+ * replacement, which is precisely what the Today button did not have.
+ */
+.sidebar .desktopOnlyRow,
+.sidebar .accountCluster {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .sidebar .desktopOnlyRow,
+  .sidebar .accountCluster {
+    display: revert;
+  }
 }
 
 .main {
@@ -814,12 +969,34 @@
 /* View As — a trust surface, so it reads as part of the product, not a debug toggle.
    The catch-light is always layered with a real shadow (tokens.css rule). */
 .viewAs {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
   padding: var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-sm), var(--edge-highlight);
+  /*
+   * COMPRESSED, NOT DEMOTED. View As is the product's trust surface and stays first in the
+   * strip and stays a card -- what changed is that it stopped spending vertical space it was
+   * not using. The label rides beside the select instead of above it, and the gap below the
+   * card is --space-4 rather than --space-6.
+   *
+   * This matters because on a phone the card sits ABOVE the calendar, so every pixel here is
+   * a pixel of prelude. Measured at 390x844: the first event was 413px down before this pass.
+   */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+@media (min-width: 900px) {
+  /* The desktop sidebar is a column with room to spare, so the label goes back on top where
+     it reads as a section heading rather than a prefix. */
+  .viewAs {
+    display: block;
+    margin-bottom: var(--space-6);
+  }
 }
 
 /* Accent as a UI shape on the surface — the pair CONTRAST_PAIRS already pins at 3:1
@@ -836,11 +1013,24 @@
   letter-spacing: var(--tracking-engraved-caps-wide);
   text-transform: uppercase;
   color: var(--text-tertiary);
-  margin-bottom: var(--space-2);
+  /* No bottom margin on a phone: the label is a grid sibling of the select, not a heading
+     above it. Restored inside the 900px block below, where it is a heading again. */
+}
+
+@media (min-width: 900px) {
+  .viewAsLabel {
+    margin-bottom: var(--space-2);
+  }
+
+  .viewAsBaseline {
+    margin-top: var(--space-2);
+  }
 }
 
 .viewAsSelect {
   width: 100%;
+  /* The baseline line below spans both grid columns; the select owns the second one. */
+  grid-column: 2;
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
@@ -863,7 +1053,10 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
-  margin: var(--space-2) 0 0;
+  /* Spans both columns of the phone card's grid; on desktop `.viewAs` is `display: block`
+     again and the property is inert. */
+  grid-column: 1 / -1;
+  margin: 0;
   font-size: var(--text-xs);
   color: var(--text-secondary);
 }

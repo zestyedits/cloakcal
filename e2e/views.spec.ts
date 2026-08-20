@@ -95,9 +95,22 @@ test('the audience survives day and month steppers', async ({ page }) => {
  * for the agenda omitted its own view and the server read the omission as "month".
  */
 
+/*
+ * DESKTOP CHROME NOW, and the skip is a design decision rather than a coverage gap.
+ *
+ * The "Make <view> my default view" row used to sit in the phone's sidebar strip, stacked
+ * ABOVE the calendar — a preference occupying 44px of the most expensive space on the screen,
+ * where the audit measured the first event landing 413px down an 844px phone. A preference
+ * does not outrank the calendar, so on phones it moved to where preferences live: the Default
+ * view select in `settings/appearance-section.tsx`, reachable from the header's Settings link.
+ *
+ * The desktop bookmark in the header's view track is unaffected and is what these two cover.
+ */
 test('a view can be made the default from the calendar, and the calendar opens on it', async ({
   page,
+  isMobile,
 }) => {
+  test.skip(isMobile, 'the phone sets a default view in Settings; the bookmark is desktop chrome')
   await page.goto('/?view=month')
   await page
     .getByRole('button', { name: 'Make Month my default view' })
@@ -115,7 +128,8 @@ test('a view can be made the default from the calendar, and the calendar opens o
   await expect(page.getByLabel('Change month')).toBeVisible()
 })
 
-test('agenda is still reachable once another view is the default', async ({ page }) => {
+test('agenda is still reachable once another view is the default', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'the phone sets a default view in Settings; the bookmark is desktop chrome')
   await page.goto('/?view=month')
   await page
     .getByRole('button', { name: 'Make Month my default view' })

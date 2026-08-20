@@ -161,3 +161,64 @@ raise a real keyboard. The geometry makes it near-certain; a physical device set
 3. **"Half the screen is chrome" is promoted.** It is the most-felt problem on the phone and it
    was not in the code-level list at all, because no grep finds "the sidebar is stacked above
    the calendar and costs 226px".
+
+
+---
+
+## Stage A′ — the prelude, measured before and after
+
+The audit's biggest everyday finding was that the phone spends its first screen on chrome. The
+fix was deciding what does not belong above a calendar, not shaving padding.
+
+**Measured at 390×844, same selector both times, by toggling the new rules off in the live
+page rather than comparing against an older run:**
+
+| | Header | Sidebar strip | First event |
+| --- | --- | --- | --- |
+| Before | 69px | 226px | **413px** |
+| After | 89px | 132px | **339px** |
+| Offline, before | — | — | 452px |
+| Offline, after | — | — | 418px |
+
+**74px, about 18%.** Two full events now sit above the fold where one barely did.
+
+What moved, and where each thing went — nothing was merely hidden:
+
+- **"Make <view> my default view"** left the shell. It is a preference in the most expensive
+  44px on the screen, and `settings/appearance-section.tsx` already owned the phone route to
+  it via `/settings/calendar`. Verified before removing, not assumed.
+- **The account cluster** (Settings + Sign out) left the strip. Settings became a labelled 44px
+  link in the header; **Sign out was already on `/settings/security`**, which is why no second
+  control was added for it.
+- **Today came back.** It had vanished under 640px with nothing in its place — the exact rule
+  the Settings move is written against. The date range is now the control: same visible label,
+  a 44px target, `aria-label="Jump to today, May 18 – 24, 2026"`, and a visible **Today** cue
+  rather than an icon-only secret. When already on today it is plain text again, because a
+  control that navigates to where you already are teaches that the header lies.
+  `lib/today.ts` decides that, and `isShowingToday` is unit-tested across all four views and
+  both week-start settings.
+- **View As was compressed, not demoted.** Its label rides beside the select instead of above
+  it, and the gap below the card tightened. It is still first, still a card, still the accent
+  border when previewing.
+
+**The cost, stated rather than buried: the header grew 20px** (69 → 89) because the Settings
+link takes 44px and pushes the date onto two lines at 390px. Three of the four views are
+unaffected — week, agenda and month keep a 69px header; day and the narrowest phones wrap.
+Dropping the theme toggle from the phone header would recover the 44px and put the header back
+to 69px, which would take the first event to roughly **319px**. That is a product decision
+about whether one-tap theme switching is worth 20px of every calendar screen, and it is not
+made here.
+
+### Two corrections this stage produced
+
+**The gear icon was a sun.** Drawn as a circle with eight radiating spokes, at 18px, directly
+beside the theme toggle — which is a sun. Two near-identical glyphs side by side, one changing
+the theme and one opening Settings. Both had correct accessible names, so axe was silent and
+only a screenshot showed it. It is three sliders now.
+
+**"Render both, let CSS choose" was the wrong pattern here**, and it cost ten e2e failures on
+desktop as well as mobile. `display: none` keeps a duplicate out of the accessibility tree but
+not out of the document, and the two shapes shared the heading *text* — so `getByText` resolved
+two nodes and every heading assertion hit strict mode. React picks the shape from a `matchMedia`
+read after hydration now, so the heading is in the DOM exactly once at any width. The house
+pattern is right for the nav and the view switch, where the two shapes share no text.

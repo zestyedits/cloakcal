@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } fr
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { todayQuery, viewQuery } from '@/lib/calendar-links'
+import { isShowingToday } from '@/lib/today'
 import { HEADER_VIEWS, NAV_LEADING, NAV_TRAILING, VIEW_LABELS } from '@/lib/calendar-views'
 import { wallTimeLabel } from '@/lib/wall-time'
 import { savedDateLabel, type DeletedEvent, type SavedEvent } from '@/lib/saved-event'
@@ -136,6 +137,35 @@ const NO_HOLIDAYS: HolidayMap = Object.freeze({})
  * the other side.
  */
 const CLOAK_DOOR_LABEL = 'Cloak, who can see what'
+
+/**
+ * SLIDERS, NOT A GEAR, AND THAT IS A CORRECTION RATHER THAN A PREFERENCE.
+ *
+ * The first draft drew the conventional cog: a small circle with eight radiating spokes. At
+ * 18px that is a SUN — and it rendered directly beside the theme toggle, which is a sun. Two
+ * near-identical glyphs, side by side, one of which changes the theme and one of which opens
+ * Settings. A screenshot caught it; nothing else would have, because both have correct
+ * accessible names and axe measures names rather than resemblance.
+ *
+ * Three sliders read as "controls" at any size and share no silhouette with anything else in
+ * this header. Drawn rather than imported: an icon package for one shape is a licence and a
+ * bundle for a dozen paths nobody uses.
+ *
+ * `aria-hidden` and `focusable="false"` because the link around it carries the name;
+ * `theme-toggle.tsx` sets both for the same reason.
+ */
+function SettingsMark() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+        <path d="M3 6h4M11 6h6M3 10h10M17 10h0M3 14h2M9 14h8" />
+        <circle cx="9" cy="6" r="1.7" />
+        <circle cx="15" cy="10" r="1.7" />
+        <circle cx="7" cy="14" r="1.7" />
+      </g>
+    </svg>
+  )
+}
 
 export function CalendarScreen({
   page,
@@ -388,6 +418,58 @@ export function CalendarScreen({
 
   const stepUnit = view === 'day' ? 'day' : view === 'month' ? 'month' : 'week'
 
+  const todayHref: WeekLink = { pathname: '/', query: todayQuery(view, page.audience) }
+
+  /**
+   * "Today" as the workspace sees it, read AFTER hydration and not during render.
+   *
+   * `WeekStrip` and `MiniMonth` both call `new Date()` inside a `useMemo`, and they get away
+   * with it because a disagreement between the server's clock and the browser's changes only a
+   * `data-today` attribute on a cell. Here it decides whether a `<Link>` EXISTS, and a
+   * server/client difference in element presence is the thing React actually errors on. The
+   * window is one render either side of local midnight, which is small and not zero.
+   *
+   * So it starts null, `onToday` reads null as "yes", and the control is absent on the server
+   * and on the first client frame. It fails to the state that shows no button, which is the
+   * right direction: a missing Today for one frame costs nothing, a Today that navigates
+   * nowhere teaches that the header lies.
+   */
+  /**
+   * The phone breakpoint, read after hydration for the same reason `todayLocal` is.
+   *
+   * The first draft rendered BOTH shapes and let CSS pick. `display: none` does remove a
+   * subtree from the accessibility tree, so that was not two Today controls for a screen
+   * reader — but it was two copies of the heading TEXT in the DOM, and `getByText` does not
+   * filter by visibility. Ten e2e assertions went red on a strict-mode violation, on desktop
+   * as well as mobile, which is the tell: a duplicate that only the CSS resolves is still a
+   * duplicate to anything reading the document.
+   *
+   * So React chooses and the heading is rendered once. 639px because `.today` — the desktop
+   * button this replaces — is restored at 640px.
+   */
+  const [isPhone, setIsPhone] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)')
+    const sync = () => setIsPhone(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+
+  const [todayLocal, setTodayLocal] = useState<string | null>(null)
+  useEffect(() => {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    setTodayLocal(fmt.format(new Date()))
+  }, [timezone])
+
+  const onToday =
+    todayLocal === null || isShowingToday({ view, anchorDate, todayLocal, weekStart })
+
   /** One compose gate for every trigger: a date to open on, and the owner's own eyes. */
   const canCompose = composeDate !== undefined && page.audience === 'owner'
 
@@ -563,9 +645,52 @@ export function CalendarScreen({
                 ‹
                 <NavPendingMark />
               </Link>
-              <p className={styles.range} aria-live="polite">
-                {heading}
-              </p>
+              {/*
+                THE RANGE IS THE TODAY CONTROL ON A PHONE.
+                ---------------------------------------------------------------------------
+                `.today` below is desktop chrome: it is hidden under 640px and, until this
+                pass, nothing replaced it — so the single most common calendar action had no
+                phone affordance at all. Adding a row to the header would have been the easy
+                answer and the wrong one; the audit's biggest finding is that the phone's
+                prelude is already 370px tall before the first event.
+
+                So the heading does the job. It already names where you are, it is already
+                between the two steppers, and it is already the thing a lost user looks at.
+                It becomes a real 44px control that says where it goes, with a visible
+                "Today" cue beside it -- never an icon-only secret, and never a bare tap
+                target that looks like text.
+
+                WHEN ALREADY ON TODAY IT IS TEXT AGAIN. A control that navigates to where you
+                already are teaches that the control does nothing, which is worse than not
+                having it. `isShowingToday` is a tested pure function for that reason.
+
+                BOTH ARE IN THE DOM AND CSS CHOOSES. `display: none` removes a subtree from
+                the accessibility tree, so the hidden one is not a second Today control for a
+                screen reader -- the same mechanism the five-slot nav and the header view
+                switch already rely on.
+              */}
+              {!(isPhone && !onToday) && (
+                <p className={styles.range} aria-live="polite">
+                  {heading}
+                </p>
+              )}
+              {isPhone && !onToday && (
+                <Link
+                  className={styles.rangeToday}
+                  href={todayHref}
+                  aria-label={`Jump to today, ${heading}`}
+                  aria-keyshortcuts="t"
+                  aria-live="polite"
+                  onMouseEnter={primeLink(todayHref)}
+                  onFocus={primeLink(todayHref)}
+                >
+                  <span className={styles.rangeTodayLabel}>{heading}</span>
+                  {/* The cue carries the verb the heading cannot. Text, not a glyph: an arrow
+                      here would be indistinguishable from the steppers either side of it. */}
+                  <span className={styles.rangeTodayCue}>Today</span>
+                  <NavPendingMark />
+                </Link>
+              )}
               <Link
                 className={styles.weekStep}
                 href={nextHref}
@@ -674,6 +799,31 @@ export function CalendarScreen({
               </button>
             </div>
 
+            {/*
+              THE PHONE'S SETTINGS DOOR, AND IT EXISTS BEFORE THE SIDEBAR ROW IS HIDDEN.
+              ---------------------------------------------------------------------------
+              The stacked sidebar strip carried Settings and Sign out above the calendar and
+              cost 226px of an 844px screen. Removing it is most of the prelude fix -- but
+              hiding a control is only allowed if something visible replaces it, which is the
+              rule the Today button broke by vanishing under 640px with nothing in its place.
+
+              So this lands first. A real 44px link, labelled, in the one piece of chrome that
+              is on every calendar screen. Hidden from 900px, where the sidebar shows the
+              richer row with the account email and plan badge on it.
+
+              Sign out is NOT duplicated here: it already lives on /settings/security, so the
+              route out survives the strip's removal without a second control in the chrome.
+            */}
+            <Link
+              className={styles.headerSettings}
+              href="/settings"
+              aria-label="Settings"
+              onMouseEnter={() => router.prefetch('/settings')}
+              onFocus={() => router.prefetch('/settings')}
+            >
+              <SettingsMark />
+              <NavPendingMark />
+            </Link>
             <ThemeToggle />
           </div>
         </header>
@@ -708,13 +858,25 @@ export function CalendarScreen({
               The bottom bar has five fixed slots and no room for a sixth, and a preference
               does not outrank a view, so on small screens it rides in the sidebar strip —
               after the View As card, which is a trust surface and leads. */}
+          {/*
+            NOT ON A PHONE ANY MORE. This was a full-width row saying "Make Week my default
+            view", sitting between the View As card and the calendar — a PREFERENCE, in the
+            most expensive 44px on the screen. Measured: the first event was 370px down an
+            844px phone before this pass, and rows like this one are why.
+
+            A preference belongs in Settings, which owns the phone route to it. The desktop
+            segment variant is unaffected: it lives in the header's view track from 900px,
+            where a bookmark beside the views it bookmarks costs nothing.
+          */}
           {page.audience === 'owner' && (
-            <DefaultViewControl
-              variant="row"
-              current={view}
-              defaultView={defaultView}
-              target={{ demo: demoMode, workspaceId }}
-            />
+            <div className={styles.desktopOnlyRow}>
+              <DefaultViewControl
+                variant="row"
+                current={view}
+                defaultView={defaultView}
+                target={{ demo: demoMode, workspaceId }}
+              />
+            </div>
           )}
 
           {/* People sits between the audience tools above it and the calendars below: it
