@@ -95,3 +95,29 @@ export async function expectAudience(
   }
   await expect(page.getByRole('combobox', { name: /viewing as/i })).not.toHaveValue('owner', budget)
 }
+
+/**
+ * Switch the previewed audience, through whichever control the viewport has.
+ *
+ * Desktop keeps the sidebar `<select>`. The phone's 100px labelled card became a 44px row in
+ * the 2026-08-20 mobile pass, and its picker is the Cloak sheet -- which shows each
+ * audience's level and the engine's own sentence, where the select showed a list of names.
+ *
+ * IMPORTANT FOR cloak-transition.spec.ts: the sheet's row is the thing that starts the
+ * navigation, so a test holding the next request must arm the route BEFORE this is called,
+ * exactly as it did around `selectOption`. Opening the sheet is not a navigation, so the
+ * open is safe to do inside the held window.
+ */
+export async function switchAudience(
+  page: Page,
+  isMobile: boolean,
+  audienceId: string,
+  name: RegExp,
+): Promise<void> {
+  if (!isMobile) {
+    await page.getByLabel('Viewing as').selectOption(audienceId)
+    return
+  }
+  await cloakDoor(page).click()
+  await page.getByRole('dialog').getByRole('button', { name }).click()
+}

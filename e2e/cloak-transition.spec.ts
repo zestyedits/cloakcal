@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { switchAudience } from './sheet'
 
 /**
  * The cloak — what the calendar does while an audience change is in flight.
@@ -26,6 +27,12 @@ import { expect, test, type Page } from '@playwright/test'
 
 /** The demo's own audiences; `dev-fixture.ts` is where these ids come from. */
 const RESTRICTED = 'contact:alex'
+/*
+ * The same audience, named. The phone has no `<select>` since the mobile pass -- its picker
+ * is the Cloak sheet, whose rows are named "View as {name}" -- so the switch needs the id
+ * for one device and the name for the other. `switchAudience` takes both and picks.
+ */
+const RESTRICTED_NAME = /^View as .*alex/i
 
 /**
  * Hold the next document navigation until `release()` is called.
@@ -50,12 +57,12 @@ async function holdNextNavigation(page: Page) {
   return { release: () => release() }
 }
 
-test('narrowing covers the calendar, opaquely, before the new frame arrives', async ({ page }) => {
+test('narrowing covers the calendar, opaquely, before the new frame arrives', async ({ page, isMobile }) => {
   await page.goto('/')
   await expect(page.getByRole('main')).toBeVisible()
 
   const { release } = await holdNextNavigation(page)
-  await page.getByLabel('Viewing as').selectOption(RESTRICTED)
+  await switchAudience(page, isMobile, RESTRICTED, RESTRICTED_NAME)
 
   // The plate is on screen while the server is still thinking.
   const cover = page.getByText(/Changing view to/i)
@@ -85,13 +92,13 @@ test('narrowing covers the calendar, opaquely, before the new frame arrives', as
   await expect(page.getByText(/Previewing as/i)).toBeVisible({ timeout: 15_000 })
 })
 
-test('the stale calendar leaves the accessibility tree at the same instant', async ({ page }) => {
+test('the stale calendar leaves the accessibility tree at the same instant', async ({ page, isMobile }) => {
   await page.goto('/')
   // Something owner-level is genuinely on screen first, so the assertion below is not vacuous.
   await expect(page.getByRole('main')).toBeVisible()
 
   const { release } = await holdNextNavigation(page)
-  await page.getByLabel('Viewing as').selectOption(RESTRICTED)
+  await switchAudience(page, isMobile, RESTRICTED, RESTRICTED_NAME)
   await expect(page.getByText(/Changing view to/i)).toBeVisible()
 
   /*
@@ -132,13 +139,13 @@ test('widening retains the smaller view instead of blanking it', async ({ page }
   await expect(page.getByText(/Previewing as/i)).toHaveCount(0, { timeout: 15_000 })
 })
 
-test('reduced motion keeps the cover and loses only the wipe', async ({ page }) => {
+test('reduced motion keeps the cover and loses only the wipe', async ({ page, isMobile }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expect(page.getByRole('main')).toBeVisible()
 
   const { release } = await holdNextNavigation(page)
-  await page.getByLabel('Viewing as').selectOption(RESTRICTED)
+  await switchAudience(page, isMobile, RESTRICTED, RESTRICTED_NAME)
 
   /*
    * The correctness half is not an animation. Reduced motion collapses --duration-cloak to
@@ -161,12 +168,12 @@ test('reduced motion keeps the cover and loses only the wipe', async ({ page }) 
   await expect(page.getByText(/Previewing as/i)).toBeVisible({ timeout: 15_000 })
 })
 
-test('the announcement names the audience and is a status, not an alert', async ({ page }) => {
+test('the announcement names the audience and is a status, not an alert', async ({ page, isMobile }) => {
   await page.goto('/')
   await expect(page.getByRole('main')).toBeVisible()
 
   const { release } = await holdNextNavigation(page)
-  await page.getByLabel('Viewing as').selectOption(RESTRICTED)
+  await switchAudience(page, isMobile, RESTRICTED, RESTRICTED_NAME)
 
   // `status`, never `alert`: a navigation the user just asked for is not an interruption.
   const status = page.getByRole('status').filter({ hasText: /Changing view to/i })

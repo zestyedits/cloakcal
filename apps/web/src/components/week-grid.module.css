@@ -453,6 +453,24 @@
  * reason the FAB keeps a name it never prints.
  */
 
+/*
+ * THE VISIBILITY DOOR IS NOT CLIPPED, AND THAT IS A SCOPE DECISION RATHER THAN AN OVERSIGHT.
+ *
+ * `.privacyNoteButton` was in these rules for one run and it removed the owner's per-event
+ * visibility control from every block too short to hold its label -- on DESKTOP as well,
+ * where a 48px block lost a door it had always had. Four e2e tests caught it, two of them
+ * on desktop.
+ *
+ * A clipped 1x1 element is not hit-testable, so clipping a control DELETES it. This pass is
+ * about text sliced through the middle of its glyphs; a control that does not fit is a
+ * different question, already documented above `.blockTrigger` (44px is impossible inside a
+ * 28px block, and the agenda offers the same action at full size under WCAG 2.5.8's
+ * equivalence clause), and answering it is not this change's job.
+ *
+ * So the button keeps exactly the behaviour it had: laid out last, clipped by the block's
+ * own `overflow: hidden`, still reachable. `.privacyNote` -- the non-interactive span that
+ * says the same thing when there is no door -- is clipped like every other line.
+ */
 /* Phone set. Scoped, because the width cut-off below is a judgement about a 90px
    column and NOT a correctness rule -- left unscoped it clipped every 40px-wide
    laned block on a 1280px desktop, which is how this pass nearly shipped a
@@ -463,8 +481,7 @@
   @container (max-height: 13px) {
     .eventTime,
     .eventTitle,
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -481,8 +498,7 @@
      the hour gutter is the label, so the time is the line that is recoverable elsewhere. */
   @container (max-height: 30px) {
     .eventTime,
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -497,8 +513,7 @@
 
   /* Two lines: time and title, no second-line note. */
   @container (max-height: 46px) {
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -515,8 +530,7 @@
   @container (max-width: 52px) {
     .eventTime,
     .eventTitle,
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -534,8 +548,7 @@
   @container (max-height: 16px) {
     .eventTime,
     .eventTitle,
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -550,8 +563,7 @@
 
   @container (max-height: 35px) {
     .eventTime,
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -565,8 +577,7 @@
   }
 
   @container (max-height: 54px) {
-    .privacyNote,
-    .privacyNoteButton {
+    .privacyNote {
       position: absolute;
       width: 1px;
       height: 1px;

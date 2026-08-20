@@ -68,14 +68,35 @@ test('a restricted audience gets no doors at all', async ({ page }) => {
   }
 })
 
-test('the month view stays display-only', async ({ page }) => {
+test('the month view stays display-only', async ({ page, isMobile }) => {
   // Pins the recorded decision in month-grid.tsx: entries are spans inside the cell
   // link, and the doors live one click away in the day view.
   await page.goto('/?view=month')
-  await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByRole('button', { name: /^Edit the event at/ })).toHaveCount(0)
+  // The phone's cells carry marks rather than titles, so the wait is for the grid itself.
+  if (isMobile) {
+    await expect(page.getByRole('link', { name: /^Show 2026-05-19.*event/ })).toBeVisible({
+      timeout: 15_000,
+    })
+  } else {
+    await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
+  }
+  /*
+   * SCOPED TO THE GRID, and the scoping is the point rather than a way round a red test.
+   *
+   * The decision being pinned is about the CELL: an interactive entry inside the cell's own
+   * <Link> is interactive-inside-interactive, so entries are spans and the doors live one
+   * click away. That is unchanged.
+   *
+   * What changed is that the phone's month view now carries the selected day's agenda under
+   * the grid, and agenda rows have always had both doors. A page-wide count of zero would
+   * therefore be asserting that the month page offers no way to edit anything, which was
+   * never the decision and is not desirable -- the whole point of the inline agenda is that
+   * the words and the controls live where there is room for them.
+   */
+  const grid = page.locator('[class*="month-grid_grid"]')
+  await expect(grid.getByRole('button', { name: /^Edit the event at/ })).toHaveCount(0)
   await expect(
-    page.getByRole('button', { name: /^Change who can see the event at/ }),
+    grid.getByRole('button', { name: /^Change who can see the event at/ }),
   ).toHaveCount(0)
 })
 

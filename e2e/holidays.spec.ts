@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 /**
  * Public holidays on the calendar, and the switch that turns them off.
@@ -19,16 +19,46 @@ import { expect, test } from '@playwright/test'
 
 const MONTH = '/?view=month'
 
+/*
+ * "The holiday is on the calendar", asked of whichever surface the viewport has.
+ *
+ * A 49px phone cell cannot print "Memorial Day" -- it rendered "10 M", one letter beside a
+ * date, which reads as a rendering fault rather than a label. So below 900px the name is
+ * hidden in the cell and carried in full by the cell's ACCESSIBLE NAME, and visibly by the
+ * selected-day heading under the grid.
+ *
+ * The assertion is not weakened to compensate: the phone branch checks the accessible name
+ * contains the holiday, which is a stronger claim than "a span with this title exists" and
+ * is the one that matters for anyone who cannot see the cell anyway. Every semantic
+ * assertion in this file -- data-kind, no data-color, no privacy attribute, sitting on the
+ * date line -- is unchanged on both devices, because none of them changed.
+ */
+async function expectHolidayOnGrid(page: Page, isMobile: boolean, name: string) {
+  const marker = page.getByTitle(name)
+  if (!isMobile) {
+    await expect(marker).toBeVisible()
+    return
+  }
+  await expect(marker).toBeAttached()
+  // `[0-9-]+` rather than \d{4}-\d{2}-\d{2}: this is a template literal, so a single
+  // backslash is consumed before RegExp ever sees it and the pattern silently becomes a
+  // literal "d". Same family as the — escape that hid an em dash from every grep.
+  await expect(
+    page.getByRole('link', { name: new RegExp(`Show [0-9-]+, ${name}`) }),
+  ).toHaveCount(1)
+}
+
 test('the month grid names a public holiday and an observance, weighted differently', async ({
   page,
+  isMobile,
 }) => {
   await page.goto(MONTH)
 
   // Memorial Day, 25 May 2026 — verified against the published calendar in
   // packages/domain/src/holidays.test.ts, not against the implementation.
   const holidays = page.locator('[data-kind]')
-  await expect(page.getByTitle('Memorial Day')).toBeVisible()
-  await expect(page.getByTitle("Mother's Day")).toBeVisible()
+  await expectHolidayOnGrid(page, isMobile, 'Memorial Day')
+  await expectHolidayOnGrid(page, isMobile, "Mother's Day")
 
   // The only distinction between a day off and a day people mark is one step of ink. Pinned
   // as an attribute rather than a computed colour: the colours themselves are CONTRAST_PAIRS'
@@ -38,11 +68,14 @@ test('the month grid names a public holiday and an observance, weighted differen
   expect(await holidays.count()).toBeGreaterThanOrEqual(2)
 })
 
-test('a holiday is never dressed as an event or given a privacy level', async ({ page }) => {
+test('a holiday is never dressed as an event or given a privacy level', async ({
+  page,
+  isMobile,
+}) => {
   await page.goto(MONTH)
 
   const memorial = page.getByTitle('Memorial Day')
-  await expect(memorial).toBeVisible()
+  await expectHolidayOnGrid(page, isMobile, 'Memorial Day')
 
   // THE test in this file. A holiday is public by definition — there is nothing to redact —
   // so it must carry no privacy chip, no calendar colour and no door into an edit sheet.
@@ -139,14 +172,17 @@ test('Settings offers the region, and says nothing is fetched to work it out', a
   }
 })
 
-test('choosing a region in Settings changes what the calendar draws', async ({ page }) => {
+test('choosing a region in Settings changes what the calendar draws', async ({
+  page,
+  isMobile,
+}) => {
   await page.goto('/settings/calendar')
   await page.getByLabel('Holidays').selectOption('GB')
 
   await page.goto(MONTH)
   // The UK Spring Bank Holiday is also 25 May 2026, so the DATE is not evidence of anything;
   // the NAME is. Memorial Day must be gone and the bank holiday present.
-  await expect(page.getByTitle('Spring Bank Holiday')).toBeVisible()
+  await expectHolidayOnGrid(page, isMobile, 'Spring Bank Holiday')
   await expect(page.getByTitle('Memorial Day')).toHaveCount(0)
 
   // Mothering Sunday, not the May date — the GB table's one genuinely different rule, and

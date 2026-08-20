@@ -11,21 +11,45 @@ import { expect, test } from '@playwright/test'
 
 const CANARIES = ['Legal Call', 'Bramblewick handover', 'Quarrystone Room']
 
-test('the day view shows one day of the demo week with its heading', async ({ page }) => {
+test('the day view shows one day of the demo week with its heading', async ({
+  page,
+  isMobile,
+}) => {
   await page.goto('/?view=day&date=2026-05-19')
-  await expect(page.getByText('Tuesday, May 19, 2026')).toBeVisible()
+  /*
+   * THE PHONE'S HEADING IS THE MONTH, AND THAT IS THE ONE-DATE RULE RATHER THAN A LOSS.
+   *
+   * "Tuesday, May 19, 2026" is 25 characters into a ~102px box: it wrapped to three lines
+   * and took the header from 69px to 97px on the one view that needs the room most. The full
+   * date is directly below in the week strip, ringed, as a link -- so the phone shows the
+   * SCOPE here and the DATE there, and the day appears exactly once on the screen.
+   */
+  await expect(
+    page.getByText(isMobile ? 'May 2026' : 'Tuesday, May 19, 2026').first(),
+  ).toBeVisible()
+  if (isMobile) {
+    // The date is still on screen, and still the thing that carries it.
+    const strip = page.getByRole('navigation', { name: 'Jump to a day' })
+    await expect(strip.locator('a[aria-current="page"]')).toHaveText(/19/)
+  }
   // The daily standup lands on every weekday, so it must be here...
   await expect(page.getByText('Team Standup')).toBeVisible({ timeout: 15_000 })
   // ...and a Wednesday-only event must NOT be.
   await expect(page.getByText('Legal Call')).toHaveCount(0)
 })
 
-test('the day steppers move one day and keep the view', async ({ page }) => {
+test('the day steppers move one day and keep the view', async ({ page, isMobile }) => {
   await page.goto('/?view=day&date=2026-05-19')
   await page.getByRole('link', { name: 'Next day' }).click()
   await expect(page).toHaveURL(/view=day/)
   await expect(page).toHaveURL(/date=2026-05-20/)
-  await expect(page.getByText('Wednesday, May 20, 2026')).toBeVisible()
+  // Same split as the test above: the phone's header names the month, the strip the day.
+  if (isMobile) {
+    const strip = page.getByRole('navigation', { name: 'Jump to a day' })
+    await expect(strip.locator('a[aria-current="page"]')).toHaveText(/20/)
+  } else {
+    await expect(page.getByText('Wednesday, May 20, 2026')).toBeVisible()
+  }
 })
 
 test('the day page week strip is seven day links with the shown day current', async ({
@@ -41,15 +65,52 @@ test('the day page week strip is seven day links with the shown day current', as
   await expect(page).toHaveURL(/view=day/)
 })
 
-test('the month view places the demo week in its cells', async ({ page }) => {
+test('the month view places the demo week in its cells', async ({ page, isMobile }) => {
   await page.goto('/?view=month')
   // Scoped to the stepper nav: the sidebar's mini month ALSO says "May 2026" now that it
   // draws the anchor's month rather than the grid range's first month.
   await expect(page.getByLabel('Change month').getByText('May 2026')).toBeVisible()
-  // The standup recurs across the demo week, so several cells carry it.
-  await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
-  // Cells are doors into the day view. The event count disambiguates the cell from the
-  // sidebar mini month's same-day link, which carries no count.
+  /*
+   * THE PHONE'S CELLS CARRY MARKS, NOT TITLES. A 49px cell rendered "Team s"; the title is
+   * in the selected-day agenda under the grid, at full length, and in the cell's own
+   * aria-label. Asserted on BOTH surfaces rather than skipped, because the capability -- the
+   * demo week is placed in the month -- is real on both and only its expression differs.
+   */
+  if (isMobile) {
+    await expect(page.getByRole('link', { name: /^Show 2026-05-19.*event/ })).toBeVisible({
+      timeout: 15_000,
+    })
+    await expect(page.locator('[class*="month-grid_entryTitle"]').first()).toBeHidden()
+  } else {
+    // The standup recurs across the demo week, so several cells carry it.
+    await expect(page.getByText('Team Standup').first()).toBeVisible({ timeout: 15_000 })
+  }
+  /*
+   * A CELL IS A DIFFERENT DOOR ON EACH DEVICE, and its accessible name says which.
+   *
+   * Desktop: "Open <day>" -- a link into the day view, unchanged. Phone: "Show <day>" --
+   * the cell selects, and the day's events appear in full under the grid. The verb is part
+   * of the name precisely so a test cannot assert one behaviour and get the other.
+   *
+   * The event count disambiguates the cell from the sidebar mini month's same-day link,
+   * which carries no count.
+   */
+  if (isMobile) {
+    await page.getByRole('link', { name: /Show 2026-05-19, \d+ events?/ }).click()
+    // Selection, not navigation: the URL is untouched and the day's events are listed.
+    await expect(page).not.toHaveURL(/view=day/)
+    await expect(page.getByRole('heading', { name: /Tuesday, May 19/ })).toBeVisible()
+    // Scoped to the AGENDA. A page-wide `getByText('Team Standup').first()` resolves to the
+    // month cell's own entry title, which is `display: none` on a phone and comes first in
+    // DOM order -- so the assertion would fail while the thing it is about is on screen.
+    await expect(page.locator('main ol').getByText('Team Standup').first()).toBeVisible()
+    // And the way into the full day view is still one tap.
+    await page.getByRole('link', { name: 'Open day' }).click()
+    await expect(page).toHaveURL(/view=day/)
+    await expect(page).toHaveURL(/date=2026-05-19/)
+    return
+  }
+
   await page.getByRole('link', { name: /Open 2026-05-19, \d+ events?/ }).click()
   await expect(page).toHaveURL(/view=day/)
   await expect(page).toHaveURL(/date=2026-05-19/)
