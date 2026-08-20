@@ -81,4 +81,12 @@
   .compact .wordmark {
     display: none;
   }
+
+  /* The gap goes with the word it separated. `.lockup` sets --space-3 between the mark and
+     the wordmark; with the wordmark gone that is 12px of header spent on the distance
+     between a logo and nothing, on the row where the date is 7px from wrapping. */
+  .compact.lockup,
+  .compact .lockup {
+    gap: 0;
+  }
 }

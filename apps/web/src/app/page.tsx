@@ -10,6 +10,7 @@ import {
   formatDay,
   formatMonth,
   formatRange,
+  formatRangeCompact,
   monthGridRange,
   safeTimezone,
   weekRange,
@@ -145,6 +146,23 @@ export default async function Page({
         ? formatMonth(anchor)
         : formatRange(range, timezone)
 
+  /*
+   * The phone's shorter spelling of the SAME place. Both are computed here and the screen
+   * picks one after hydration, because the choice is a viewport question and this is a
+   * server component — and because rendering both and letting CSS hide one puts two nodes
+   * with the same text in the document, which is how ten e2e assertions hit strict mode
+   * during the last mobile pass.
+   *
+   * Day collapses to the month: the week strip below it rings the selected date, and one
+   * screen gets one date. See formatRangeCompact for the measurement behind this.
+   */
+  const headingCompact =
+    view === 'day'
+      ? formatMonth(anchor)
+      : view === 'month'
+        ? formatMonth(anchor)
+        : formatRangeCompact(range, timezone)
+
   // Public dates, computed from a rule table — no query, no network, nothing about this
   // user. Anchored rather than ranged because four surfaces draw from it and they do not
   // share one window: the mini month shows a whole month while the day view shows one day.
@@ -190,6 +208,7 @@ export default async function Page({
       view={view}
       anchorDate={dateParam(anchor)}
       heading={heading}
+      headingCompact={headingCompact}
       previousHref={linkFor(-1)}
       nextHref={linkFor(1)}
       timezone={timezone}

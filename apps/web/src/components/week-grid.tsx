@@ -282,8 +282,17 @@ export function WeekGrid({
 
   return (
     <div className={styles.scroller}>
+      {/*
+        `data-single` is the day view, and the CSS uses it to drop the column head on a
+        phone -- where `WeekStrip` sits directly above this grid already ringing the same
+        date, so "THU 20" is the second of two identical answers in 60px of screen. It is
+        an attribute rather than a `dayCount === 1` branch in JSX because the decision is a
+        VIEWPORT one: at 900px the strip hides itself and this head becomes the only date
+        on the screen, so React must not be the thing that removes it.
+      */}
       <div
         className={styles.grid}
+        data-single={days.length === 1 || undefined}
         style={
           { '--hour-count': hours.length - 1, '--day-count': days.length } as React.CSSProperties
         }

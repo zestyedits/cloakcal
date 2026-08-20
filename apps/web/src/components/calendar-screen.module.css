@@ -39,12 +39,26 @@
    pressure instead of forcing the header wider; the date then WRAPS (see .range for why
    it must never be nowrap), which costs a taller header on narrow tablets and can never
    expand the mobile layout viewport. */
+/*
+ * NO `flex-grow` HERE, AND THAT IS MEASURED RATHER THAN ASSUMED.
+ *
+ * The obvious fix for a heading that wraps at 390px is to let this cluster take the header's
+ * spare width. There is none: the row measures 343px of content box and its three children
+ * consume 40 + 16 + 227 + 16 + 44 = 343 exactly. Growing an item with nothing to distribute
+ * does nothing, and `.headerEnd`'s `margin-left: auto` would have eaten it first anyway.
+ *
+ * Both spellings were written, shipped into the page and measured; neither moved the cluster
+ * off 227px. What actually fixed the wrap was shortening the STRING (see formatRangeCompact)
+ * and dropping the theme toggle, which is 56px of this row. Recording it so the inert rule is
+ * not reintroduced by the next person who reads the wrap and reaches for the same lever.
+ */
 .placeCluster {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
+
 
 /* The right cluster anchors the edge on every breakpoint. On phones it holds only the
    theme toggle (.headerViews is display:none), so mobile pixels do not move. */
@@ -54,6 +68,7 @@
   align-items: center;
   gap: var(--space-3);
 }
+
 
 /* Desktop-only header chrome: the segmented view control and the Cloak door in ONE
    sunken track — they were two stray boxes, and the board draws a single assembly.
@@ -152,12 +167,18 @@
   transform: translateY(1px);
 }
 
-.cloakHeaderButton[aria-expanded='true'] {
-  color: var(--text-primary);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm), var(--edge-highlight);
-}
-
+/*
+ * DEAD RULES REMOVED, AND WORTH A LINE SO THEY ARE NOT ADDED BACK.
+ *
+ * Both Cloak doors carried `[aria-expanded='true']` styling. Neither can ever match: the
+ * attribute was deliberately removed from both buttons on evidence -- a modal <dialog>
+ * puts the rest of the document inert, so the trigger has ZERO nodes in the accessibility
+ * tree while the sheet is open and the attribute could only ever expose "collapsed".
+ * shell.spec.ts asserts its absence.
+ *
+ * The open state has no visual expression on the trigger because the trigger is not
+ * visible while the sheet is open. That is the correct answer, not a gap.
+ */
 
 /* The range heading is the dial's engraving: Marcellus, letterspaced, promoted to
    primary ink. The one weight the face has is the point — engraving has no bold.
@@ -322,6 +343,25 @@
   }
 }
 
+/*
+ * The theme toggle is desktop chrome now. A phone header holds one top-right action and
+ * Settings outranks a preference; keeping both cost 56px of a 390px row, which is what
+ * wrapped the day heading onto three lines.
+ *
+ * SHOWN at a min-width rather than HIDDEN at a max-width, which is the shape that cannot
+ * feed the loop the Today button was caught in: a `max-width` hide rule can un-match
+ * itself once the control it would hide has already widened the layout viewport.
+ */
+.headerTheme {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .headerTheme {
+    display: inline-flex;
+  }
+}
+
 /* Week stepping. Thumb-sized on mobile because it is the most-used control on the screen. */
 .weekNav {
   display: flex;
@@ -412,7 +452,16 @@
      reachable on a phone, so on mobile the sidebar collapses to just that control and
      sits in its own row above the agenda. */
   grid-area: sidebar;
-  padding: var(--space-4) var(--space-4) 0;
+  /* --space-2 on a phone, not --space-4: what remains in this strip is one 44px row, and
+     16px above it was sized for a 100px card that is no longer here. Restored to
+     --space-4 at 900px, where the strip is a real sidebar again. */
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+@media (min-width: 900px) {
+  .sidebar {
+    padding: var(--space-4) var(--space-4) 0;
+  }
 }
 
 /* The Holidays switch goes with the list it belongs to. It is part of the calendars
@@ -451,10 +500,28 @@
 
 .main {
   grid-area: main;
-  /* The bottom padding must clear the sticky nav, which grew with the Cloak tile — a row
-     that scrolls "to the bottom" must land above the bar, not under it. */
+  /*
+   * THE BOTTOM PADDING IS THE FAB'S CLEARANCE, AND THAT IS THE WHOLE JOB IT DOES NOW.
+   *
+   * It used to be justified by "must clear the sticky nav", which stopped being true when
+   * the shell was rebuilt as a fixed-height grid: the nav owns its own row and cannot
+   * overlap this scroller. So 64px sat here doing nothing, on the surface with the least
+   * room to spare.
+   *
+   * It has a real job instead. A `position: fixed` FAB cannot promise it never covers an
+   * event -- that is what fixed means -- but it CAN promise that anything under it can be
+   * scrolled clear. The FAB is 48px at `bottom: 44 + 32 + inset`, so it reaches 124px +
+   * inset up from the viewport floor; the nav occupies the first 61px of that. The
+   * remainder, plus a gap, is what this padding has to be:
+   *
+   *   (44 + 32 + 48) - 61 + 8  =  71px  ->  --space-16 + --space-2
+   *
+   * The inset is added rather than max()'d because the nav grows by it too, so the overlap
+   * grows with it. An acceptance test asserts that at maximum scroll no event block, month
+   * cell or agenda row intersects the FAB's rect; if that test reds, this number is why.
+   */
   padding: var(--space-4) var(--space-4)
-    calc(var(--space-16) + env(safe-area-inset-bottom));
+    calc(var(--space-16) + var(--space-2) + env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 
@@ -783,8 +850,7 @@
 }
 
 /* The centre slot: a raised square tile, NOT a circle — the one place the deep gradient
-   appears besides the primary button. Its glow arrives when it is open, so the state is
-   carried by light as well as aria-expanded. */
+   appears besides the primary button. */
 .cloakTile {
   /* Grows with its siblings but never into a banner: the privileged slot, not the
      whole bar. */
@@ -816,10 +882,6 @@
 
 .cloakTile:active {
   transform: translateY(1px);
-}
-
-.cloakTile[aria-expanded='true'] {
-  box-shadow: var(--shadow-md), var(--glow-accent);
 }
 
 .calendarItem {
@@ -1001,6 +1063,93 @@
 
 /* Accent as a UI shape on the surface — the pair CONTRAST_PAIRS already pins at 3:1
    in both themes. Never accent as ink here. */
+/*
+ * THE PHONE'S AUDIENCE ROW — the compact branch of ViewAsBar.
+ *
+ * 44px, one line, and it replaces a 132px block (a 100px card plus its margin plus the
+ * strip's padding). The whole row is the door into the Cloak sheet; the sheet is the
+ * picker, and it is a better one than the `<select>` this replaces because it shows every
+ * audience's level and the engine's own sentence rather than a list of names.
+ *
+ * No card. A card above a calendar is a second calendar's worth of chrome, and the
+ * previewing state carries its own emphasis without needing a box to sit in.
+ */
+.audienceBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-control);
+}
+
+/* Accent as a SHAPE — a left rule and a tinted ground — never as ink. Same rule the Cloak
+   sheet's current row follows, and the same reason: the four privacy inks are learned
+   meaning and nothing else may borrow them. */
+.audienceBar[data-previewing] {
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-overlay);
+}
+
+.audienceState {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .audienceState:hover {
+    background: var(--surface-overlay);
+  }
+}
+
+.audienceState:active {
+  transform: translateY(1px);
+}
+
+/* min-width: 0 on the FLEX CHILD that holds text, so a long contact name ellipsises
+   instead of refusing to shrink and taking the row into horizontal overflow. */
+.audienceWho {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audienceChevron {
+  margin-left: auto;
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.audienceExit {
+  flex: none;
+}
+
+/* Desktop keeps the card: the sidebar is a column with room to spare, and there the label
+   above the select reads as a section heading rather than a prefix. */
+@media (min-width: 900px) {
+  .audienceBar {
+    display: none;
+  }
+}
+
 .viewAs[data-previewing] {
   border-color: var(--accent);
 }

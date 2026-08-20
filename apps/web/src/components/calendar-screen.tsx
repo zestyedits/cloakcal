@@ -173,6 +173,7 @@ export function CalendarScreen({
   view: serverView = 'agenda',
   anchorDate,
   heading,
+  headingCompact,
   previousHref,
   nextHref,
   timezone,
@@ -199,6 +200,8 @@ export function CalendarScreen({
   /** YYYY-MM-DD the view is anchored on; view links carry it so navigation stays put. */
   anchorDate?: string | undefined
   heading: string
+  /** The same place, spelled short enough for a 390px header. See server/range.ts. */
+  headingCompact: string
   /* URL objects rather than strings: `typedRoutes` will not accept a computed href string,
      and a UrlObject is the escape hatch Next provides for exactly this — a fixed pathname
      with a query built at request time. */
@@ -671,20 +674,36 @@ export function CalendarScreen({
               */}
               {!(isPhone && !onToday) && (
                 <p className={styles.range} aria-live="polite">
-                  {heading}
+                  {isPhone ? headingCompact : heading}
                 </p>
               )}
               {isPhone && !onToday && (
                 <Link
                   className={styles.rangeToday}
                   href={todayHref}
-                  aria-label={`Jump to today, ${heading}`}
+                  aria-label={`Jump to today, ${headingCompact}`}
                   aria-keyshortcuts="t"
                   aria-live="polite"
                   onMouseEnter={primeLink(todayHref)}
                   onFocus={primeLink(todayHref)}
                 >
-                  <span className={styles.rangeTodayLabel}>{heading}</span>
+                  {/*
+                    THE ACCESSIBLE NAME TAKES THE COMPACT STRING, NOT THE LONG ONE, AND
+                    THAT IS WCAG 2.5.3 RATHER THAN A PREFERENCE.
+
+                    The tempting version prints the short heading and speaks the long one,
+                    on the reasoning that a screen reader has no width limit. It fails Label
+                    in Name: the visible text on the day view would be "August 2026" and the
+                    spoken name "Jump to today, Thursday, August 20, 2026", which does not
+                    CONTAIN it -- "August 20, 2026" is not "August 2026". Voice control
+                    matches what the user can see against the accessible name, so that
+                    control would be unreachable by voice while looking perfectly correct.
+
+                    The date the long string carries is not lost: the week strip immediately
+                    below rings the selected day, and it is a list of links with their own
+                    names.
+                  */}
+                  <span className={styles.rangeTodayLabel}>{headingCompact}</span>
                   {/* The cue carries the verb the heading cannot. Text, not a glyph: an arrow
                       here would be indistinguishable from the steppers either side of it. */}
                   <span className={styles.rangeTodayCue}>Today</span>
@@ -824,7 +843,27 @@ export function CalendarScreen({
               <SettingsMark />
               <NavPendingMark />
             </Link>
-            <ThemeToggle />
+            {/*
+              DESKTOP ONLY, AND THE REPLACEMENT IS NAMED BEFORE IT IS HIDDEN.
+
+              A phone header has room for one top-right action, and Settings outranks a
+              theme switch: the theme is a preference you set once, Settings is the door to
+              everything. Keeping both cost 56px of a 390px row, which is what pushed the
+              day heading onto three lines and the header from 69px to 97px.
+
+              The route out is real, not implied: `/settings/calendar` -> Appearance holds a
+              Theme radiogroup (settings/appearance-section.tsx), and every settings page's
+              own top bar carries this same toggle. So the control is one tap from the link
+              directly to its left, which is the rule the Today button broke by vanishing
+              with nothing in its place.
+
+              The WRAPPER is hidden, never the toggle: `.toggle` sets its own `display`, and
+              a same-specificity override loses on CSS-module import order. Same trap the
+              Today button paid for.
+            */}
+            <span className={styles.headerTheme}>
+              <ThemeToggle />
+            </span>
           </div>
         </header>
 
@@ -851,6 +890,8 @@ export function CalendarScreen({
               audiences={audiences}
               baselineLevel={page.baselineLevel}
               current={page.audience}
+              compact={isPhone}
+              onOpenCloak={() => setCloakOpen(true)}
             />
           </Suspense>
 

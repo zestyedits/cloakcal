@@ -88,16 +88,29 @@ export function NewEventButton({
     )
   }
 
+  /*
+   * THE NAME IS AN `aria-label` BECAUSE THERE IS NO VISIBLE TEXT TO CONTAIN.
+   *
+   * The FAB is a 48px circle at every phone width now (see new-event.module.css for why
+   * that reverses a written decision), so "New event" is never printed. WCAG 2.5.3 governs
+   * the relationship between a VISIBLE label and the accessible name; with no visible
+   * label there is nothing for the name to contain, and `aria-label` is the plain spelling.
+   *
+   * The locked reason rides in the name rather than only in `title`, which does nothing on
+   * a touch device. That is a narrow fix: five other controls in this app still explain
+   * themselves only on hover, and they are a separate pass.
+   */
   return (
     <button
       type="button"
       className={styles.fab}
       disabled={locked}
+      aria-label={locked ? 'New event. Unlock your calendar first' : 'New event'}
+      aria-keyshortcuts="n"
       title={locked ? 'Unlock your calendar first' : 'New event'}
       onClick={onOpen}
     >
       <span aria-hidden="true">+</span>
-      <span className={styles.fabLabel}>New event</span>
     </button>
   )
 }

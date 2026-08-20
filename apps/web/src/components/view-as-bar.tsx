@@ -3,6 +3,7 @@
 import { useId } from 'react'
 import type { DisclosureLevel } from '@cloakcal/policy'
 import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
+import { Button } from './ui/button'
 import { useAudienceSwitch } from './audience-transition'
 import { useAudienceNames } from './use-audience-names'
 import { PrivacyChip } from './ui/privacy-chip'
@@ -28,10 +29,16 @@ export function ViewAsBar({
   audiences,
   current,
   baselineLevel,
+  compact = false,
+  onOpenCloak,
 }: {
   audiences: readonly AudienceOption[]
   current: string
   baselineLevel?: DisclosureLevel | undefined
+  /** Phone shape: one 44px row instead of a 100px card. See the COMPACT block below. */
+  compact?: boolean
+  /** Opens the Cloak sheet, which is the phone's audience picker. */
+  onOpenCloak?: (() => void) | undefined
 }) {
   // The ONE audience door. This used to build the href and push it itself, which is how
   // three surfaces ended up with three copies of one gesture — and a copy that forgot to
@@ -46,6 +53,67 @@ export function ViewAsBar({
   // why this needs a hook returning strings instead of the usual `<CloakedText>`.
   const labelFor = useAudienceNames(audiences)
 
+
+  /*
+   * THE PHONE SHAPE. Not a smaller card -- a different control.
+   *
+   * Measured at 390x844: the card was 100px plus 16px of margin plus the strip's 16px of
+   * padding, so View As alone cost 132px of prelude ABOVE the calendar, and the phone
+   * reached its first event 371px down an 844px screen. The card is a good desktop
+   * component: a labelled `<select>` in a column with room to spare. On a phone it is a
+   * desktop sidebar stacked on top of the thing it describes.
+   *
+   * So on a phone this states the MODE in 44px and delegates the CHOICE to the Cloak
+   * sheet, which is a better picker than the `<select>` ever was -- it shows each
+   * audience's level and the engine's own sentence, where the select showed a name. The
+   * control is not hidden: it moves to the centre nav slot AND to this row, which is two
+   * routes where there was one.
+   *
+   * OWNER IS QUIET AND PREVIEWING IS LOUD, deliberately. Being yourself is the resting
+   * state and needs no emphasis; being someone else is a mode you can forget you are in,
+   * so it keeps the accent, says whose eyes you are looking through, and carries its own
+   * way out rather than making you find one.
+   */
+  if (compact) {
+    const previewing = current !== 'owner'
+    const currentOption = audiences.find((option) => audienceIdOf(option) === current)
+    const currentName = currentOption === undefined ? 'someone else' : labelFor(currentOption)
+
+    return (
+      <div className={styles.audienceBar} data-previewing={previewing || undefined}>
+        <button
+          type="button"
+          className={styles.audienceState}
+          /* No aria-expanded, for the reason written at length above the Cloak doors: a
+             modal <dialog> takes its own trigger out of the accessibility tree, so the
+             attribute could only ever expose "collapsed". aria-haspopup carries the type. */
+          aria-haspopup="dialog"
+          onClick={onOpenCloak}
+        >
+          <span className={styles.audienceWho}>
+            {previewing ? `Previewing as ${currentName}` : 'Viewing as Me'}
+          </span>
+          {/* The baseline chip is the OWNER's answer to "what do others get". While
+              previewing there is no baseline to state -- the question on screen is what
+              THIS person sees, and every row below already answers it. */}
+          {!previewing && baselineLevel !== undefined && <PrivacyChip level={baselineLevel} />}
+          <span className={styles.audienceChevron} aria-hidden="true">
+            ›
+          </span>
+        </button>
+        {previewing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={styles.audienceExit}
+            onClick={() => switchTo('owner', 'your own')}
+          >
+            Exit
+          </Button>
+        )}
+      </div>
+    )
+  }
 
   return (
     // The accent border stays: it marks the control that put you in this mode, which is

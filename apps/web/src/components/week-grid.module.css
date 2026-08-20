@@ -360,6 +360,27 @@
   color: var(--status-warning);
 }
 
+/*
+ * ONE DATE PER SCREEN, on the one view that had three.
+ *
+ * The phone's day view printed "Thursday, August 20, 2026" in the header, the selected 20
+ * in the week strip, and "THU 20" in a ring here -- three renderings of one date inside the
+ * first 240px. The strip wins because it is also a CONTROL: seven links to seven days,
+ * where this head is a label.
+ *
+ * Hidden below 900px only. From there the strip removes itself (week-strip.module.css) and
+ * this head is the only date the day view has, so the rule must not follow it up.
+ *
+ * `.corner` goes too: left alone in the header row it would hold the row open at its own
+ * border height for nothing.
+ */
+@media (max-width: 899px) {
+  .grid[data-single] > .dayHead,
+  .grid[data-single] > .corner {
+    display: none;
+  }
+}
+
 @media (min-width: 900px) {
   .grid {
     --day-min-width: 0;

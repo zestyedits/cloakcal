@@ -190,6 +190,60 @@ export function formatRange(range: CalendarRange, timezone: string): string {
   return `${monthName(from.month)} ${from.day}, ${from.year} – ${monthName(last.month)} ${last.day}, ${last.year}`
 }
 
+/**
+ * THE PHONE'S HEADING, and it exists because a heading that wraps is a heading that eats
+ * the calendar.
+ *
+ * Measured at 390px: the header spends 288 of its 390px on fixed chrome (logo, two
+ * steppers, Settings, and until this pass a theme toggle), leaving about 102px for the
+ * date. `formatDay`'s "Thursday, August 20, 2026" is 25 characters — three lines in
+ * Marcellus at 16px, which took the header from 69px to 97px on the one view where the
+ * calendar needs the room most.
+ *
+ * So the phone gets a SHORTER STRING rather than a smaller one. Day drops to the month,
+ * because the week strip directly below already rings the selected date and the rule for
+ * this pass is exactly one date representation per screen. Week and agenda keep both ends
+ * and the year, abbreviated — a range is not recoverable from anything else on screen, so
+ * it may not be dropped.
+ *
+ * Month is unchanged: `formatMonth` is already short.
+ */
+const MONTHS_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const
+
+const shortMonth = (month: number): string => MONTHS_SHORT[month - 1] ?? ''
+
+/**
+ * "Aug 17–23, 2026" — the same range as `formatRange`, abbreviated for a phone header.
+ *
+ * THE EN DASH IS UNSPACED HERE AND SPACED IN `formatRange`, and that is not an
+ * inconsistency to tidy away. Measured at 390px: the heading gets 123px, and the spaced
+ * "May 18 – 24, 2026" needs more than that, so it wrapped to two lines and took the header
+ * from 69px to 89px on week and agenda. Closing the two spaces is 15 characters instead of
+ * 17 and fits.
+ *
+ * It is also the more correct setting. A number range takes an unspaced en dash; the spaced
+ * form belongs to ranges whose ends are themselves multi-word. `formatRange` keeps the
+ * spaces because its ends ARE multi-word ("May 18 – June 2, 2026") and it has the room.
+ *
+ * Not an em dash. The project bans U+2014 in user-facing copy; U+2013 in a range is what
+ * the agenda, the week heading and the .ics exporter already use.
+ */
+export function formatRangeCompact(range: CalendarRange, timezone: string): string {
+  const from = Temporal.Instant.from(range.from).toZonedDateTimeISO(timezone)
+  const last = Temporal.Instant.from(range.to).toZonedDateTimeISO(timezone).subtract({ days: 1 })
+
+  if (from.year === last.year && from.month === last.month) {
+    return `${shortMonth(from.month)} ${from.day}–${last.day}, ${from.year}`
+  }
+  if (from.year === last.year) {
+    return `${shortMonth(from.month)} ${from.day}–${shortMonth(last.month)} ${last.day}, ${from.year}`
+  }
+  return `${shortMonth(from.month)} ${from.day}, ${from.year}–${shortMonth(last.month)} ${last.day}, ${last.year}`
+}
+
 /** The `?week=` value for a range — always the local date of its first day. */
 export function weekParam(range: CalendarRange, timezone: string): string {
   return Temporal.Instant.from(range.from).toZonedDateTimeISO(timezone).toPlainDate().toString()

@@ -12,28 +12,53 @@
   margin-bottom: var(--space-6);
 }
 
+/*
+ * A 48px CIRCLE, AND THIS REVERSES A WRITTEN DECISION RATHER THAN DRIFTING FROM ONE.
+ *
+ * This rule used to read: "A raised rectangle, not a pill. The pill FAB was the one control
+ * in the app wearing the shape this design explicitly avoids." That objection was to an
+ * ELONGATED capsule -- a wide button wearing --radius-full -- and it was right about that
+ * shape. A 48px circle is a different object: it has no long axis to make a capsule of, and
+ * at phone width the extended button was measurably in the way.
+ *
+ * Measured, which is why it changed: the labelled button was ~150x44 and covered the 09:00
+ * row in the offline capture and a Strategy Session block in the week capture. 48x48 is a
+ * 78% reduction in covered area, and it is the smallest shape that still clears the 44px
+ * floor with room for a centred glyph.
+ *
+ * The label is not lost -- it is the accessible name (see new-event.tsx). What is lost is
+ * the label as PRINTED TEXT, and that is the trade: a phone FAB is a universally learned
+ * control and the sheet it opens is titled.
+ */
 .fab {
   position: fixed;
   right: var(--space-4);
-  /* Clear of the bottom navigation, and of the home indicator under it. */
-  bottom: calc(var(--touch-min) + var(--space-6) + env(safe-area-inset-bottom));
+  /*
+   * Clear of the bottom navigation, and of the home indicator under it.
+   *
+   * --space-8 rather than --space-6: at 24px the gap over the 61px nav was 7px, which is
+   * close enough that a thumb aiming for Month can catch the FAB instead. 32px gives 15px.
+   * `.main`'s bottom padding is derived from this number -- change one and the other is
+   * wrong, and the FAB-overlap test is what says so.
+   */
+  bottom: calc(var(--touch-min) + var(--space-8) + env(safe-area-inset-bottom));
   z-index: var(--z-sheet);
 
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--touch-min);
-  padding: 0 var(--space-5);
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
   border: 0;
-  /* A raised rectangle, not a pill. The pill FAB was the one control in the app wearing
-     the shape this design explicitly avoids; --radius-lg matches the sheet corners it
-     floats above, so it reads as part of the same surface family. */
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   background: var(--accent);
   color: var(--brand-white);
   font: inherit;
-  font-size: var(--text-base);
+  /* The glyph, not the button: --text-xl centred in 48px. */
+  font-size: var(--text-xl);
   font-weight: var(--weight-medium);
+  line-height: 1;
   box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-standard),
@@ -58,22 +83,10 @@
   }
 }
 
-/* The label is dropped on the narrowest phones, where a bare + is unambiguous and the
-   full button would crowd the week nav. */
-@media (max-width: 380px) {
-  .fabLabel {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-  }
-
-  .fab {
-    padding: 0;
-    width: var(--touch-min);
-    justify-content: center;
-    font-size: var(--text-xl);
-  }
-}
+/*
+ * The 380px branch that used to live here is gone with the label. It was the one place the
+ * FAB collapsed to a square, which meant the control had two shapes no test compared: at
+ * 381px a 150px labelled button covering event content, at 380px a 44px square that did
+ * not. The name is an `aria-label` now, so there is no element left to hide.
+ */
 
