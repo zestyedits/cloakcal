@@ -67,3 +67,81 @@ describe('the root loading fallback', () => {
     expect(source.match(/aria-hidden="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
   })
 })
+
+/*
+ * THE FALLBACK'S CHROME IS THE REAL CHROME, and these four are the ones that drifted.
+ *
+ * After the 2026-08-20 mobile redesign this file's subject still drew the PREVIOUS phone
+ * header: the wordmark where the destination shows the mark alone, a theme toggle the phone
+ * header hides, no Settings control where the phone header has one, and a 120px View As card
+ * standing in for a 52px row. So the shell visibly changed at the moment of handoff — the
+ * one thing a loading state exists not to do.
+ *
+ * Asserted on the SOURCE for the reason this file already gives at length: whether the
+ * fallback ever PAINTS depends on how the RSC chunks land relative to React's commit, and a
+ * held navigation does not help — Next keeps the previous route painted until the payload
+ * arrives rather than rendering the boundary. Measured, not assumed.
+ *
+ * The other half lives in `e2e/loading-continuity.spec.ts`, which asserts that the values
+ * pinned here are the values the DESTINATION actually has, so this is compared against
+ * reality rather than against what its author believed.
+ */
+describe("the fallback wears the destination's phone chrome", () => {
+  /*
+   * COMMENTS STRIPPED FIRST, and LINE comments before BLOCK ones.
+   *
+   * The prose in loading.tsx explains the very drift these tests pin, so it contains
+   * `<ThemeToggle />` as a QUOTATION. A positional check against the raw file found the
+   * comment's copy, decided the toggle came before its wrapper, and failed on correct code.
+   *
+   * The ordering is the repo's existing rule: a line comment mentioning a path like an api
+   * wildcard opens a block that the block matcher then closes at the next block-comment
+   * terminator it finds, swallowing everything between. Same helper as legal-claims and
+   * billing-boundary. Note this comment does not SPELL that terminator -- writing it inside
+   * a block comment ends the comment, which is the same trap one layer up, and it cost a
+   * transform error here before the sentence was reworded.
+   */
+  const code = (source: string): string =>
+    source.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+
+  const markup = code(source)
+
+  it('collapses the lockup exactly as the real header does', () => {
+    // Without `compact` this draws the wordmark on a phone, which is ~110px of header the
+    // destination does not spend -- a width jump in the one place the flag exists to prevent.
+    expect(markup).toContain('<CloakHomeLink size="sm" compact />')
+  })
+
+  it('carries the Settings control the phone header carries', () => {
+    expect(markup).toContain('cal.headerSettings')
+    expect(markup).toContain('SettingsMark')
+    // From the shared module, never a second copy of the glyph: two copies of a mark is how
+    // this file drifted from the header in the first place.
+    expect(source).toContain("from '@/components/settings-mark'")
+  })
+
+  it('hides the theme toggle behind the same wrapper the real header uses', () => {
+    expect(markup).toContain('cal.headerTheme')
+    /*
+     * A BARE <ThemeToggle /> is the defect. `.toggle` sets its own `display`, so only the
+     * wrapper can hide it below 900px -- a same-specificity override loses on CSS-module
+     * import order, which is the trap the Today button already paid for. Without the
+     * wrapper the fallback shows a control on a phone that the destination does not have.
+     *
+     * Positional, because the toggle must be INSIDE the wrapper and a substring check
+     * alone cannot say that.
+     */
+    const wrapper = markup.indexOf('cal.headerTheme')
+    const toggle = markup.indexOf('<ThemeToggle')
+    expect(wrapper).toBeGreaterThan(-1)
+    expect(toggle).toBeGreaterThan(wrapper)
+    expect(toggle - wrapper).toBeLessThan(80)
+  })
+
+  it('holds the phone audience row and the desktop card separately', () => {
+    // One unconditional 6rem shape stood in for both, so the phone reserved 120px where the
+    // destination uses 52px and 68px of prelude vanished at handoff.
+    expect(markup).toContain('audienceShape')
+    expect(markup).toContain('viewAsShape')
+  })
+})

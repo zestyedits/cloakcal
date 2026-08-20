@@ -651,7 +651,11 @@
      the delay so late rows do not flash in place before their turn. --i is set inline per
      row and CAPPED THERE (at 8) so a packed week settles in under half a second; the
      reduced-motion block in tokens.css zeroes both the duration and the delay. */
-  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
+  /* `settle`, not `rise`: transform only, no opacity. These rows arrive where the loading
+     fallback has just drawn four skeleton rows, so fading them up from transparent makes the
+     destination blink out before it blinks in. The sequence is the part that means something
+     and it survives on transform alone. See globals.css. */
+  animation: settle var(--duration-base) var(--ease-decelerate) backwards;
   animation-delay: calc(var(--i, 0) * var(--stagger-step));
 }
 

@@ -11,7 +11,20 @@
 .main {
   /* The settings page's entrance, for the same reason: People is a server navigation and
      used to hard-cut in. Reduced motion collapses it via the tokens. */
-  animation: rise var(--duration-base) var(--ease-decelerate) backwards;
+  /*
+   * NO PAGE-LEVEL ENTRANCE. This carried `animation: rise ... backwards`, which starts at
+   * opacity 0.
+   *
+   * A route's loading fallback exists to BECOME its destination. When the destination then
+   * fades up from transparent, the sequence a user sees is: current page, loading shell,
+   * blank, destination — the fallback hands off to nothing and the arrival is announced
+   * twice. On the settings hub it was literally the same class animating twice, because the
+   * fallback draws the real `.door`.
+   *
+   * Motion that means something is kept: the sheet still rises, the cloak still wipes, the
+   * agenda rows still arrive in sequence. What goes is the beat that duplicates the
+   * navigation itself.
+   */
 }
 
 /* One register panel: Contacts or Groups. The shape is shared now — see

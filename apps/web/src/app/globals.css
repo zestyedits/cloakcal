@@ -57,6 +57,26 @@ dialog::backdrop {
 /* Shared entrance: a short rise-and-fade, compositor-only. Global because both the event
    sheet and the agenda rows play it, and CSS-module keyframes are file-scoped — a module
    that references `rise` without defining it resolves to this one. */
+/*
+ * The same arrival WITHOUT the fade. Used by the agenda rows, which appear after a route
+ * loading fallback has already drawn four skeleton rows in their place: starting those at
+ * opacity 0 makes the destination blink out before it blinks in, which is the second
+ * entrance beat this pass removed everywhere else.
+ *
+ * The stagger is what carries meaning here — rows arriving in sequence when the audience
+ * changes — and that survives on transform alone. Global for the same reason `rise` is:
+ * CSS-module keyframes are file-scoped, and a module referencing this name resolves here.
+ */
+@keyframes settle {
+  from {
+    transform: translateY(8px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes rise {
   from {
     transform: translateY(12px);

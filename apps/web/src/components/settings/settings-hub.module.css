@@ -66,7 +66,20 @@
   padding: var(--space-4);
   text-decoration: none;
   transition: background var(--duration-fast) var(--ease-standard);
-  animation: doorRise var(--duration-base) var(--ease-decelerate) backwards;
+  /*
+   * NO PAGE-LEVEL ENTRANCE. This carried `animation: rise ... backwards`, which starts at
+   * opacity 0.
+   *
+   * A route's loading fallback exists to BECOME its destination. When the destination then
+   * fades up from transparent, the sequence a user sees is: current page, loading shell,
+   * blank, destination — the fallback hands off to nothing and the arrival is announced
+   * twice. On the settings hub it was literally the same class animating twice, because the
+   * fallback draws the real `.door`.
+   *
+   * Motion that means something is kept: the sheet still rises, the cloak still wipes, the
+   * agenda rows still arrive in sequence. What goes is the beat that duplicates the
+   * navigation itself.
+   */
 }
 
 /* The separator lives BETWEEN rows, never around them: a border on every row doubles at
@@ -241,17 +254,7 @@
   }
 }
 
-@keyframes doorRise {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .door {
-    animation: none;
-  }
   .door,
   .doorChevron {
     transition: none;

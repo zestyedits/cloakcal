@@ -1,4 +1,5 @@
 import { CloakHomeLink, CloakMark } from '@/components/cloak-logo'
+import { SettingsMark } from '@/components/settings-mark'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { HEADER_VIEWS, NAV_LEADING, NAV_TRAILING, VIEW_LABELS } from '@/lib/calendar-views'
 import cal from '@/components/calendar-screen.module.css'
@@ -32,7 +33,10 @@ export default function Loading() {
   return (
     <div className={cal.shell}>
       <header className={cal.header}>
-        <CloakHomeLink size="sm" />
+        {/* `compact`, exactly as the real header does. Without it this drew the wordmark on a
+            phone where the destination draws the mark alone -- a ~110px width jump in the
+            header at the moment of handoff, in the one place the flag exists to prevent. */}
+        <CloakHomeLink size="sm" compact />
 
         <div className={`${cal.placeCluster} ${styles.inert}`} aria-hidden="true">
           <span className={cal.weekNav}>
@@ -60,7 +64,26 @@ export default function Loading() {
               Cloak
             </span>
           </div>
-          <ThemeToggle />
+          {/*
+            THE PHONE'S TOP-RIGHT SLOT, matching the destination rather than the shell this
+            file was written against.
+
+            It used to draw a bare <ThemeToggle /> and no Settings control. On a phone the
+            real header is the other way round: `.headerSettings` is visible below 900px and
+            `.headerTheme` is hidden below it. So the fallback showed a control the
+            destination does not have and omitted the one it does, and both changed at
+            handoff. Same wrappers and same classes now, so the two cannot drift by editing
+            one of them.
+
+            A span rather than the real Link: nothing here should look pressable before the
+            page it belongs to is, which is the rule the settings fallback already follows.
+          */}
+          <span className={cal.headerSettings}>
+            <SettingsMark />
+          </span>
+          <span className={cal.headerTheme}>
+            <ThemeToggle />
+          </span>
         </div>
       </header>
 
@@ -71,6 +94,11 @@ export default function Loading() {
         <span className={cal.sidebarMonth}>
           <span className={`${styles.monthShape} ${styles.pulse}`} />
         </span>
+        {/* Two footprints, each held at the width that actually renders it. The phone's
+            audience row is 44px plus an 8px margin; the 6rem card it used to stand in for is
+            what the DESKTOP still draws. One unconditional shape could only be wrong on one
+            of them, and it was wrong by 68px on the surface with the least room. */}
+        <span className={`${styles.audienceShape} ${styles.pulse}`} />
         <span className={`${styles.viewAsShape} ${styles.pulse}`} />
       </aside>
 

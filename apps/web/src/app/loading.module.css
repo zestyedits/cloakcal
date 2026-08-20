@@ -63,14 +63,41 @@
   border: 1px solid var(--border-subtle);
 }
 
-/* View As is a trust surface, so its footprint is held too — same geometry as .viewAs. */
-.viewAsShape {
+/*
+ * View As is a trust surface, so its footprint is held too — but there are TWO of them now
+ * and each is drawn only at the width that renders it.
+ *
+ * The phone's is a 44px row plus an 8px margin (`.audienceBar` / `.audienceState`). The
+ * desktop's is still the 6rem card (`.viewAs`). One unconditional 6rem shape stood in for
+ * both, so on a phone the fallback reserved 120px, the destination used 52px, and 68px of
+ * prelude vanished at handoff — on the surface this whole redesign is about.
+ */
+.audienceShape {
   display: block;
+  height: var(--touch-min);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--surface-overlay);
+}
+
+.viewAsShape {
+  display: none;
   height: 6rem;
   margin-bottom: var(--space-6);
   border-radius: var(--radius-lg);
   background: var(--surface-overlay);
   border: 1px solid var(--border-subtle);
+}
+
+/* The same 900px seam `.audienceBar` and `.viewAs` swap on. */
+@media (min-width: 900px) {
+  .audienceShape {
+    display: none;
+  }
+
+  .viewAsShape {
+    display: block;
+  }
 }
 
 /* The agenda column, same measure as the real list's comfortable reading width. */
