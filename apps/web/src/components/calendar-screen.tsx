@@ -21,6 +21,7 @@ import {
   AudienceCover,
   AudienceTransitionProvider,
   AudienceWidening,
+  SealableFloating,
   SealableMain,
 } from './audience-transition'
 import { CloakedText } from './cloaked-text'
@@ -1219,7 +1220,13 @@ export function CalendarScreen({
             be a confusing thing to offer and an easy thing to get wrong. */}
         {canCompose && composeDate !== undefined && (
           <>
-            <NewEventButton variant="fab" onOpen={() => composeAt(null)} />
+            {/* Through the gate: the FAB is `position: fixed` and a SIBLING of <main>, so
+                SealableMain's `inert` cannot reach it and its z-index out-stacks the cover.
+                Without this it stays live and painted over the plate during a narrowing
+                switch, offering exactly what the comment above says not to offer. */}
+            <SealableFloating>
+              <NewEventButton variant="fab" onOpen={() => composeAt(null)} />
+            </SealableFloating>
             {composeOpen && (
               <NewEvent
                 timezone={timezone}

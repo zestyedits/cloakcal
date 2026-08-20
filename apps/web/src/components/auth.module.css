@@ -15,7 +15,11 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: var(--space-6) var(--space-4);
+  /* Four-sided safe areas. These three pages are the ones a stranger sees first and the only
+     ones asking for a password, and the card is CENTRED in a 100dvh box -- so on a notched
+     phone the corner theme toggle sat under the status bar with nothing to scroll it clear. */
+  padding: max(var(--space-6), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right))
+    max(var(--space-6), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
 }
 
 .card {

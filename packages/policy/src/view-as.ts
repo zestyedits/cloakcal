@@ -34,6 +34,26 @@ const list = (names: string[]): string =>
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]!}`
 
 /**
+ * Every field label is lower-case by construction ('the title', 'who is attending'), which is
+ * right mid-sentence and wrong at the head of one. `explainDecision`'s two-sentence branch put
+ * a list at the start of its SECOND sentence, so the product rendered
+ *
+ *   "They will see the time and the title. the location and who is attending stay hidden."
+ *
+ * verbatim in the Cloak sheet and the visibility sheet -- the engine's own sentence, quoted
+ * exactly as rule 3 requires, with a lower-case "the" starting a sentence. Nothing caught it:
+ * the test asserted only that the string STARTS with "They will see" and ENDS with a full
+ * stop, both of which the malformed version satisfies.
+ *
+ * Operates on the first code point rather than `[0]`, so a custom field label outside the BMP
+ * is not split in half by the slice.
+ */
+const startSentence = (text: string): string => {
+  const [first] = text
+  return first === undefined ? text : first.toUpperCase() + text.slice(first.length)
+}
+
+/**
  * The four-step privacy scale the product renders as chips and preset tiles.
  *
  * Same strings as `PRIVACY_LEVELS` in @cloakcal/ui, declared here independently because
@@ -78,5 +98,5 @@ export function explainDecision(decision: Decision): string {
   if (visible.length === 0) return 'They will see the time, and no other details.'
   if (hidden.length === 0) return 'They will see the time and every detail.'
 
-  return `They will see the time and ${list(visible)}. ${list(hidden)} stay hidden.`
+  return `They will see the time and ${list(visible)}. ${startSentence(list(hidden))} stay hidden.`
 }

@@ -255,7 +255,19 @@ export function VisibilitySheet({
   const offline = workspaceId === null
 
   return (
-    <dialog ref={ref} className={sheetStyles.sheet} aria-labelledby={titleId} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className={sheetStyles.sheet}
+      aria-labelledby={titleId}
+      aria-busy={busy || undefined}
+      // Escape fires `cancel` before `close`. EventSheet has guarded this since it was
+      // written; this sheet writes visibility rules and did not, so a stray keypress could
+      // abandon a rule mid-flight and leave the user unsure which setting had landed.
+      onCancel={(event) => {
+        if (busy) event.preventDefault()
+      }}
+      onClose={onClose}
+    >
       <div className={sheetStyles.body}>
         <div className={styles.header}>
           <h2 id={titleId} className={styles.title}>

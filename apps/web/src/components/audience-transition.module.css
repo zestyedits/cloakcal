@@ -15,6 +15,24 @@
  * legible AND leave them in the accessibility tree untouched. The stale subtree is marked
  * `inert` in calendar-screen.tsx at the same instant this paints.
  */
+/*
+ * The gate for fixed chrome that lives outside `<main>`. `display: contents` means this box
+ * does not exist for layout, so the FAB inside positions against the viewport exactly as it
+ * did before. When the cover is up it stops painting -- `inert` alone would leave a live-
+ * looking button drawn on top of an opaque plate, which is the incoherence, not the risk.
+ *
+ * `visibility` rather than `display: none` so nothing reflows and no transition restarts when
+ * the frame lands; the FAB is fixed, so neither is visible, but the weaker tool is the right
+ * one when it is sufficient.
+ */
+.floating {
+  display: contents;
+}
+
+.floating[data-sealed] > * {
+  visibility: hidden;
+}
+
 .cover {
   grid-area: main;
   /* Above `<main>`'s own content; below --z-sheet, because an event sheet that is somehow

@@ -9,10 +9,34 @@
  */
 
 .scroller {
+  /*
+   * THE GUTTER WIDTH LIVES HERE, NOT ON `.grid`, BECAUSE THE SNAP HAS TO KNOW IT.
+   *
+   * `.grid` is always this element's only child, so it inherits the value and the template
+   * below is unchanged. Declaring it on the child instead would put it out of reach of
+   * `scroll-padding-left`, since custom properties inherit downward only.
+   */
+  --gutter-width: 3.25rem;
+
   overflow-x: auto;
   overflow-y: visible;
   /* Snap so a swipe lands on a day boundary rather than half a Tuesday. */
   scroll-snap-type: x proximity;
+  /*
+   * WITHOUT THIS, EVERY SNAP POSITION PARKS A DAY UNDERNEATH THE HOUR GUTTER.
+   *
+   * `.corner`, `.allDayLabel` and `.gutter` are `position: sticky; left: 0` with an opaque
+   * background and `z-index: 2`, and every column declares `scroll-snap-align: start`. Start
+   * means "flush with the scrollport's left edge" -- which is exactly where the sticky gutter
+   * is pinned. So a snapped 104px column lost its left 52px: on screen the Tuesday header
+   * rendered as "JE" over "9" instead of "TUE 19", and taps in that strip hit the gutter
+   * rather than `.blockTrigger` (z-index 1).
+   *
+   * Absent at rest and present from the first swipe, which is why every gate missed it and
+   * why it took a screenshot at a snap position to see. Scroll padding insets the snapport,
+   * so "start" now means "clear of the gutter".
+   */
+  scroll-padding-left: var(--gutter-width);
   -webkit-overflow-scrolling: touch;
   /* The entrance the agenda already has, on the surface that had none: day and week
      navigations used to hard-cut in. One rise on the container, not per-block — 40
@@ -22,7 +46,7 @@
 }
 
 .grid {
-  --gutter-width: 3.25rem;
+  /* --gutter-width is inherited from `.scroller`, which needs it for scroll-padding-left. */
   --hour-height: 3.5rem;
   --day-min-width: 6.5rem;
 

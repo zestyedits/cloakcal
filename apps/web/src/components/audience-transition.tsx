@@ -209,6 +209,36 @@ export function SealableMain({
 }
 
 /**
+ * Anything that floats OUTSIDE `<main>` and must not outlive the cover.
+ *
+ * Today that is the compose FAB, and the bug it fixes was visible in a screenshot: the FAB is
+ * `position: fixed` with `z-index: var(--z-sheet)` (100) and is rendered as a SIBLING of
+ * `<SealableMain>`, so `inert` never reached it and it out-stacked the cover's `z-index: 1`.
+ * During a narrowing switch the screen therefore read "Changing view to Priya" with a live
+ * **New event** button sitting on top of it -- which is the exact thing the comment above the
+ * FAB in calendar-screen.tsx says must not be offered.
+ *
+ * A component rather than a prop for the same load-bearing reason as `SealableMain`:
+ * CalendarScreen renders the provider, so its own hooks run outside it and
+ * `useAudienceSwitch()` there would always return the no-op.
+ *
+ * `display: contents` when open, so the FAB positions exactly as before and this wrapper is
+ * not in the layout at all. `inert` is the mechanism, matching SealableMain; `visibility` in
+ * the stylesheet is what stops it painting over the plate, because inert governs interaction
+ * and the accessibility tree, never paint.
+ */
+export function SealableFloating({ children }: { children: ReactNode }) {
+  const { sealing } = useAudienceSwitch()
+  const sealed = sealing !== null && sealing.cover
+
+  return (
+    <div className={styles.floating} data-sealed={sealed || undefined} inert={sealed}>
+      {children}
+    </div>
+  )
+}
+
+/**
  * The widening case's acknowledgment: a line, not a plate.
  *
  * Rendered inside `<main>` above the retained content. It exists because "no cover" must not

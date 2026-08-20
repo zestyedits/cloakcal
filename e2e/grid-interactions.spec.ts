@@ -97,3 +97,43 @@ test('the week view scans clean, closed and with the edit sheet open', async ({ 
     .analyze()
   expect(open.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
 })
+
+/*
+ * THE SNAPPED COLUMN MUST CLEAR THE STICKY HOUR GUTTER.
+ *
+ * `.corner`, `.allDayLabel` and `.gutter` are `position: sticky; left: 0` with an opaque
+ * background and `z-index: 2`, and every column carries `scroll-snap-align: start`. "Start"
+ * means flush with the scrollport's left edge, which is exactly where the gutter is pinned --
+ * so before `scroll-padding-left` every snap position buried a column's left 52px. On a 390px
+ * phone that is half of a 104px column: the Tuesday header rendered as "JE" over "9" instead
+ * of "TUE 19", and taps in that strip hit the gutter rather than the block trigger underneath.
+ *
+ * It is absent at rest and appears from the FIRST SWIPE, which is why every gate missed it and
+ * why it took a screenshot taken at a snap position to see at all.
+ *
+ * Asserted as the property rather than by driving a gesture and measuring where it lands:
+ * `proximity` snapping is not obliged to snap, the settle has no event to wait on, and a test
+ * that scrolls-then-measures would be timing a browser heuristic. The property is the fix, it
+ * is one declaration, and reading it back catches the only realistic regression -- somebody
+ * moving `--gutter-width` back onto `.grid`, where `scroll-padding-left` cannot see it and
+ * this silently resolves to 0.
+ */
+test('a snapped day column is not parked under the sticky hour gutter', async ({ page }) => {
+  await page.goto('/?view=week')
+  await settle(page)
+
+  const geometry = await page.evaluate(() => {
+    const scroller = document.querySelector('[class*="week-grid_scroller"]')
+    const gutter = document.querySelector('[class*="week-grid_gutter"]')
+    if (scroller === null || gutter === null) return null
+    return {
+      scrollPaddingLeft: getComputedStyle(scroller).scrollPaddingLeft,
+      gutterWidth: Math.round(gutter.getBoundingClientRect().width),
+    }
+  })
+
+  expect(geometry).not.toBeNull()
+  // Non-zero, and the same width as the thing it is clearing.
+  expect(geometry?.scrollPaddingLeft).toBe(`${geometry?.gutterWidth}px`)
+  expect(geometry?.gutterWidth).toBeGreaterThan(0)
+})

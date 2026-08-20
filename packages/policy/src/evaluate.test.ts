@@ -310,6 +310,31 @@ describe('the trace explains the decision', () => {
     expect(text).toMatch(/\.$/)
   })
 
+  /*
+   * EVERY SENTENCE STARTS WITH A CAPITAL, INCLUDING THE SECOND ONE.
+   *
+   * The partial-disclosure branch returns TWO sentences, and the second begins with a list of
+   * field labels which are all lower-case by construction. It shipped as
+   *
+   *   "They will see the time and the title. the location and who is attending stay hidden."
+   *
+   * rendered verbatim by the Cloak sheet and the visibility sheet, because rule 3 makes the
+   * engine the only interpreter and the UI quotes it exactly. The assertions above cannot see
+   * it: `/^They will see/` matches the first sentence and `/\.$/` matches the last character,
+   * and the defect lives between them. Asserted on every sentence rather than on the known
+   * shape, so a third sentence would be covered too.
+   */
+  it('capitalises every sentence, not just the first', () => {
+    const decision = evaluate(base({ event: { ...base().event, rules: [rule()] } }))
+    const text = explainDecision(decision)
+
+    const sentences = text.split(/(?<=\.)\s+/).filter((part) => part.length > 0)
+    expect(sentences.length).toBeGreaterThan(1)
+    for (const sentence of sentences) {
+      expect(sentence).toMatch(/^[A-Z]/)
+    }
+  })
+
   it('explains a denial without implying an event exists', () => {
     const text = explainDecision(evaluate(base({ viewer: { kind: 'unauthenticated' } })))
     expect(text).toBe('They will not see this event at all.')

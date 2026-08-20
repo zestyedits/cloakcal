@@ -28,7 +28,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
+  /* Four-sided, same reasoning as the calendar header: this is a `top: 0` sticky bar under
+     `viewport-fit=cover`, so without the top inset the back link sits under the status bar. */
+  padding: max(var(--space-2), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right))
+    var(--space-2) max(var(--space-4), env(safe-area-inset-left));
   /* SOLID, not a blur. A backdrop-filter on a sticky element over a scroller buys a
      compositing layer and repaints it on every frame of the scroll, for an effect nobody
      asked for. The hairline below is what separates the bar from the page. */
