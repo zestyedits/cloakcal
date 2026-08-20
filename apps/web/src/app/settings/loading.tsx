@@ -34,7 +34,6 @@ export default function SettingsLoading() {
                but nothing here should look pressable before the page it belongs to is. */
             <span key={door.id} className={hubStyles.door}>
               <span className={hubStyles.doorLabel}>{door.label}</span>
-              <span className={hubStyles.doorAbout}>{door.description}</span>
               <span
                 className={`${styles.doorState} ${styles.pulse}`}
                 aria-hidden="true"

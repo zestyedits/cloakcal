@@ -3,7 +3,6 @@
 import { useId } from 'react'
 import type { DisclosureLevel } from '@cloakcal/policy'
 import { audienceIdOf, type AudienceOption } from '@/lib/audiences'
-import { Button } from './ui/button'
 import { useAudienceSwitch } from './audience-transition'
 import { useAudienceNames } from './use-audience-names'
 import { PrivacyChip } from './ui/privacy-chip'
@@ -75,12 +74,24 @@ export function ViewAsBar({
    * way out rather than making you find one.
    */
   if (compact) {
-    const previewing = current !== 'owner'
-    const currentOption = audiences.find((option) => audienceIdOf(option) === current)
-    const currentName = currentOption === undefined ? 'someone else' : labelFor(currentOption)
+    /*
+     * OWNER ONLY, AND THAT IS NOT A SIMPLIFICATION -- IT IS THE FIX FOR A DUPLICATE.
+     *
+     * The first draft of this row also announced "Previewing as {name}" with its own way
+     * out. `PreviewBar` already does exactly that, sticky at the top of the content, inside
+     * <main> so the audience cover seals it, with the accent as a shape and the exit beside
+     * it. Two of them put the same sentence on screen twice, 44px apart, and one e2e
+     * assertion resolved to both.
+     *
+     * PreviewBar wins because it is where the user is LOOKING: it sits over the calendar it
+     * describes, and it is inside the sealed region. So this row states the resting state --
+     * the one nothing else announces -- and stands down when there is a mode to announce.
+     * The door into the Cloak sheet survives either way: the centre nav slot is always there.
+     */
+    if (current !== 'owner') return null
 
     return (
-      <div className={styles.audienceBar} data-previewing={previewing || undefined}>
+      <div className={styles.audienceBar}>
         <button
           type="button"
           className={styles.audienceState}
@@ -90,27 +101,32 @@ export function ViewAsBar({
           aria-haspopup="dialog"
           onClick={onOpenCloak}
         >
-          <span className={styles.audienceWho}>
-            {previewing ? `Previewing as ${currentName}` : 'Viewing as Me'}
-          </span>
-          {/* The baseline chip is the OWNER's answer to "what do others get". While
-              previewing there is no baseline to state -- the question on screen is what
-              THIS person sees, and every row below already answers it. */}
-          {!previewing && baselineLevel !== undefined && <PrivacyChip level={baselineLevel} />}
+          <span className={styles.audienceWho}>Viewing as Me</span>
+          {/*
+            THE CHIP NEEDS ITS LABEL, AND LEAVING IT OFF WAS A PRIVACY MISREADING RATHER
+            THAN A TERSENESS.
+
+            A bare chip beside "Viewing as Me" reads as "Me sees Limited details", which is
+            the exact inverse of what it means: the owner sees everything, and the chip is
+            what OTHERS get by default. The desktop card has always carried "By default,
+            others see" in front of it; the compact row dropped the words to save 70px and
+            changed the sentence into its opposite.
+
+            Shortened, not dropped -- "Others see" is the same claim in the space a phone
+            has. The chip itself is the shared component with the shared words, never a
+            re-worded copy, so the vocabulary cannot drift from the agenda rows it is the
+            baseline for.
+          */}
+          {baselineLevel !== undefined && (
+            <>
+              <span className={styles.audienceBaselineLabel}>Others see</span>
+              <PrivacyChip level={baselineLevel} />
+            </>
+          )}
           <span className={styles.audienceChevron} aria-hidden="true">
             ›
           </span>
         </button>
-        {previewing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={styles.audienceExit}
-            onClick={() => switchTo('owner', 'your own')}
-          >
-            Exit
-          </Button>
-        )}
       </div>
     )
   }

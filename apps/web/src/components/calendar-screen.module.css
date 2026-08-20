@@ -1082,15 +1082,8 @@
   border-radius: var(--radius-control);
 }
 
-/* Accent as a SHAPE — a left rule and a tinted ground — never as ink. Same rule the Cloak
-   sheet's current row follows, and the same reason: the four privacy inks are learned
-   meaning and nothing else may borrow them. */
-.audienceBar[data-previewing] {
-  padding-left: var(--space-2);
-  border-left: 2px solid var(--accent);
-  background: var(--surface-overlay);
-}
-
+/* No previewing variant: this row renders for the owner only. `PreviewBar` owns the mode,
+   at the top of the content, inside the region the audience cover seals. */
 .audienceState {
   flex: 1 1 auto;
   display: flex;
@@ -1130,16 +1123,23 @@
   white-space: nowrap;
 }
 
+/* Shrinks before the audience name does: the name is the fact, this is its qualifier. */
+.audienceBaselineLabel {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
 .audienceChevron {
   margin-left: auto;
   flex: none;
   color: var(--text-tertiary);
   font-size: var(--text-lg);
   line-height: 1;
-}
-
-.audienceExit {
-  flex: none;
 }
 
 /* Desktop keeps the card: the sidebar is a column with room to spare, and there the label

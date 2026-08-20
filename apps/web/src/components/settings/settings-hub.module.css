@@ -26,9 +26,24 @@
  * and put every door's current state in a single column the eye can run down — which is what
  * the readout band was reaching for when it printed four figures across the top.
  */
+/*
+ * ONE GROUPED LIST, NOT THREE CARDS.
+ *
+ * The hub was three shadowed, bordered, 20px-padded cards with 12px of gap, each carrying a
+ * title, an explanatory paragraph and a state line. That is a deck, and on a phone a deck of
+ * three reads as a marketing page for a settings screen.
+ *
+ * A native settings list is one surface with hairline separators: the container carries the
+ * border and the radius once, the rows carry a rule between them, and the eye reads down a
+ * column instead of across three boxes. The paragraphs went to the pages that already
+ * repeat them, word for word (see settings-doors.tsx).
+ */
 .doors {
   display: grid;
-  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  overflow: hidden;
 }
 
 /*
@@ -43,24 +58,31 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--space-2) var(--space-5);
+  align-items: center;
+  gap: 2px var(--space-4);
   min-width: 0;
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-lg), var(--edge-highlight);
+  /* Comfortably over the 44px floor without a card's worth of padding: two lines of text
+     plus 16px above and below is the native row proportion. */
+  padding: var(--space-4);
   text-decoration: none;
-  transition:
-    background var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
+  transition: background var(--duration-fast) var(--ease-standard);
   animation: doorRise var(--duration-base) var(--ease-decelerate) backwards;
 }
 
-.door:hover {
-  background: var(--surface-overlay);
-  border-color: var(--border-default);
+/* The separator lives BETWEEN rows, never around them: a border on every row doubles at
+   every seam and draws a line under the last one for nothing. */
+.door + .door {
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (hover: hover) {
+  .door:hover {
+    background: var(--surface-overlay);
+  }
+}
+
+.door:active {
+  background: var(--surface-sunken);
 }
 
 /* The same engraved caps a settings band's title wears, so a door and the page behind it
@@ -80,6 +102,8 @@
 
 .doorChevron {
   grid-column: 2;
+  grid-row: 1 / span 2;
+  grid-column: 2;
   grid-row: 1;
   flex: none;
   align-self: center;
@@ -89,14 +113,6 @@
 
 .door:hover .doorChevron {
   transform: translateX(2px);
-}
-
-.doorAbout {
-  grid-column: 1 / -1;
-  min-width: 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-  color: var(--text-secondary);
 }
 
 /*
@@ -115,7 +131,8 @@
  * its content, which this repo has shipped as horizontal overflow twice.
  */
 .doorState {
-  grid-column: 1 / -1;
+  grid-column: 1;
+  grid-row: 2;
   min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -173,27 +190,38 @@
   flex-wrap: wrap;
   gap: var(--space-4);
   margin: 0;
+  margin-top: var(--space-4);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Quieter, and no longer the visual end-state of the screen: these are read once, not the
+   things you came here to change. Still 44px and still standalone controls -- WCAG 2.5.8's
+   inline exception is about links inside a sentence, and these are not. */
 .legalRow a {
   display: inline-flex;
   align-items: center;
   min-height: var(--touch-min);
-  color: var(--accent-text);
+  color: var(--text-secondary);
   font-size: var(--text-sm);
   text-decoration: none;
+}
+
+@media (hover: hover) {
+  .legalRow a:hover {
+    color: var(--text-primary);
+  }
 }
 
 .legalRow a:hover {
   text-decoration: underline;
 }
 
+/* Wide enough for the state to sit BESIDE the title rather than under it -- the same
+   two-column row a desktop settings list uses. */
 @media (min-width: 720px) {
   .door {
     grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
   }
 
   .doorLabel {
@@ -201,20 +229,15 @@
     grid-row: 1;
   }
 
-  .doorAbout {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
   .doorState {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
     text-align: right;
   }
 
   .doorChevron {
     grid-column: 3;
-    grid-row: 1 / span 2;
+    grid-row: 1;
   }
 }
 

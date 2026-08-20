@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { cloakDoor } from './sheet'
+import { cloakDoor, expectAudience } from './sheet'
 
 /**
  * View As, end to end.
@@ -24,11 +24,11 @@ test('the owner sees full detail', async ({ page }) => {
   await expect(page.getByText('Bramblewick handover')).toBeVisible()
 })
 
-test('a client sees titles only for events shared with them', async ({ page }) => {
+test('a client sees titles only for events shared with them', async ({ page, isMobile }) => {
   await page.goto('/?as=contact:sarah')
   // Sarah has an individual rule: exact time, title visible.
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('contact:sarah')
+  await expectAudience(page, isMobile, { previewing: true })
 })
 
 test('a colleague sees busy blocks with no content at all', async ({ page }) => {
@@ -89,6 +89,7 @@ test('no preview surface puts a number on what it is hiding', async ({ page }) =
 
 test('previewing announces itself at the top of the content, with a way out', async ({
   page,
+  isMobile,
 }) => {
   // The mode used to be announced only by an accent border on a sidebar card: 300px from
   // the content on desktop, and above the fold only until you scrolled on a phone.
@@ -103,9 +104,7 @@ test('previewing announces itself at the top of the content, with a way out', as
   // assertions are waiting on a round trip, not on a re-render.
   await expect(page.getByText('Previewing as')).toHaveCount(0, { timeout: 15_000 })
   // Back to the owner's own calendar, not merely a cleared banner.
-  await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner', {
-    timeout: 15_000,
-  })
+  await expectAudience(page, isMobile, 'owner')
 })
 
 test('the owner is never shown a preview bar', async ({ page }) => {
@@ -154,7 +153,7 @@ test('the owner response does carry ciphertext, proving the previous test is not
  * that could take you into someone else's view and not out of it would be a trap.
  */
 
-test('the Cloak sheet previews from a row and offers the way back', async ({ page }) => {
+test('the Cloak sheet previews from a row and offers the way back', async ({ page, isMobile }) => {
   await page.goto('/')
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
 
@@ -168,8 +167,8 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
   // underneath it, and leaving it up would cover the answer.
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  // The sidebar bar is where the resulting MODE is visible, which is why it stayed.
-  await expect(page.getByRole('combobox', { name: /viewing as/i })).not.toHaveValue('owner')
+  // The MODE is visible outside the sheet, which is why the sheet does not carry it.
+  await expectAudience(page, isMobile, { previewing: true })
 
   await cloakDoor(page).click()
   await page.getByRole('button', { name: 'Back to my own view' }).click()
@@ -186,7 +185,10 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
  * stop. The failure mode being guarded here is the return of that: a chip on every row
  * again, or a chip on none, both of which look fine in a screenshot.
  */
-test('the agenda chips only the event that departs from the baseline', async ({ page }) => {
+test('the agenda chips only the event that departs from the baseline', async ({
+  page,
+  isMobile,
+}) => {
   await page.goto('/')
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
 
@@ -202,8 +204,12 @@ test('the agenda chips only the event that departs from the baseline', async ({ 
   // to the sidebar, because a page-wide `Limited details` would also match a visibility
   // control on some other surface, and a negative assertion that matches the whole page is
   // asserting about the whole page.
+  // The words differ by device and the CLAIM does not: the desktop card has room for "By
+  // default, others see", the phone's 44px row says "Others see". Both put the same shared
+  // chip component after it, which is what stops the vocabulary drifting from the rows the
+  // baseline is measured against.
   const sidebar = page.getByRole('complementary', { name: 'Calendars' })
-  await expect(sidebar.getByText('By default, others see')).toBeVisible()
+  await expect(sidebar.getByText(isMobile ? 'Others see' : 'By default, others see')).toBeVisible()
   await expect(sidebar.getByText('Limited details', { exact: true })).toHaveCount(1)
   await expect(agenda.getByText('Limited details', { exact: true })).toHaveCount(0)
 

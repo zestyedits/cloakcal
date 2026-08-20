@@ -17,8 +17,45 @@
   letter-spacing: var(--tracking-engraved);
 }
 
+/* A 44px icon control. Same hit area the ghost Button gave it, a quarter of the visual
+   weight -- and, with focus moving to the sheet body instead of here, no longer the first
+   thing wearing a focus ring when the sheet opens. */
 .close {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .close:hover {
+    background: var(--surface-overlay);
+    color: var(--text-primary);
+  }
+}
+
+.close:active {
+  transform: translateY(1px);
+}
+
+/* The sheet body takes focus on open and is not in the tab order, so its ring would be a
+   ring around the whole sheet for a mouse user who never asked for one. Keyboard focus
+   still shows, via :focus-visible, which is the distinction that matters here. */
+.body:focus {
+  outline: none;
 }
 
 .lede {
@@ -28,13 +65,61 @@
   line-height: var(--leading-relaxed);
 }
 
+/*
+ * THE ROW IS THE CONTROL. It is a <button> for every audience except the one currently
+ * being previewed, which is a <div> -- see cloak-sheet.tsx for why that is a state rather
+ * than a disabled control. Both wear this class, so the two must not assume button
+ * defaults: hence the explicit background, font, colour and text-align.
+ */
 .audience {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  width: 100%;
+  min-height: var(--touch-min);
   padding: var(--space-3) 0;
+  border: 0;
   border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+/* The previewing row is not a button and must not offer a pointer. */
+.audience[data-viewing] {
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .audience:not([data-viewing]):hover {
+    background: var(--surface-overlay);
+  }
+}
+
+.audience:not([data-viewing]):active {
+  transform: translateY(1px);
+}
+
+.audienceChevron {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+/* The public row's honesty line. Quieter than the engine's sentence above it, because it
+   is a fact about the PRODUCT rather than about this audience's disclosure. */
+.futureRule {
+  width: 100%;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 .audienceName {
@@ -60,15 +145,6 @@
   margin: 0;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
-}
-
-/* Full-width beneath the chip and sentence rather than crowded onto the name row: the
-   name can be long, and a control that shuffles position as names change is a control
-   people mis-tap. The Button owns the 44px floor. */
-.preview {
-  width: 100%;
-  justify-content: flex-start;
-  margin-top: var(--space-1);
 }
 
 .viewingNow {

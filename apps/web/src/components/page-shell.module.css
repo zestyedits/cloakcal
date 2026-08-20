@@ -70,10 +70,18 @@
  * choice — and the line length that matters is the one inside a card, which `.field` caps
  * separately. Centred as ONE block, so the masthead, the rail and the cards share an edge.
  */
+/* --space-5 above the title on a phone, --space-8 from 640px. 32px of air over a compact
+   header is the deck this pass is removing, not the breathing room it needs. */
 .body {
   max-width: 64rem;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-4) var(--space-16);
+  padding: var(--space-5) var(--space-4) var(--space-16);
+}
+
+@media (min-width: 640px) {
+  .body {
+    padding-top: var(--space-8);
+  }
 }
 
 /* One column of forms or rows. At the wide measure these pages left a third of the block
@@ -84,27 +92,61 @@
 
 /* The masthead: name, purpose, rule. The rule is the piece that was missing — without it
    the title had nothing to belong to and floated above the content. */
+/*
+ * A COMPACT NATIVE HEADER ON A PHONE, THE FULL MASTHEAD FROM 640px.
+ *
+ * At 390px this cost 129px before a single control: a --text-2xl title, a two-line lede,
+ * 32px of margin, 16px of padding and a rule. On /settings the lede is "What is true about
+ * your account right now, and what you can change safely" -- a good sentence in the wrong
+ * place, because a settings hub is not a page you need persuading to read.
+ *
+ * The lede is HIDDEN rather than made conditional, and that is the one place a CSS-only
+ * answer is right here: PageMasthead is shared by six settings routes, /people and both
+ * legal pages, and threading a viewport flag through all of them to delete a sentence would
+ * put a matchMedia read in nine components. Nothing else on any of those pages repeats the
+ * lede's text, so there is no duplicate for `getByText` to trip over -- which is the
+ * condition that made "render both, let CSS choose" wrong for the calendar heading and
+ * makes it fine here.
+ */
 .masthead {
-  margin-bottom: var(--space-8);
-  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--engrave-hairline);
+}
+
+@media (min-width: 640px) {
+  .masthead {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-4);
+  }
 }
 
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: var(--weight-regular);
   letter-spacing: var(--tracking-engraved);
   line-height: var(--leading-tight);
 }
 
 .lede {
+  display: none;
   margin: var(--space-2) 0 0;
   max-width: 46rem;
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: var(--leading-relaxed);
+}
+
+@media (min-width: 640px) {
+  .title {
+    font-size: var(--text-2xl);
+  }
+
+  .lede {
+    display: block;
+  }
 }
 
 /* Both pages ease in rather than hard-cutting: they are server navigations, and the

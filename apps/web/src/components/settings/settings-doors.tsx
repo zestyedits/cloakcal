@@ -45,14 +45,25 @@ export function SettingsDoors({
           href={door.href}
           className={styles.door}
           aria-labelledby={`door-${door.id}-label`}
-          aria-describedby={`door-${door.id}-about door-${door.id}-state`}
+          aria-describedby={`door-${door.id}-state`}
         >
           <h2 id={`door-${door.id}-label`} className={styles.doorLabel}>
             {door.label}
           </h2>
-          <span id={`door-${door.id}-about`} className={styles.doorAbout}>
-            {door.description}
-          </span>
+          {/*
+            THE DESCRIPTION IS GONE FROM THE ROW, AND NOTHING WAS LOST.
+
+            Every destination already opens with the same sentence in its own PageMasthead:
+            privacy-screen says "What each person and group sees of your calendar, and who
+            those people are" against this door's "...sees by default, and who those people
+            are". Same for Calendar and for Security & data. So the hub was a page of
+            paragraphs restating the pages behind it, which is what made it read as
+            marketing rather than as a settings list -- a native one gives you a title, the
+            state, and a chevron, and spends the words where the controls are.
+
+            `aria-describedby` keeps the STATE line, which is the part that is not repeated
+            anywhere else.
+          */}
           <span id={`door-${door.id}-state`} className={styles.doorState}>
             {summaryFor(door.id, door.pending, summaries, fixtureMode)}
           </span>

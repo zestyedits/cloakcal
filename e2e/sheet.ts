@@ -55,3 +55,43 @@ export const openSheet = async (page: Page, name: RegExp | string): Promise<Loca
   await page.getByRole('button', { name }).first().click()
   return settleSheet(page)
 }
+
+/**
+ * "Which audience is this calendar redacted for?", asked of whichever surface the viewport
+ * actually has.
+ *
+ * The phone stopped having a `<select>` in the 2026-08-20 mobile pass: a 100px labelled
+ * card above the calendar became a 44px row that states the mode and opens the Cloak sheet,
+ * which is a better picker than the select ever was because it shows each audience's level
+ * and the engine's own sentence. Four assertions in view-as.spec.ts were written against
+ * the select and failed on the mobile project only.
+ *
+ * They are updated rather than skipped, because what they assert is real on both devices --
+ * only the control carrying the answer differs. On a phone: the owner's row says "Viewing
+ * as Me" and exists only for the owner, and `PreviewBar` says "Previewing as {name}" and
+ * exists only while previewing, so the PRESENCE of one of the two is the state.
+ */
+export async function expectAudience(
+  page: Page,
+  isMobile: boolean,
+  expected: 'owner' | { previewing: true },
+): Promise<void> {
+  const budget = { timeout: 15_000 }
+  if (expected === 'owner') {
+    if (isMobile) {
+      await expect(page.getByRole('button', { name: /^Viewing as Me/ })).toBeVisible(budget)
+      await expect(page.getByText('Previewing as')).toHaveCount(0, budget)
+      return
+    }
+    await expect(page.getByRole('combobox', { name: /viewing as/i })).toHaveValue('owner', budget)
+    return
+  }
+
+  if (isMobile) {
+    await expect(page.getByText('Previewing as')).toBeVisible(budget)
+    // The owner's row stands down while previewing, so the two can never both be on screen.
+    await expect(page.getByRole('button', { name: /^Viewing as Me/ })).toHaveCount(0, budget)
+    return
+  }
+  await expect(page.getByRole('combobox', { name: /viewing as/i })).not.toHaveValue('owner', budget)
+}
