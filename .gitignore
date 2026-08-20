@@ -41,3 +41,6 @@ apps/web/next-env.d.ts
 
 # Throwaway probes. One of these was committed by accident and shipped for weeks.
 *.tmp.mjs
+
+# Screenshot audit output. Regenerate rather than trust; see docs/mobile-audit.md.
+/shots/
