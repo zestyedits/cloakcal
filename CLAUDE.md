@@ -1097,11 +1097,22 @@ and re-add.
   user meets the attribute — there is no element to reference. Its `<dialog>` also carries no
   `id` at all; the `useId()` value is bound to the `<h2>` for `aria-labelledby`. An IDREF to a
   missing element is the same defect as `href="#main"` on a page with no `#main`.
-  `shell.spec.ts` asserts the ABSENCE so it does not get helpfully added back. `aria-expanded`
-  stays and is accurate: a native `<dialog>` returns focus to its opener on close, so the user
-  lands back on a control that reads "collapsed" at the one moment that state is perceivable —
-  which is worth a comment, because the ARIA Authoring Practices dialog pattern omits it on
-  triggers and that reads as licence to delete it.
+  `shell.spec.ts` asserts the ABSENCE so it does not get helpfully added back.
+- **A MODAL `<dialog>` TAKES ITS OWN TRIGGER OUT OF THE ACCESSIBILITY TREE, SO `aria-expanded`
+  ON THAT TRIGGER CAN ONLY EVER SAY "COLLAPSED".** `showModal()` puts the dialog in the top
+  layer and makes the rest of the document inert; dumping Chromium's tree across a full
+  open/close cycle showed the Cloak button with **zero nodes while the sheet was open**. So
+  `aria-expanded="true"` is not unlikely to be heard, it is UNREACHABLE — an attribute with two
+  values that exposes one, which turns "collapsed" into permanent speech on every focus that
+  can never contrast with anything. It was carried on this button for exactly one commit, on
+  the reasonable-sounding argument that focus returns to the opener so the state is perceivable
+  on the way back; the return half is true and the conclusion still did not follow. The W3C
+  modal-dialog pattern does not ask for it on a trigger: `aria-haspopup="dialog"` carries the
+  popup type and the native element carries focus and modality. **`shell.spec.ts` asserts this
+  absence too, and asserts the focus round trip directly** rather than through a state flag,
+  because the behaviour is the thing worth protecting. The general lesson is the cheap one: an
+  ARIA state is only worth adding if BOTH of its values can reach somebody, and the way to find
+  out is to dump the tree rather than to reason about the spec.
 
 - **`getByRole(role, { name })` matches the accessible name as a case-insensitive SUBSTRING.**
   A page-wide `/Switch to/` also matches the theme toggle's "Switch to light mode", which made

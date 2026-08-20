@@ -98,24 +98,41 @@ test('the Cloak door says what it opens, and still answers to its visible name',
 
   // It opens a dialog, and says so before it is pressed.
   await expect(door).toHaveAttribute('aria-haspopup', 'dialog')
-  await expect(door).toHaveAttribute('aria-expanded', 'false')
 
   /*
-   * NO `aria-controls` WHILE CLOSED, AND THAT IS THE POINT OF ASSERTING IT.
+   * TWO ATTRIBUTES ASSERTED ABSENT, because each is a plausible-looking thing to add back in
+   * a review and neither would fail anything else.
    *
-   * The sheet is conditionally mounted, so there is no element to reference until the button
-   * has already been pressed. An IDREF to a missing element is precisely the defect the skip
-   * link shipped -- `href="#main"` on two pages that rendered no `#main` -- and "add
-   * aria-controls" is the obvious next suggestion anyone reviewing this button will make.
+   * `aria-expanded` was here and was removed on measurement. A native <dialog> opened with
+   * showModal() goes into the top layer and makes the rest of the document inert, which takes
+   * this button OUT of the accessibility tree entirely while the sheet is open -- confirmed by
+   * dumping Chromium's tree across the full cycle, where the button had zero nodes in the open
+   * state. So `aria-expanded="true"` is unreachable, the attribute only ever exposes "false",
+   * and "collapsed" becomes permanent speech on every focus that can never contrast with
+   * anything. The W3C modal-dialog pattern does not ask for it on a trigger.
+   *
+   * `aria-controls` was never here. The sheet is conditionally mounted, so there is no element
+   * to reference until the button has already been pressed, and its <dialog> carries no id in
+   * any case. An IDREF to a missing element is precisely the defect the skip link shipped --
+   * `href="#main"` on two pages that rendered no `#main`.
    */
+  await expect(door).not.toHaveAttribute('aria-expanded', /.*/)
   await expect(door).not.toHaveAttribute('aria-controls', /.*/)
 
-  // And it round-trips: closing a native <dialog> returns focus to its opener, which is what
-  // makes keeping aria-expanded worthwhile rather than vestigial.
+  /*
+   * The native element carries what the removed attribute was standing in for: modality, and
+   * focus that goes into the dialog and comes back to the opener. That is the behaviour to
+   * protect, so it is asserted directly rather than through a state flag.
+   */
   await door.click()
   await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(
+    page.evaluate(() => document.activeElement?.closest('dialog') !== null),
+  ).resolves.toBe(true)
+
   await page.keyboard.press('Escape')
-  await expect(cloakDoor(page)).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(cloakDoor(page)).toBeFocused()
 })
 
 test('the Cloak sheet opens, says who sees what, and passes axe', async ({ page }) => {

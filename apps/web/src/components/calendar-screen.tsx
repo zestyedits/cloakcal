@@ -633,29 +633,39 @@ export function CalendarScreen({
               )}
               <span className={styles.controlDivider} aria-hidden="true" />
               {/*
-                `aria-expanded` STAYS, and it is accurate rather than vestigial. The ARIA
-                Authoring Practices dialog pattern omits it on triggers, which someone will
-                eventually read as licence to delete this -- but the sheet is a native
-                <dialog>, so closing it returns focus to the button that opened it, and the
-                user lands back on a control that now reads "collapsed". The state is
-                perceivable at the one moment it can be.
+                TWO ARIA ATTRIBUTES THIS BUTTON DELIBERATELY DOES NOT HAVE. Both were carried
+                here at some point and both were removed on evidence, so `shell.spec.ts`
+                asserts their ABSENCE -- otherwise each is a plausible-looking thing to add
+                back in a review, one attribute at a time.
 
-                THERE IS DELIBERATELY NO `aria-controls`, for two reasons and the second is
-                the stronger one. CloakSheet's <dialog> carries no id at all (its `useId`
-                value is bound to the <h2> for `aria-labelledby`). And the sheet is
-                CONDITIONALLY MOUNTED -- see the `{cloakOpen && ...}` block near the end of
-                this file -- so while the button is closed, which is exactly when a user
-                meets `aria-controls`, there is nothing in the DOM to point at. An IDREF to a
-                missing element is the same defect the skip link shipped, where `href="#main"`
-                pointed at nothing on the 404 and the error page. `shell.spec.ts` pins the
-                absence so this does not get "improved" back in.
+                NO `aria-expanded`, and the reason is measured rather than stylistic. It was
+                here, reflecting `cloakOpen`, on the argument that a native <dialog> returns
+                focus to its opener so the state is perceivable on the way back. Half of that
+                is true: focus does return. But dumping Chromium's accessibility tree through
+                the whole cycle showed the button has ZERO nodes in it while the dialog is
+                open -- `showModal()` puts the dialog in the top layer and makes the rest of
+                the document inert, which takes the trigger out of the tree entirely. So
+                `aria-expanded="true"` is not merely unlikely to be heard, it is UNREACHABLE:
+                the attribute has two values and only ever exposes one. That makes "collapsed"
+                permanent speech on every focus that can never contrast with anything, which
+                is verbosity rather than state. The W3C modal-dialog pattern does not ask for
+                it on a trigger either; `aria-haspopup="dialog"` carries the popup type and the
+                native element carries focus and modality.
+
+                NO `aria-controls`, for two reasons and the second is the stronger one.
+                CloakSheet's <dialog> carries no id at all (its `useId` value is bound to the
+                <h2> for `aria-labelledby`). And the sheet is CONDITIONALLY MOUNTED -- see the
+                `{cloakOpen && ...}` block near the end of this file -- so while the button is
+                closed, which is exactly when a user meets `aria-controls`, there is nothing in
+                the DOM to point at. An IDREF to a missing element is the same defect the skip
+                link shipped, where `href="#main"` pointed at nothing on the 404 and the error
+                page.
               */}
               <button
                 type="button"
                 className={styles.cloakHeaderButton}
                 aria-label={CLOAK_DOOR_LABEL}
                 aria-haspopup="dialog"
-                aria-expanded={cloakOpen}
                 onClick={() => setCloakOpen(true)}
               >
                 <CloakMark size={16} />
@@ -1189,15 +1199,14 @@ export function CalendarScreen({
             now; agenda/week stay instant toggles while the week fetch is on the page. */}
         <nav className={styles.nav} aria-label="Calendar views">
           {NAV_LEADING.map((target) => navControl(navItemFor(target), styles.navItem))}
-          {/* Same accessible contract as the desktop door, which is where the reasoning for
-              all three attributes lives. The two must not drift, which is what the shared
-              CLOAK_DOOR_LABEL is for. */}
+          {/* Same accessible contract as the desktop door, which is where the reasoning lives
+              -- including which two attributes are deliberately absent. The two must not
+              drift, which is what the shared CLOAK_DOOR_LABEL is for. */}
           <button
             type="button"
             className={styles.cloakTile}
             aria-label={CLOAK_DOOR_LABEL}
             aria-haspopup="dialog"
-            aria-expanded={cloakOpen}
             onClick={() => setCloakOpen(true)}
           >
             <CloakMark size={18} />
