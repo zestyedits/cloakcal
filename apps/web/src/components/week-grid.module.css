@@ -243,6 +243,20 @@
 .event {
   position: absolute;
   /*
+   * NEVER SHORTER THAN ONE LINE, which is the other half of "no titleless blocks".
+   *
+   * A 15-minute event at 4.5rem an hour is 18px, or 12px of content box against a 15.6px
+   * line -- so it had no title for the same reason a 27px-wide block had none, and no
+   * aggregate fixes it because nothing is overlapping. The floor is one line plus the 6px
+   * of padding and border.
+   *
+   * VISUAL ONLY: `layout()` still clusters on the real interval, so two back-to-back
+   * 15-minute events are not treated as overlapping and do not aggregate. They may overlap
+   * each other by a few px on screen instead, which is what every calendar does and is the
+   * cheaper of the two lies.
+   */
+  min-height: 1.35rem;
+  /*
    * A SIZE CONTAINER, so the block can decide how many lines it can honestly hold.
    *
    * See the @container rules below `.privacyNote`. The block already has a definite height
@@ -300,6 +314,79 @@
 
 .event[data-busy='free'] {
   border-style: dashed;
+}
+
+/*
+ * THE OVERLAP AGGREGATE. Hidden by default; shown only where a lane cannot hold a title.
+ *
+ * The threshold is expressed as a breakpoint rather than a measured width because the two
+ * are the same question here: a phone column is (100cqi - gutter - peek) / 3, which is ~95px
+ * at 390px, so ANY overlap leaves under the ~72px a legible fragment needs. A desktop column
+ * at 1280px is 120px and a two-lane split is 60px -- tight, but a reader who can see the
+ * whole week has context to disambiguate from, and blanking those was a desktop regression
+ * bought by a mobile pass once already.
+ */
+.clusterBlock {
+  display: none;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-1) var(--space-2);
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  /* NO calendar colour: a neutral spine, because the members may come from several
+     calendars and a busy occurrence carries no calendarId at all. */
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--text-tertiary);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+}
+
+.clusterCount {
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clusterRange {
+  font-family: var(--font-numeral);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .clusterBlock:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+.clusterBlock:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 899px) {
+  /* The swap. `data-fold` is set by the component, which knows how many day columns are on
+     screen and therefore how many lanes one can hold -- see the laneBudget comment in
+     week-grid.tsx. A lone event never carries it, so an isolated 19:00 block keeps its whole
+     column even on a day that holds an all-hands. */
+  .clusterBlock[data-fold] {
+    display: flex;
+  }
+
+  .event[data-fold] {
+    display: none;
+  }
 }
 
 /* The block's time in the index ink — mono medium, same metal as the hour labels.
@@ -440,15 +527,7 @@
  * Width is eight characters plus nothing -- eight is where a truncated title is still
  * recognisable as the event you are hunting rather than a prefix that could be anything.
  *
- *     position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: 0;
-    min-height: 0;
-    min-width: 0;
-    overflow: hidden;
-    clip-path: inset(50%);PED, NOT `display: none`, throughout. A screen reader has no 28px constraint, and the
+ * CLIPPED, NOT `display: none`, throughout. A screen reader has no 28px constraint, and the
  * vertical position that replaces the time for a sighted user conveys nothing to one. Same
  * reason the FAB keeps a name it never prints.
  */
@@ -526,22 +605,18 @@
     }
   }
 
-  /* Too narrow for eight characters. */
-  @container (max-width: 52px) {
-    .eventTime,
-    .eventTitle,
-    .privacyNote {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: 0;
-      min-height: 0;
-      min-width: 0;
-      overflow: hidden;
-      clip-path: inset(50%);
-    }
-  }
+  /*
+   * THE WIDTH RULE IS GONE, AND ITS ABSENCE IS THE POINT.
+   *
+   * It clipped any block under eight characters' worth of content box, which on a 95px phone
+   * column meant every overlapping block -- and what it left behind was an anonymous coloured
+   * rectangle. Colour and position are not an event model: the calendar colours name a
+   * SOURCE, not a meaning, so a rectangle identifies nothing.
+   *
+   * Too-narrow blocks are now folded into `.clusterBlock` before they can lose their text,
+   * and too-short ones are prevented by `.event`'s min-height. There is no remaining path to
+   * a block that renders without a title, which is why nothing needs to clip one.
+   */
 }
 
 @media (min-width: 900px) {
@@ -697,6 +772,16 @@
 
   .event {
     font-size: var(--text-sm);
+    /*
+     * THE FLOOR SCALES WITH THE TYPE, and it has to be stated twice because the type is.
+     * Desktop runs --text-sm, so a line box is 18.2px and the content box must clear 16px
+     * for the title to survive its own container query. 1.5rem leaves 18px.
+     *
+     * Measured, not reasoned: the phone's 1.35rem left desktop blocks at 22px -- 16px of
+     * content, exactly ON the `max-height: 16px` threshold -- and five of them rendered
+     * without a title on a 1280px screen while the phone was clean.
+     */
+    min-height: 1.5rem;
   }
 }
 

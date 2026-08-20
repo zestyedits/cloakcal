@@ -10,7 +10,9 @@ import type { DeletedEvent, SavedEvent } from '@/lib/saved-event'
 import { CloakedText } from './cloaked-text'
 import { EditableEvent } from './editable-event'
 import { Icon, type IconName } from './ui/icons'
+import Link from 'next/link'
 import { wallTimeLabel } from '@/lib/wall-time'
+import { viewQuery } from '@/lib/calendar-links'
 import styles from './week-grid.module.css'
 
 /**
@@ -51,9 +53,29 @@ interface Placed {
   readonly occurrence: RedactedOccurrence
   readonly top: number
   readonly height: number
-  /** Column index and count, for events that overlap in time. */
+  /** Column index and count WITHIN THIS CLUSTER, for events that overlap in time. */
   readonly lane: number
   readonly lanes: number
+  /** Which cluster of mutually-overlapping events this belongs to, within its day. */
+  readonly cluster: number
+}
+
+/**
+ * A run of mutually-overlapping events, summarised. One per cluster, whatever its size.
+ *
+ * The grid renders this INSTEAD of the cluster's blocks wherever a lane would be too narrow
+ * to hold a title — see `.clusterBlock` in the stylesheet for where that line is drawn and
+ * why it is drawn in CSS rather than here.
+ */
+interface Cluster {
+  readonly id: number
+  readonly size: number
+  readonly lanes: number
+  readonly top: number
+  readonly height: number
+  /** Wall-clock strings, for the label and the accessible name. */
+  readonly startsAt: string
+  readonly endsAt: string
 }
 
 /**
@@ -64,11 +86,32 @@ interface Placed {
  * events always land in the same lanes, so a re-render never shuffles the layout under the
  * user's cursor. A cleverer algorithm that moved events around on every render would be a
  * worse calendar.
+ *
+ * LANES ARE PER CLUSTER, AND THEY USED TO BE PER DAY. That was a real defect and not a
+ * subtlety: `lanes` was the total number of lane slots ever allocated across the whole
+ * sweep, written into every occurrence, so ONE 09:00-17:00 all-hands made every other event
+ * that day render at half width — including a 19:00 dinner that overlapped nothing. The
+ * sweep now closes a cluster whenever an event starts at or after the running maximum end,
+ * and each cluster sizes its own lanes. An isolated event is `lanes: 1` and takes the
+ * column, which is what it always should have done.
+ *
+ * The clusters are returned as well as the placements, because an aggregate needs the
+ * cluster's own extent and count and the old shape threw both away.
  */
-function layout(day: readonly RedactedOccurrence[], startMinute: number, span: number): Placed[] {
+function layout(
+  day: readonly RedactedOccurrence[],
+  startMinute: number,
+  span: number,
+): { placed: Placed[]; clusters: Cluster[] } {
   const sorted = [...day].sort((a, b) => minutesOf(a.start) - minutesOf(b.start))
-  const laneEnds: number[] = []
-  const assigned: Array<{ occurrence: RedactedOccurrence; from: number; to: number; lane: number }> = []
+
+  interface Span {
+    occurrence: RedactedOccurrence
+    from: number
+    to: number
+  }
+  const groups: Span[][] = []
+  let openEnd = -1
 
   for (const occurrence of sorted) {
     const from = minutesOf(occurrence.start)
@@ -77,26 +120,65 @@ function layout(day: readonly RedactedOccurrence[], startMinute: number, span: n
     const rawTo = minutesOf(occurrence.end)
     const to = rawTo > from ? rawTo : from + 30
 
-    let lane = laneEnds.findIndex((end) => end <= from)
-    if (lane === -1) {
-      lane = laneEnds.length
-      laneEnds.push(to)
+    // A gap at or beyond the running maximum end closes the cluster. `>=` and not `>`:
+    // an event starting exactly when the last one ends does not overlap it.
+    if (groups.length === 0 || from >= openEnd) {
+      groups.push([])
+      openEnd = to
     } else {
-      laneEnds[lane] = to
+      openEnd = Math.max(openEnd, to)
     }
-
-    assigned.push({ occurrence, from, to, lane })
+    groups[groups.length - 1]!.push({ occurrence, from, to })
   }
 
-  const lanes = Math.max(1, laneEnds.length)
+  const placed: Placed[] = []
+  const clusters: Cluster[] = []
 
-  return assigned.map(({ occurrence, from, to, lane }) => ({
-    occurrence,
-    top: ((from - startMinute) / span) * 100,
-    height: Math.max(((to - from) / span) * 100, 2.5),
-    lane,
-    lanes,
-  }))
+  groups.forEach((group, id) => {
+    // Fresh lanes per cluster: that reset IS the fix described above.
+    const laneEnds: number[] = []
+    const laneOf = group.map(({ from, to }) => {
+      let lane = laneEnds.findIndex((end) => end <= from)
+      if (lane === -1) {
+        lane = laneEnds.length
+        laneEnds.push(to)
+      } else {
+        laneEnds[lane] = to
+      }
+      return lane
+    })
+    const lanes = Math.max(1, laneEnds.length)
+
+    let first = group[0]!
+    let last = group[0]!
+    for (const item of group) {
+      if (item.from < first.from) first = item
+      if (item.to > last.to) last = item
+    }
+
+    group.forEach((item, index) => {
+      placed.push({
+        occurrence: item.occurrence,
+        top: ((item.from - startMinute) / span) * 100,
+        height: Math.max(((item.to - item.from) / span) * 100, 2.5),
+        lane: laneOf[index]!,
+        lanes,
+        cluster: id,
+      })
+    })
+
+    clusters.push({
+      id,
+      size: group.length,
+      lanes,
+      top: ((first.from - startMinute) / span) * 100,
+      height: Math.max(((last.to - first.from) / span) * 100, 2.5),
+      startsAt: first.occurrence.start,
+      endsAt: last.occurrence.end,
+    })
+  })
+
+  return { placed, clusters }
 }
 
 /**
@@ -378,7 +460,30 @@ export function WeekGrid({
         </div>
 
         {days.map((day) => {
-          const placed = layout(byDay.get(day) ?? [], startMinute, span)
+          const { placed, clusters } = layout(byDay.get(day) ?? [], startMinute, span)
+
+          /*
+           * HOW MANY LANES THIS SURFACE CAN HOLD BEFORE A TITLE STOPS FITTING.
+           *
+           * The only thing JS needs to know is how many day columns are on screen, which it
+           * does. A phone scroller is ~343px; the gutter takes 52 and the peek 20, so:
+           *
+           *   seven columns, three visible -> ~95px each -> ONE lane fits (72px is the floor)
+           *   one column                   -> ~291px     -> THREE lanes fit
+           *
+           * So the week folds any overlap and the day folds only a four-way pile-up -- which
+           * is also what makes the day view an honest destination for the week's aggregate
+           * rather than a surface that folds again on arrival.
+           *
+           * Whether folding applies AT ALL is still the stylesheet's call, gated on the
+           * breakpoint: a desktop column is wide enough to lane an overlap and keep both
+           * titles, and blanking those was a desktop regression bought by a mobile pass once
+           * already.
+           */
+          const laneBudget = days.length === 1 ? 3 : 1
+          const folded = new Set(
+            clusters.filter((cluster) => cluster.lanes > laneBudget).map((cluster) => cluster.id),
+          )
 
           return (
             <div key={`col-${day}`} className={styles.column} data-today={day === today}>
@@ -438,7 +543,90 @@ export function WeekGrid({
                 ),
               )}
 
-              {placed.map(({ occurrence, top, height, lane, lanes }) => {
+              {/*
+                THE AGGREGATE, one per cluster of overlapping events.
+                ------------------------------------------------------------------------
+                Rendered ALONGSIDE the cluster's blocks, not instead of them, and the
+                stylesheet decides which of the two is shown. That split is deliberate:
+                "is a lane wide enough for a title" is a question about the rendered column,
+                which only CSS knows, and answering it in JS would mean re-deriving the
+                column arithmetic from `100cqi` in a second place. It also avoids the
+                hydration swap a `matchMedia` read would cause -- 42 blocks reflowing after
+                first paint is the trap the month cells were shaped around.
+
+                WHY IT EXISTS AT ALL. A phone week column is ~95px, so a single overlap
+                leaves each block ~27px of content box: four characters. The pass before this
+                one dropped the text at that width and left a bare coloured rectangle, which
+                is not an event -- the calendar colours name a SOURCE, not a meaning, so
+                colour plus position cannot identify anything. A block now either carries a
+                legible title or is folded into an honest count.
+
+                NO CALENDAR COLOUR. `redactPage` withholds `calendarId` on a busy occurrence
+                precisely because grouping is itself a disclosure, so an aggregate tinted
+                from its members would leak the grouping the redactor refused to send.
+
+                NO PRIVACY CHIP. It summarises events whose levels may differ, and the widest
+                would misdescribe the narrowest.
+              */}
+              {clusters.map((cluster) => {
+                const from = wallTimeLabel(cluster.startsAt, '')
+                const to = wallTimeLabel(cluster.endsAt, '')
+                /*
+                 * "2 events" IS PRINTED AND "2 overlapping events" IS SPOKEN, because the
+                 * printed one has to fit. A phone column is ~95px, or 79px of content box,
+                 * and "2 overlapping events" at --text-xs rendered as "2 overlap..." -- an
+                 * aggregate that truncates is the defect it was built to remove.
+                 *
+                 * Nothing is lost by the shorter spelling: a single block spanning one slot
+                 * and saying "2 events" can only mean two events in that slot, and the range
+                 * underneath states which slot. WCAG 2.5.3 holds because the accessible name
+                 * CONTAINS the visible text -- "2 events" is a prefix of neither, so the
+                 * count and the noun are kept adjacent in both.
+                 */
+                const shown = `${cluster.size} events`
+                const spoken = `${cluster.size} overlapping events`
+                // The next surface with more room for this day: a week column opens the day
+                // view, and the day view -- already one full-width column -- opens the
+                // agenda, which is a list and so terminates at any density.
+                const target = days.length === 1 ? 'agenda' : 'day'
+                const href = {
+                  pathname: '/' as const,
+                  // `audience` is optional on this component and `viewQuery` omits `as` for
+                  // the owner anyway, so an absent one is the owner's own view.
+                  query: viewQuery(target, day, audience ?? 'owner'),
+                }
+                return (
+                  <Link
+                    key={`cluster-${day}-${cluster.id}`}
+                    className={styles.clusterBlock}
+                    data-fold={folded.has(cluster.id) || undefined}
+                    href={href}
+                    /* Count, extent, destination. Every part of it is derived from what the
+                       server sent for the ACTIVE audience -- `redactPage` has already dropped
+                       everything withheld, so this number cannot exceed what the viewer is
+                       entitled to know. */
+                    aria-label={`${spoken}, ${from} to ${to}, open ${day}`}
+                    style={{ top: `${cluster.top}%`, height: `${cluster.height}%` }}
+                  >
+                    <span className={styles.clusterCount}>{shown}</span>
+                    {/*
+                      THE START ONLY, PRINTED; THE RANGE, SPOKEN.
+                      ------------------------------------------------------------------
+                      Not a space concession, though it began as one -- "09:00-10:00" is
+                      79px of a 77px box in the numeral face. It is the consistent answer:
+                      NO block in this grid prints an end time. `.eventTime` is
+                      `wallTimeLabel(occurrence.start)` and always has been, because the
+                      block's HEIGHT is its extent -- that is what a time grid is for. An
+                      aggregate printing an end would be the only element here restating
+                      what the geometry already says.
+                      The accessible name carries the full range, because a screen reader
+                      gets no geometry.
+                    */}
+                    <span className={styles.clusterRange}>{from}</span>
+                  </Link>
+                )
+              })}
+              {placed.map(({ occurrence, top, height, lane, lanes, cluster }) => {
                 // The agenda's guard, verbatim: version only exists for the owner, and the
                 // audience check is the deliberate second lock on the same door.
                 const editable =
@@ -450,6 +638,13 @@ export function WeekGrid({
                   <article
                     key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
                     className={styles.event}
+                    /* The stylesheet hides a folded cluster's blocks on a phone and shows
+                       the aggregate instead; on desktop the reverse. One DOM either way, so
+                       nothing reflows after hydration. `data-lanes` is kept because it is
+                       what an e2e assertion reads to prove a lone event still takes its
+                       whole column. */
+                    data-lanes={lanes}
+                    data-fold={folded.has(cluster) || undefined}
                     data-color={colorFor(occurrence.calendarId)}
                     data-time={occurrence.time}
                     data-busy={occurrence.busy ?? 'busy'}
