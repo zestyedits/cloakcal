@@ -705,6 +705,69 @@ mark, and delete became reversible in the product rather than only in the schema
   **Nothing in the repo can render it** — the fixture ships demo audiences, so the
   zero-contacts condition is false on every Playwright project.
 
+**The 2026-08-20 mobile pass: the phone is its own product, on five surfaces.**
+Day, Week, Month, Cloak and Settings, redesigned rather than re-padded. Measured at
+390x844, zero insets, fixture, dark:
+
+| | header | first content |
+| --- | --- | --- |
+| Day | 97 -> **69** | 371 -> **204** |
+| Week | 89 -> **69** | 371 -> **253** |
+| Agenda | 89 -> **69** | 371 -> **204** |
+| Month | 69 | 237 -> **173** |
+
+- **ONE DATE PER SCREEN.** The day view printed the date three times in its first 240px:
+  the header, the week strip's ringed number, and "THU 20" at the top of the grid. The
+  strip wins because it is also a CONTROL. The column head is dropped by CSS at
+  `[data-single]` **below 900px only** -- above that the strip hides itself and the head is
+  the day view's only date. `formatRangeCompact` gives the phone a shorter STRING rather
+  than a smaller one, and its en dash is unspaced where `formatRange`'s is spaced: 15
+  characters instead of 17, which is the difference between one line and two.
+- **THE ACCESSIBLE NAME TAKES THE COMPACT STRING TOO.** Printing "August 2026" while
+  speaking "Jump to today, Thursday, August 20, 2026" fails WCAG 2.5.3 -- the name does not
+  CONTAIN the visible label, so the control is unreachable by voice while looking correct.
+- **The View As card is a 44px row on a phone, owner only.** Its picker is the Cloak sheet.
+  The first draft also announced "Previewing as {name}", which `PreviewBar` already does 44px
+  away -- so the row states the RESTING state and stands down when there is a mode to
+  announce. **A bare chip beside "Viewing as Me" inverts its meaning** ("Me sees Limited
+  details"); it says "Others see" now.
+- **The theme toggle left the phone header**, 56px of a 390px row, with its replacement
+  named first: `/settings/calendar` -> Appearance holds a real Theme radiogroup.
+- **The FAB is a 48px circle**, reversing `new-event.module.css`'s written "a raised
+  rectangle, not a pill" -- that objection was to an elongated capsule and a circle has no
+  long axis. `.main`'s bottom padding stops being dead (the nav has owned its own grid row
+  since the shell rebuild) and becomes the FAB's clearance, derived from its geometry: an
+  e2e assertion checks nothing sits under it at maximum scroll.
+- **Week is three columns, paged, with the fourth peeking.** `100cqi`, never `100vw` -- the
+  latter hardcodes `.main`'s padding into a child's width. The peek is RESERVED before
+  dividing, or the fourth column vanishes and the week looks like it ends on Wednesday.
+  Snap is `mandatory` on every third column. Phone hours went 3.5rem -> 4.5rem, which is
+  what makes a 20-minute event legible at all.
+- **Month is dates and marks, with the words underneath.** 44px cells, up to three dots,
+  and the selected day's events listed in full below the grid. **The dots ARE the entries** --
+  same elements, phone keeps the spine and drops the title -- so the dot count and the entry
+  count cannot drift. **No count and no "+N more"**: `redactPage` has already dropped what
+  this audience may not know about, so a count would be truthful, but a number invites "is
+  that all of them?", which is the one question this product must never appear to answer.
+  Selection is client state and costs no fetch, because `monthGridRange` already fetched all
+  42 days.
+- **The Cloak sheet opened with a focus ring on its DISMISS control.** `showModal()` focuses
+  the first tabbable descendant and Close was first in the DOM. Focus goes to the sheet body
+  now. The lede lost "Every person and link that can reach your calendar" -- `lib/plans.ts`
+  already bans that phrasing in a feature list and this sheet was the last surface making the
+  claim; the public row keeps its label and gains "No link exists yet. This is the rule it
+  will follow."
+- **Settings is one grouped list**, 365px to the last row instead of 444. The door
+  descriptions are gone because every destination already opens with the same sentence in
+  its own `PageMasthead`.
+
+**What this pass did NOT do, stated so it is a decision rather than a gap:** the Privacy
+door still reads "1 person . 1 default rule" rather than "Default: Full details". The
+baseline level is Tier A and would be the better line, but `widestLevel` is a local in
+`server/audience.ts` over viewers built from a full `loadWorkspaceVisibility`, and the hub is
+deliberately six head counts with no CloakProvider and no client JS. Changing what that line
+MEANS is a product decision with an architecture cost, not a copy tweak.
+
 **Then, in order:**
 0. `docs/brand.md` records the mark; Visual Guide pages 2-8 have still never been supplied.
 1. Booking + per-contact share links — the next dedicated phase, and **NOT gated on the
@@ -829,6 +892,39 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A QUERY CONTAINER'S SIZE IS ITS CONTENT BOX, AND A BLIND SWEEP LOOKS EXACTLY LIKE A
+  CLEAN ONE.** `container-type: size` on `.event` (week-grid) answers `@container
+  (max-width: N)` with the element's CONTENT box: `.event` carries 8px side padding, a 3px
+  left border and a 1px right border, so a block measuring 89.3px on screen answers with
+  69.3. Thresholds written against the rendered size clip elements that had room. The second
+  half is worse: the sweep asserting "no line overflows its block" then PASSED while
+  checking nothing, because every line it would have measured was already clipped to 1x1 and
+  skipped. **Make a sweep report how many things it inspected**, or it cannot tell you it
+  found none from it looked at none. Same family as the `code()` helper that ate 3,884
+  characters and reported a feature missing.
+- **THE BUDGET IS INK, NOT LINE BOXES.** A line box is font-size plus leading and the
+  leading is empty on both sides. Requiring the whole box to fit inside a block blanked a
+  desktop 30-minute event that was 0.2px short of an 18.2px line box while its 14px of
+  glyphs had 4px to spare -- the desktop week went from 14 titles to 3. The last line may
+  hang into its own bottom half-leading, `(line - font) / 2`, and no further.
+- **CLIPPING A CONTROL DELETES IT.** The visually-hidden pattern (`position: absolute;
+  width: 1px; clip-path: inset(50%)`) keeps text in the accessibility tree, which is why it
+  is right for a label. A 1x1 element is not hit-testable, so applying it to a BUTTON removes
+  the control. `.privacyNoteButton` was in the week grid's clip rules for one run and took
+  the owner's per-event visibility door off every short block, on desktop as well as phone.
+  Four e2e tests caught it; nothing else would have.
+- **A MEDIA OR CONTAINER BLOCK PLACED BEFORE THE RULE IT OVERRIDES LOSES ON SOURCE ORDER.**
+  Neither adds specificity, so `@media { .headerEnd { margin-left: 0 } }` written above
+  `.headerEnd { margin-left: auto }` does nothing at all. Hit twice in one pass, once with a
+  comment confidently explaining an effect the rule did not have. Put conditional blocks
+  AFTER the base rules they modify, and verify in the page rather than in your head.
+- **A `\d` INSIDE A TEMPLATE LITERAL PASSED TO `new RegExp` SILENTLY BECOMES `d`.** The
+  literal consumes the backslash before RegExp ever sees it, so a pattern built as
+  "Show \d{4}" in backticks matches "Show dddd". It fails as a not-found rather than as a
+  syntax error, which sends you looking at the page. Use a character class such as
+  `[0-9-]+`, or double the backslash. Same family as the u2014 escape that hid an em dash
+  from every source grep -- an escape sequence that one layer eats before the layer that
+  cared about it ever ran.
 - **A WORKTREE'S DEV SERVER WILL STEAL YOUR E2E RUN, AND PLAYWRIGHT CANNOT TELL.**
   `webServer.reuseExistingServer` is `!CI`, so a suite run while ANY other `next dev` holds
   the port attaches to that one instead of starting its own. Harmless when the other server

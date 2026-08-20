@@ -222,3 +222,60 @@ not out of the document, and the two shapes shared the heading *text* — so `ge
 two nodes and every heading assertion hit strict mode. React picks the shape from a `matchMedia`
 read after hydration now, so the heading is in the DOM exactly once at any width. The house
 pattern is right for the nav and the view switch, where the two shapes share no text.
+
+---
+
+## The 2026-08-20 pass — five surfaces, measured
+
+Day, Week, Month, Cloak and Settings, redesigned as a phone product rather than re-padded.
+All numbers at 390x844, zero safe-area insets, dark, fixture, owner, at rest.
+
+| | header | first content |
+| --- | --- | --- |
+| Day | 97 -> **69** | 371 -> **204** |
+| Week | 89 -> **69** | 371 -> **253** |
+| Agenda | 89 -> **69** | 371 -> **204** |
+| Month | 69 | 237 -> **173** |
+| Settings, last row | | 444 -> **365** |
+
+### What the audit got wrong, corrected here
+
+**"The header spacing is a doubled safe-area inset" was wrong.** On `/` there is exactly one
+consumer of `env(safe-area-inset-top)` in the whole ancestor chain and every ancestor
+contributes zero. Two other things stack to look like it: `theme-color` is `#0b0d14`, which
+is exactly `--surface-base`, so iOS paints the status bar in a shade 1.07:1 from the header's
+own ground; and the header was 97px because `formatDay`'s 25-character string wrapped to
+three lines in a ~102px box. The fix was one date representation and one fewer top-right
+action, not padding.
+
+**Safari's chrome never gets out of the way, and that is our shell.** `.shell` is
+`height: 100dvh` with `main` as the scroller, so the DOCUMENT never scrolls -- and Safari
+minimises its toolbar on document scroll. It therefore never minimises, and the app
+permanently loses ~100px to browser chrome. That is a consequence of the shell rebuild that
+fixed the jumping nav, and it is the honest argument for the install path: installing is what
+recovers that 100px.
+
+### Four measurements that changed the design mid-flight
+
+1. **A query container reports its CONTENT box.** Thresholds written against the rendered
+   size clipped blocks that had room, and the sweep guarding it then passed while inspecting
+   an empty set.
+2. **Line boxes are mostly leading.** Budgeting the whole box took the desktop week from 14
+   titles to 3, for 0.2px.
+3. **`flex-grow` on the header's place cluster does nothing** -- the row is exactly full at
+   343px. What fixed the wrap was the string, plus closing a 12px gap between the phone
+   lockup's mark and its hidden wordmark.
+4. **Clipping `.privacyNoteButton` deleted a control**, on desktop as well.
+
+### Still open
+
+- **Week's laned blocks print no title.** A 90px column split by one overlap gives each block
+  25px of content; below the eight-character floor the block keeps its colour and drops its
+  text. In the fixture that is 7 of 14 blocks, because the demo has a daily 09:00 standup
+  overlapping three other 09:00 meetings. The alternative -- cascading overlaps so each keeps
+  a full-width text box -- costs the earlier block's tap target, and was not taken.
+- **The Privacy door still counts rules rather than naming the default.** See CLAUDE.md for
+  the architecture cost.
+- **Nothing here has met a real phone.** Every number is Chromium at a synthetic viewport:
+  no real safe-area inset, no URL-bar collapse, no on-screen keyboard, no `navigator.standalone`.
+  The keyboard-versus-sheet finding in particular is still unverified.
