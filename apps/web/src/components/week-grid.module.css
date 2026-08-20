@@ -242,6 +242,15 @@
 
 .event {
   position: absolute;
+  /*
+   * A SIZE CONTAINER, so the block can decide how many lines it can honestly hold.
+   *
+   * See the @container rules below `.privacyNote`. The block already has a definite height
+   * (an inline `height: N%` from the layout pass), which is what `container-type: size`
+   * needs, and containing it changes nothing about how it is sized -- its contents never
+   * drove its height in the first place.
+   */
+  container-type: size;
   /* Inset so adjacent lanes and the column edge stay visually separate. */
   padding: 2px var(--space-2);
   overflow: hidden;
@@ -322,6 +331,7 @@
   white-space: nowrap;
 }
 
+
 /*
  * The owner's visibility door: the same second line, as a button ABOVE the stretched
  * edit trigger (z-index 2 over 1). A 24px minimum box via padding — the 2.5.8 numeric
@@ -355,9 +365,296 @@
   text-decoration: underline;
   color: var(--text-primary);
 }
+/*
+ * A LINE IS WHOLLY INSIDE THE BLOCK OR IT IS NOT DRAWN. Never half of one.
+ *
+ * THE DEFECT THIS FIXES, measured rather than described: a 30-minute block in a 56px-per-
+ * hour grid is 28px tall. Minus 2px padding top and bottom and 1px of border each side that
+ * is 22px of content. `.eventTime` takes a 15.6px line box plus the flex column's 1px gap,
+ * which leaves 5.4px of a 15.6px title line -- a hard horizontal cut through the middle of
+ * the glyphs. `.eventTitle` is `white-space: nowrap` with `text-overflow: ellipsis`, and
+ * both of those are about WIDTH. Nothing in CSS ellipsises a clipped line box, so the
+ * vertical loss was silent: "Legal c" with its lower half sheared off, which reads as a
+ * font rendering fault rather than as a layout one.
+ *
+ * THE TIME IS THE LINE THAT GOES, and that is not arbitrary. A block's vertical position IS
+ * its time and the hour gutter beside it is the label; the title is the only thing on the
+ * block that exists nowhere else on the screen. So on a short block the title takes the one
+ * line there is.
+ *
+ * CLIPPED, NOT `display: none`. The time and the privacy note stay in the accessibility
+ * tree -- a screen reader has no 28px constraint, and the visual position that replaces the
+ * time for a sighted user conveys nothing to one. This is the same reason the FAB keeps a
+ * name it never prints.
+ *
+ * THE THRESHOLDS ARE PER-BREAKPOINT BECAUSE THE LINE HEIGHT IS. Content height needed:
+ *
+ *   phone   (--text-xs, 12px x 1.3 = 15.6px)   1 line 21.6px   2 lines 38.2   3 lines 54.8
+ *   desktop (--text-sm, 14px x 1.3 = 18.2px)   1 line 24.2px   2 lines 43.4   3 lines 62.6
+ *
+ * A container query cannot read the font size, so the numbers are written twice. If the
+ * block's type scale ever changes, these change with it -- and `week-grid.spec.ts` asserts
+ * no line box overflows its block, which is what says so.
+ */
+/*
+ * WHAT A BLOCK CAN HONESTLY HOLD. A line is wholly inside it or it is not drawn -- never
+ * half of one, and never four characters of a word.
+ *
+ * THE TWO DEFECTS THIS FIXES, both measured:
+ *
+ *   VERTICAL. A 30-minute block in a 56px-per-hour grid is 28px. `.eventTime` takes a
+ *   15.6px line box plus the column gap, leaving 5.4px of a 15.6px title line -- a hard cut
+ *   through the middle of the glyphs. `.eventTitle` is nowrap with text-overflow: ellipsis,
+ *   and both of those are about WIDTH; nothing in CSS ellipsises a clipped line box, so the
+ *   loss was silent and read as a font fault rather than a layout one.
+ *
+ *   HORIZONTAL. A 90px phone column split into two lanes by one overlap gives each block
+ *   ~45px, of which 20px is chrome. "Team Standup" rendered as "Tear". That is not a
+ *   truncation a reader can complete; it is the month grid's "Team s" cells in a different
+ *   place. Below the width that holds a recognisable fragment the block keeps its colour,
+ *   its position, its size and its door, and drops its text -- an honest mark saying
+ *   something is here, with the words one tap away on a surface with room for them.
+ *
+ * THE NUMBERS ARE CONTENT-BOX, AND THAT IS THE PART THAT COST AN HOUR. A query container's
+ * size is its CONTENT box, not its border box. `.event` carries 8px of side padding, a 3px
+ * left border and a 1px right border, so a block measuring 89.3px on screen answers a
+ * width query with 69.3. Thresholds written against the rendered width clip blocks that had
+ * room, and -- worse -- a sweep asserting "no line overflows its block" then passes while
+ * checking NOTHING, because every line it would have measured is already clipped. Both
+ * happened here in that order.
+ *
+ * AND THE BUDGET IS INK, NOT LINE BOXES -- the second thing that cost time here. A line box
+ * is font-size plus leading, and the leading is empty on both sides. Requiring the whole box
+ * to fit blanked a desktop 30-minute block that was 0.2px short of an 18.2px line box while
+ * its 14px of actual glyphs had 4px to spare. Measured: that spelling took the desktop week
+ * from 14 titles (18 of 29 lines overflowing) to 3 titles and no overflow -- trading one
+ * defect for a worse one.
+ *
+ * So the last line may hang into its own bottom half-leading, (line - font) / 2, and no
+ * further. Content box needed, with a 1px column gap between lines:
+ *
+ *              line     half-lead   1 line   2 lines   3 lines
+ *   phone      15.6px   1.8         13.8     30.4      47.0     (--text-xs, 12px)
+ *   desktop    18.2px   2.1         16.1     35.3      54.5     (--text-sm, 14px)
+ *
+ * Width is eight characters plus nothing -- eight is where a truncated title is still
+ * recognisable as the event you are hunting rather than a prefix that could be anything.
+ *
+ *     position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    clip-path: inset(50%);PED, NOT `display: none`, throughout. A screen reader has no 28px constraint, and the
+ * vertical position that replaces the time for a sighted user conveys nothing to one. Same
+ * reason the FAB keeps a name it never prints.
+ */
+
+/* Phone set. Scoped, because the width cut-off below is a judgement about a 90px
+   column and NOT a correctness rule -- left unscoped it clipped every 40px-wide
+   laned block on a 1280px desktop, which is how this pass nearly shipped a
+   desktop regression. The desktop set follows, with its own numbers for its own
+   type scale. */
+@media (max-width: 899px) {
+  /* Not even one line: the title goes too, or it is sliced. */
+  @container (max-height: 13px) {
+    .eventTime,
+    .eventTitle,
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /* One line. The TITLE is what it spends it on: a block's vertical position is its time and
+     the hour gutter is the label, so the time is the line that is recoverable elsewhere. */
+  @container (max-height: 30px) {
+    .eventTime,
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /* Two lines: time and title, no second-line note. */
+  @container (max-height: 46px) {
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /* Too narrow for eight characters. */
+  @container (max-width: 52px) {
+    .eventTime,
+    .eventTitle,
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+}
+
+@media (min-width: 900px) {
+  @container (max-height: 16px) {
+    .eventTime,
+    .eventTitle,
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  @container (max-height: 35px) {
+    .eventTime,
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  @container (max-height: 54px) {
+    .privacyNote,
+    .privacyNoteButton {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: 0;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /*
+   * NO WIDTH RULE ON DESKTOP, DELIBERATELY, AND THIS WAS MEASURED BOTH WAYS.
+   *
+   * The phone's 52px cut-off is a judgement about a 90px column: below it a laned block
+   * holds four characters, which is noise wearing the shape of a label. A desktop week at
+   * 1280px has 120px columns and 60px lanes -- 40px of content, five or six characters, and
+   * a reader who can see the whole week at once to disambiguate from.
+   *
+   * Ported straight across at the equivalent 61px it blanked ELEVEN of fourteen blocks on a
+   * 1280px screen, which is a desktop regression bought by a mobile pass. The height rules
+   * above stay on both, because slicing a line in half is wrong at any width; the width rule
+   * is phone-only because "too narrow to be worth printing" is a question about how much
+   * else is on the screen.
+   */
+}
 
 .dstNote {
   color: var(--status-warning);
+}
+
+/*
+ * THE PHONE'S WEEK IS THREE DAYS AT A TIME, PAGED, WITH THE FOURTH PEEKING.
+ *
+ * What was here: 7 columns at a 104px floor -- 780px of grid inside a 358px scroller. Just
+ * under three columns visible, snapping one column at a time, with nothing on screen saying
+ * how far through the week you were or that there was more of it. A desktop week
+ * horizontally compressed, which is the same failure as the month grid and less obvious.
+ *
+ * THE COLUMN WIDTH COMES FROM THE SCROLLER, NOT FROM THE VIEWPORT. `100cqi` is the
+ * scroller's own inline size, so this survives any change to `.main`'s padding, the sidebar
+ * breakpoint or a future split view. The tempting `100vw` spelling would hardcode the
+ * parent's padding into a child's width and break silently the day either moves.
+ *
+ * THE PEEK IS RESERVED, NOT LEFT OVER. Dividing the remaining width by exactly 3 fills the
+ * scrollport and the fourth column becomes invisible -- so the paging would work and look
+ * like the week simply ends. Taking --week-peek off the top first means a slice of the next
+ * day is always on screen: a continuation cue that is designed rather than accidental, and
+ * the reason this view does not need to borrow the day view's week strip (which would cost
+ * 61px of prelude and put a second rendering of the same dates on the screen).
+ *
+ * MANDATORY, NOT PROXIMITY, and only on every third column. Proximity plus a snap point on
+ * every column is a scroller that drifts; the pair here is what makes a swipe a PAGE. The
+ * heads are children 2..8 of the grid, so 3n+2 selects the 1st, 4th and 7th. The last page
+ * clamps at maximum scroll, which shows days 5-7 rather than day 7 alone.
+ */
+@media (max-width: 899px) {
+  .scroller {
+    container-type: inline-size;
+    scroll-snap-type: x mandatory;
+  }
+
+  .grid {
+    --week-peek: 1.25rem;
+    --day-min-width: calc((100cqi - var(--gutter-width) - var(--week-peek)) / 3);
+    /*
+     * TALLER HOURS ON A PHONE, WHICH IS WHAT MAKES A SHORT EVENT LEGIBLE AT ALL.
+     *
+     * At 3.5rem an hour, a 20-minute event is 19.6px -- 13.6px of content box against a
+     * 15.6px line. There is no arrangement of a 12px font that fits, so the block had to
+     * either slice its title (what it did) or print nothing (what the rules below would
+     * make it do). Neither is a calendar.
+     *
+     * 4.5rem makes that block 25.2px, or 19.2px of content, which holds one line with room
+     * to spare. The cost is that the grid is taller and scrolls sooner -- which on a phone
+     * is the cheap axis, and the one a thumb is already on.
+     */
+    --hour-height: 4.5rem;
+  }
+
+  .dayHead {
+    scroll-snap-align: none;
+  }
+
+  .dayHead:nth-child(3n + 2) {
+    scroll-snap-align: start;
+  }
 }
 
 /*
