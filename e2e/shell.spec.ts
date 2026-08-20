@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { CLOAK_DOOR_NAME, cloakDoor } from './sheet'
 
 /**
  * The shell: five-item nav with Cloak in the centre, the Today link, the mobile week
@@ -56,14 +57,72 @@ test('desktop gets the segmented view control instead of the phone bar', async (
   )
   await expect(header.getByRole('link', { name: 'Month', exact: true })).toBeVisible()
   // The compact Cloak door lives beside it.
-  await expect(page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(cloakDoor(page)).toBeVisible()
+})
+
+/*
+ * THE DOOR'S ACCESSIBLE CONTRACT, pinned on both chromes.
+ *
+ * This spec runs on the mobile and desktop projects, and CSS shows a different one of the two
+ * Cloak buttons on each, so the assertions below cover both instances across the matrix rather
+ * than testing one and hoping the other matches.
+ *
+ * The button used to be named by the bare word "Cloak", which is brand vocabulary rather than
+ * a description -- and nothing pinned anything about it beyond the word itself. What follows
+ * protects the improved contract, not the old label.
+ */
+test('the Cloak door says what it opens, and still answers to its visible name', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await settle(page)
+
+  const door = cloakDoor(page)
+  await expect(door).toBeVisible()
+
+  /*
+   * WCAG 2.5.3, LABEL IN NAME, AS TWO HALVES THAT MUST AGREE.
+   *
+   * Somebody driving the browser by voice says "click Cloak" -- the words they can SEE -- and
+   * their software matches that against the ACCESSIBLE name. So the printed label has to be
+   * contained in the accessible one. Asserting only the accessible name would let a future
+   * change rename the visible text to "Privacy" and leave the control unreachable by voice
+   * while every other test, and the page itself, looked entirely correct.
+   *
+   * The visible half is also pinned independently by the five-slot nav test above, which reads
+   * textContent via allTextContents() and is blind to ARIA. This is the pairing.
+   */
+  await expect(door).toHaveText('Cloak')
+  await expect(door).toHaveAccessibleName(CLOAK_DOOR_NAME)
+  expect(CLOAK_DOOR_NAME.startsWith('Cloak')).toBe(true)
+
+  // It opens a dialog, and says so before it is pressed.
+  await expect(door).toHaveAttribute('aria-haspopup', 'dialog')
+  await expect(door).toHaveAttribute('aria-expanded', 'false')
+
+  /*
+   * NO `aria-controls` WHILE CLOSED, AND THAT IS THE POINT OF ASSERTING IT.
+   *
+   * The sheet is conditionally mounted, so there is no element to reference until the button
+   * has already been pressed. An IDREF to a missing element is precisely the defect the skip
+   * link shipped -- `href="#main"` on two pages that rendered no `#main` -- and "add
+   * aria-controls" is the obvious next suggestion anyone reviewing this button will make.
+   */
+  await expect(door).not.toHaveAttribute('aria-controls', /.*/)
+
+  // And it round-trips: closing a native <dialog> returns focus to its opener, which is what
+  // makes keeping aria-expanded worthwhile rather than vestigial.
+  await door.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(cloakDoor(page)).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('the Cloak sheet opens, says who sees what, and passes axe', async ({ page }) => {
   await page.goto('/')
   await settle(page)
 
-  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  await cloakDoor(page).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Cloak' })).toBeVisible()
   // The fixture's restricted audiences appear with engine copy, not restated prose.

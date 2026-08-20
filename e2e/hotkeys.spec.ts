@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { cloakDoor } from './sheet'
 
 /**
  * Keyboard navigation. Every binding, plus the two guards that make single-key
@@ -84,7 +85,7 @@ test('an open dialog silences navigation keys even with no field focused', async
   await page.goto('/')
   await settle(page)
 
-  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  await cloakDoor(page).click()
   await expect(page.locator('dialog[open]')).toBeVisible()
   await page.keyboard.press('ArrowRight')
   await expect(page).not.toHaveURL(/date=/)

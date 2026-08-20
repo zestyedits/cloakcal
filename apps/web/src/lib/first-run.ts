@@ -54,3 +54,45 @@ export const isFirstRunArmed = (): boolean => read(ARMED)
 export const dismissAudiencePrompt = (): void => write(DISMISSED)
 
 export const isAudiencePromptDismissed = (): boolean => read(DISMISSED)
+
+/**
+ * THE FIVE CONDITIONS, AS A SIGNATURE RATHER THAN AS A COMMENT.
+ *
+ * They were an inline `if` in the component and a numbered list above it, which meant nothing
+ * could check that the list and the code still agreed, and nothing in this repo could exercise
+ * either: the fixture ships demo audiences, so condition 4 is false on every Playwright
+ * project and that component has never been rendered by any test or seen by axe.
+ *
+ * Splitting the decision out is the same move `lib/settings-summary.ts` made for the settings
+ * hub, and for the same reason -- the pure half becomes testable even though the wire it runs
+ * on cannot be reached from here. `first-run.client.test.ts` covers every branch.
+ *
+ * WHAT THIS STILL DOES NOT COVER, and the release gate that remains: whether a real account
+ * with a real workspace actually arrives at these five values. That needs the throwaway-account
+ * recipe. A predicate proving "given no contacts, offer the prompt" says nothing about whether
+ * the contact count reaching it was correct.
+ *
+ * Every clause is required, and each one is load-bearing:
+ *
+ *   armed         a successful FIRST save on this device, not "the calendar has events" --
+ *                 otherwise it greets somebody who has used the product for a month.
+ *   dismissed     retires it forever. There is no re-arm path anywhere in this module.
+ *   isOwner       previewing as someone else is looking at a calendar that is not yours to
+ *                 configure, so suggesting a contact there is incoherent.
+ *   hasEvents     keeps it off an empty week the user has merely navigated to. `armed` is
+ *                 durable; this is about the page in front of them.
+ *   hasAudiences  the moment one contact or group exists, the product explains itself and the
+ *                 invitation has done its job. This retires it forever too.
+ */
+export const shouldOfferAudiencePrompt = (conditions: {
+  armed: boolean
+  dismissed: boolean
+  isOwner: boolean
+  hasEvents: boolean
+  hasAudiences: boolean
+}): boolean =>
+  conditions.armed &&
+  !conditions.dismissed &&
+  conditions.isOwner &&
+  conditions.hasEvents &&
+  !conditions.hasAudiences

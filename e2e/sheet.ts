@@ -30,6 +30,26 @@ export const settleSheet = async (page: Page): Promise<Locator> => {
   return dialog
 }
 
+/**
+ * The Cloak door's accessible name, in one place, matching CLOAK_DOOR_LABEL in
+ * calendar-screen.tsx.
+ *
+ * Two buttons carry it -- the desktop header door and the phone bar's centre tile -- and CSS
+ * shows exactly one per viewport, which is what `.filter({ visible: true })` resolves. Five
+ * specs used to spell out `{ name: 'Cloak', exact: true }` themselves; that copy-paste is the
+ * thing that made the label expensive to improve, so the string lives here now and the next
+ * change to it is one line.
+ *
+ * `exact: true` is load-bearing in the other direction too: `getByRole` matches an accessible
+ * name as a case-insensitive SUBSTRING, so without it this would also match anything else on
+ * the page whose name happens to contain these words.
+ */
+export const CLOAK_DOOR_NAME = 'Cloak, who can see what'
+
+/** The Cloak door, on whichever chrome this project renders. */
+export const cloakDoor = (page: Page): Locator =>
+  page.getByRole('button', { name: CLOAK_DOOR_NAME, exact: true }).filter({ visible: true })
+
 /** Click the control named `name`, then wait for the sheet it opens. */
 export const openSheet = async (page: Page, name: RegExp | string): Promise<Locator> => {
   await page.getByRole('button', { name }).first().click()

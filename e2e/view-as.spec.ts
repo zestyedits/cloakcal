@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { cloakDoor } from './sheet'
 
 /**
  * View As, end to end.
@@ -157,7 +158,7 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
   await page.goto('/')
   await expect(page.getByText('Legal Call')).toBeVisible({ timeout: 15_000 })
 
-  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  await cloakDoor(page).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
 
@@ -170,7 +171,7 @@ test('the Cloak sheet previews from a row and offers the way back', async ({ pag
   // The sidebar bar is where the resulting MODE is visible, which is why it stayed.
   await expect(page.getByRole('combobox', { name: /viewing as/i })).not.toHaveValue('owner')
 
-  await page.getByRole('button', { name: 'Cloak', exact: true }).filter({ visible: true }).click()
+  await cloakDoor(page).click()
   await page.getByRole('button', { name: 'Back to my own view' }).click()
   await expect(page).not.toHaveURL(/as=/)
 })

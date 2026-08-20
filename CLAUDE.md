@@ -1002,6 +1002,20 @@ and re-add.
   `@cloakcal/db` — for the zero-import `/billing-queries` subpath — made
   `import { anything } from '@cloakcal/db'` legal in a server module. The sweep now knows
   about re-export laundering and allowlists the one subpath.
+- **`new URL('<literal>', import.meta.url)` IS REWRITTEN BY VITE, SO A SOURCE-SCANNING TEST
+  CANNOT READ ITS OWN SOURCE THAT WAY — BUT ONLY WHEN THE PATH IS A LITERAL.** Vite statically
+  analyses that exact shape and turns it into an ASSET url, so in the jsdom projects it
+  evaluates to `http://localhost:3000/apps/web/src/…` and `fileURLToPath` throws "The URL must
+  be of scheme file". Put the same path in a VARIABLE and Vite cannot match it, so it is left
+  alone and returns `file:///…`. That difference is invisible at the call site and it is the
+  only reason `passkey-ui.client.test.ts`'s `read(path: string)` helper works while the obvious
+  inline spelling in a new test does not — one file reads its sources fine and the next one
+  cannot, with identical-looking code. **`import.meta.url` is `file:` in both cases**, so
+  logging the base proves nothing and sends you looking at jsdom. Use
+  `dirname(fileURLToPath(import.meta.url))` plus `join`: `fileURLToPath` on the STRING leaves
+  no `new URL` literal for the transform to match. Measured with a probe, both spellings side
+  by side in one file, not inferred.
+
 - **This repo writes no semicolons, so `[^;]*` in a source-scanning regex runs to the end of
   the file.** A sweep meant to find a value import matched across every import above it and
   reported an `import type` line. Scan per statement, not with a character class that has
@@ -1064,6 +1078,30 @@ and re-add.
   not the side effect. Proved by deleting the id and watching the 404 case go red while `/`
   stayed green. The copy was wrong too and in the same shape: it said "Skip to calendar" on
   eleven routes, one of which is a calendar.
+
+- **BRAND VOCABULARY MAY BE A VISIBLE LABEL, BUT IT MAY NOT BE THE WHOLE ACCESSIBLE NAME.**
+  Both Cloak doors — the desktop header button and the phone bar's centre tile — were named by
+  the bare word, which is the product's vocabulary (the mark, the verb `uncloak`,
+  `--duration-cloak`, the sheet's heading) and describes no action. A sighted user at least gets
+  the mark and the privileged centre slot as context; a screen-reader user got strictly less.
+  The name is `CLOAK_DOOR_LABEL` now and the printed word is untouched. **The visible text must
+  stay CONTAINED in the accessible name** (WCAG 2.5.3): voice control matches what the user
+  SAYS, which is what they can see, against the ACCESSIBLE name, so replacing rather than
+  extending it makes the control unreachable by voice while looking perfectly correct. One
+  constant for two buttons, pinned from the other side by `cloakDoor` in `e2e/sheet.ts` — five
+  specs had spelled out `{ name: 'Cloak', exact: true }` themselves, and that copy-paste is what
+  made an underspecified label expensive to improve.
+- **`aria-controls` ON A CONDITIONALLY MOUNTED DIALOG IS THE SKIP-LINK BUG IN NEW CLOTHES.** It
+  is the obvious next suggestion on any disclosure button and it is wrong here: `CloakSheet`
+  renders behind `{cloakOpen && …}`, so while the button is closed — which is exactly when a
+  user meets the attribute — there is no element to reference. Its `<dialog>` also carries no
+  `id` at all; the `useId()` value is bound to the `<h2>` for `aria-labelledby`. An IDREF to a
+  missing element is the same defect as `href="#main"` on a page with no `#main`.
+  `shell.spec.ts` asserts the ABSENCE so it does not get helpfully added back. `aria-expanded`
+  stays and is accurate: a native `<dialog>` returns focus to its opener on close, so the user
+  lands back on a control that reads "collapsed" at the one moment that state is perceivable —
+  which is worth a comment, because the ARIA Authoring Practices dialog pattern omits it on
+  triggers and that reads as licence to delete it.
 
 - **`getByRole(role, { name })` matches the accessible name as a case-insensitive SUBSTRING.**
   A page-wide `/Switch to/` also matches the theme toggle's "Switch to light mode", which made
@@ -1395,6 +1433,18 @@ single-table design made "you must always have at least one wrap" a one-query in
 did, and nobody had written the query, because until passkeys nothing in the product could
 delete a wrap at all. It matters most for OAuth accounts, which have no password wrap, so
 their passkeys may be all they have.
+
+**What to ask a real person about recovery, and why the obvious question is the wrong one.**
+Ask **"You forgot your password. What would you do?"**, and only then **"What if you also lost
+the recovery phrase?"** The single question people reach for first — "what happens if you lose
+the phrase" — encodes a model that stopped being true when passkeys landed: it assumes the 24
+words are the only route, so it tests whether somebody memorised a warning rather than whether
+they can find the way in. The two-step version tests the model that actually shipped. The first
+question surfaces whether passkeys and phrase rotation are FINDABLE at the moment they are
+needed; the second surfaces whether the irreversible boundary is understood BEFORE somebody
+crosses it, which is the only time understanding it is worth anything. Nothing in this repo can
+answer either — they are questions about comprehension, and the passkey flow additionally has
+never met a real authenticator.
 
 **None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
 authenticator only proves the API was called as intended. Safari's PRF behaviour and the

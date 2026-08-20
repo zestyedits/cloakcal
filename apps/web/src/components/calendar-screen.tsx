@@ -112,6 +112,30 @@ function groupByDay(occurrences: readonly RedactedOccurrence[]) {
  */
 const NO_HOLIDAYS: HolidayMap = Object.freeze({})
 
+/**
+ * THE CLOAK DOOR'S ACCESSIBLE NAME, AND WHY IT IS NOT JUST "Cloak".
+ *
+ * Two buttons open the Cloak sheet -- the compact door in the desktop header and the centre
+ * tile of the phone bar -- and both used to announce themselves as the bare word. That word is
+ * the product's vocabulary (the mark, the verb `uncloak`, `--duration-cloak`, the sheet's own
+ * heading) and it is NOT being renamed. But brand vocabulary standing alone as a control name
+ * left a screen-reader user knowing LESS than a sighted one, who at least gets the mark and
+ * the privileged centre position as context. The name describes the action now; the visible
+ * word is untouched.
+ *
+ * THE VISIBLE TEXT MUST STAY, AND MUST STAY INSIDE THIS STRING. WCAG 2.5.3 (Label in Name):
+ * somebody driving the app by voice says "click Cloak", and their software matches what they
+ * said against the ACCESSIBLE name. Replace the name with something that does not contain the
+ * printed word and the control becomes unreachable by voice while looking perfectly fine.
+ * "Cloak" is the first word here, which is also where matchers look first.
+ *
+ * ONE CONSTANT BECAUSE THERE ARE TWO BUTTONS. The whole reason this change was worth making is
+ * that an underspecified label had been copy-pasted; leaving two copies of the better one
+ * behind would set up the same drift. `e2e/sheet.ts`'s `cloakDoor` pins the same string from
+ * the other side.
+ */
+const CLOAK_DOOR_LABEL = 'Cloak, who can see what'
+
 export function CalendarScreen({
   page,
   audiences,
@@ -608,9 +632,29 @@ export function CalendarScreen({
                 />
               )}
               <span className={styles.controlDivider} aria-hidden="true" />
+              {/*
+                `aria-expanded` STAYS, and it is accurate rather than vestigial. The ARIA
+                Authoring Practices dialog pattern omits it on triggers, which someone will
+                eventually read as licence to delete this -- but the sheet is a native
+                <dialog>, so closing it returns focus to the button that opened it, and the
+                user lands back on a control that now reads "collapsed". The state is
+                perceivable at the one moment it can be.
+
+                THERE IS DELIBERATELY NO `aria-controls`, for two reasons and the second is
+                the stronger one. CloakSheet's <dialog> carries no id at all (its `useId`
+                value is bound to the <h2> for `aria-labelledby`). And the sheet is
+                CONDITIONALLY MOUNTED -- see the `{cloakOpen && ...}` block near the end of
+                this file -- so while the button is closed, which is exactly when a user
+                meets `aria-controls`, there is nothing in the DOM to point at. An IDREF to a
+                missing element is the same defect the skip link shipped, where `href="#main"`
+                pointed at nothing on the 404 and the error page. `shell.spec.ts` pins the
+                absence so this does not get "improved" back in.
+              */}
               <button
                 type="button"
                 className={styles.cloakHeaderButton}
+                aria-label={CLOAK_DOOR_LABEL}
+                aria-haspopup="dialog"
                 aria-expanded={cloakOpen}
                 onClick={() => setCloakOpen(true)}
               >
@@ -1145,9 +1189,14 @@ export function CalendarScreen({
             now; agenda/week stay instant toggles while the week fetch is on the page. */}
         <nav className={styles.nav} aria-label="Calendar views">
           {NAV_LEADING.map((target) => navControl(navItemFor(target), styles.navItem))}
+          {/* Same accessible contract as the desktop door, which is where the reasoning for
+              all three attributes lives. The two must not drift, which is what the shared
+              CLOAK_DOOR_LABEL is for. */}
           <button
             type="button"
             className={styles.cloakTile}
+            aria-label={CLOAK_DOOR_LABEL}
+            aria-haspopup="dialog"
             aria-expanded={cloakOpen}
             onClick={() => setCloakOpen(true)}
           >

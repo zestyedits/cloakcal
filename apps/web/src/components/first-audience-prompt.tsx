@@ -5,6 +5,7 @@ import {
   dismissAudiencePrompt,
   isAudiencePromptDismissed,
   isFirstRunArmed,
+  shouldOfferAudiencePrompt,
 } from '@/lib/first-run'
 import { Button } from './ui/button'
 import styles from './first-audience-prompt.module.css'
@@ -72,13 +73,22 @@ export function FirstAudiencePrompt({
    * Both remembered facts live in localStorage, which does not exist during the server
    * render, so this starts closed and opens in an effect. That also means it can never cause
    * a hydration mismatch: the server and the first client frame agree on "not shown".
+   *
+   * The initial pair is `armed: false, dismissed: true` -- either alone would keep it hidden,
+   * and stating both is the honest starting position rather than a belt-and-braces habit: we
+   * have not read storage yet, so the truthful answer to both questions is the one that shows
+   * nothing.
    */
-  const [eligible, setEligible] = useState(false)
+  const [storage, setStorage] = useState({ armed: false, dismissed: true })
   useEffect(() => {
-    setEligible(isFirstRunArmed() && !isAudiencePromptDismissed())
+    setStorage({ armed: isFirstRunArmed(), dismissed: isAudiencePromptDismissed() })
   }, [])
 
-  if (!eligible || !isOwner || !hasEvents || hasAudiences) return null
+  /* The decision itself lives in lib/first-run.ts, where every branch of it is tested. The
+     five conditions used to be an inline `if` beside the numbered list above, so nothing could
+     check that the list and the code still agreed -- and nothing here can render this
+     component at all. See that function's header for the gate that remains. */
+  if (!shouldOfferAudiencePrompt({ ...storage, isOwner, hasEvents, hasAudiences })) return null
 
   return (
     /*
@@ -100,7 +110,7 @@ export function FirstAudiencePrompt({
         size="sm"
         onClick={() => {
           dismissAudiencePrompt()
-          setEligible(false)
+          setStorage((current) => ({ ...current, dismissed: true }))
         }}
       >
         Not now
