@@ -47,6 +47,9 @@ export function MonthGrid({
   audience,
   colorFor,
   holidays = {},
+  selectMode = false,
+  selectedDay,
+  onSelectDay,
 }: {
   occurrences: readonly RedactedOccurrence[]
   /** ISO instant of the grid's first day. */
@@ -63,6 +66,14 @@ export function MonthGrid({
    * because Christmas took an events slot would be lying about how busy the day is.
    */
   holidays?: HolidayMap
+  /**
+   * PHONE ONLY, and it changes what a cell IS. Above 900px a cell is a link into the day
+   * view; below it a cell SELECTS, and the day's events are listed in full underneath the
+   * grid. The href stays on the element either way -- see the onClick on the cell.
+   */
+  selectMode?: boolean
+  selectedDay?: string | undefined
+  onSelectDay?: ((day: string) => void) | undefined
 }) {
   const { cells, names } = useMemo(() => {
     const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -132,8 +143,31 @@ export function MonthGrid({
           href={{ pathname: '/', query: queryFor(cell.day) }}
           data-outside={cell.outside || undefined}
           data-today={cell.today || undefined}
-          aria-label={`Open ${cell.day}${primaryHoliday(holidays[cell.day]) !== undefined ? `, ${primaryHoliday(holidays[cell.day])?.name}` : ''}${cell.entries.length > 0 ? `, ${cell.entries.length} ${cell.entries.length === 1 ? 'event' : 'events'}` : ''}`}
-          aria-current={cell.today ? 'date' : undefined}
+          data-selected={(selectMode && cell.day === selectedDay) || undefined}
+          onClick={(event) => {
+            /*
+             * STILL A LINK ON A PHONE, WITH THE NAVIGATION INTERCEPTED.
+             *
+             * The alternative was a <button> below 900px and a <Link> above it, which is
+             * the shape this repo has already paid for: `selectMode` comes from a
+             * post-hydration matchMedia read, so the whole 42-cell grid would render one
+             * element and then swap to the other, reflowing 104px cells to 44px ones in
+             * front of the user.
+             *
+             * Keeping the anchor means the DOM never changes, only the behaviour. The cell
+             * also still works before hydration, and still answers a middle-click or "open
+             * in new tab" with the day view, which a button cannot.
+             */
+            if (!selectMode || onSelectDay === undefined) return
+            // Modified clicks are "open this elsewhere"; the href is the honest answer.
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+            event.preventDefault()
+            onSelectDay(cell.day)
+          }}
+          aria-label={`${selectMode ? 'Show' : 'Open'} ${cell.day}${primaryHoliday(holidays[cell.day]) !== undefined ? `, ${primaryHoliday(holidays[cell.day])?.name}` : ''}${cell.entries.length > 0 ? `, ${cell.entries.length} ${cell.entries.length === 1 ? 'event' : 'events'}` : ''}`}
+          aria-current={
+            selectMode && cell.day === selectedDay ? 'true' : cell.today ? 'date' : undefined
+          }
         >
           <span className={styles.dateLine}>
             <span className={styles.number}>{cell.number}</span>
@@ -154,6 +188,17 @@ export function MonthGrid({
               )
             })()}
           </span>
+          {/*
+            THE DOTS AND THE ENTRIES ARE THE SAME ELEMENTS.
+
+            On a phone this row keeps only the coloured spines, turned into dots by CSS, and
+            drops the titles -- a 52px cell rendering "Team s" is the defect this pass is
+            about, and the words live in the selected-day agenda under the grid where there
+            is room for all of them. Deriving the dots from the entries rather than from a
+            second pass over the data is what makes the dot count and the entry count
+            impossible to drift apart, and it means the MAX_ENTRIES cap governs both.
+          */}
+          <span className={styles.entries}>
           {cell.entries.slice(0, MAX_ENTRIES).map((occurrence) => (
             <span
               key={`${occurrence.eventId}:${occurrence.occurrenceLocal}`}
@@ -175,6 +220,7 @@ export function MonthGrid({
               </span>
             </span>
           ))}
+          </span>
           {cell.entries.length > MAX_ENTRIES && (
             <span className={styles.more}>+{cell.entries.length - MAX_ENTRIES} more</span>
           )}

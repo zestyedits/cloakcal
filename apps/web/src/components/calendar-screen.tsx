@@ -331,6 +331,7 @@ export function CalendarScreen({
     return [...merged.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [days, holidays, page.from, timezone])
 
+
   // Running index of each day's first row across the whole agenda, so the entrance
   // stagger flows through the list rather than restarting at every day heading. The cap
   // lives here (not in CSS) so the delay math stays a plain multiplication.
@@ -472,6 +473,50 @@ export function CalendarScreen({
 
   const onToday =
     todayLocal === null || isShowingToday({ view, anchorDate, todayLocal, weekStart })
+
+  /*
+   * THE MONTH'S SELECTED DAY.
+   *
+   * `null` means "not chosen yet", which resolves below to today when today is in the month
+   * on screen and to the anchor (the 1st) otherwise -- so the month always opens on a day
+   * with something to say rather than on an empty list.
+   *
+   * SELECTION IS CLIENT STATE AND COSTS NO FETCH, which is the whole reason this shape
+   * works: `monthGridRange` already fetched all 42 visible days (server/range.ts), so every
+   * cell's events are in `days` before the user touches anything. A URL round trip per tap
+   * would be a server navigation on a force-dynamic route for data already in hand.
+   */
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+
+  // A new month, or a different view, is a different question. Without this the selection
+  // would survive a step into a month that does not contain it and list an empty day.
+  useEffect(() => {
+    setSelectedDay(null)
+  }, [anchorDate, view])
+
+  const monthDay =
+    selectedDay ??
+    (todayLocal !== null && anchorDate !== undefined && todayLocal.slice(0, 7) === anchorDate.slice(0, 7)
+      ? todayLocal
+      : (anchorDate ?? null))
+
+  /*
+   * The month's inline agenda is the SAME list the agenda view renders, filtered to one day.
+   * Not a second row component: the agenda row already carries the edit door, the privacy
+   * chip's baseline rule, the DST note and the holiday heading, and a copy of it here would
+   * be four things to keep in step instead of none.
+   */
+  const monthAgendaDays = useMemo<readonly (readonly [string, RedactedOccurrence[]])[]>(
+    () =>
+      monthDay === null
+        ? []
+        : // `days` is the sorted ENTRY LIST, not a Map — see groupByDay.
+          [[monthDay, days.find(([day]) => day === monthDay)?.[1] ?? []] as const],
+    [monthDay, days],
+  )
+
+  const listDays = view === 'month' ? monthAgendaDays : agendaDays
+
 
   /** One compose gate for every trigger: a date to open on, and the owner's own eyes. */
   const canCompose = composeDate !== undefined && page.audience === 'owner'
@@ -1217,7 +1262,35 @@ export function CalendarScreen({
               audience={page.audience}
               colorFor={colorFor}
               holidays={holidays}
+              selectMode={isPhone}
+              selectedDay={monthDay ?? undefined}
+              onSelectDay={setSelectedDay}
             />
+          )}
+
+          {/* The selected day's own heading, above the list the agenda view renders. It is
+              a heading and a door, not a heading and a hint: the grid answers "which days
+              are busy" and the list answers "with what", but only the day view can be
+              scrolled through hour by hour, so the way there stays one tap. */}
+          {view === 'month' && isPhone && monthDay !== null && (
+            <div className={styles.monthDayBar}>
+              <h2 className={styles.monthDayHeading}>
+                {DAY_LABEL.format(new Date(`${monthDay}T00:00:00Z`))}
+              </h2>
+              <Link
+                className={styles.monthDayOpen}
+                href={{
+                  pathname: '/',
+                  query:
+                    page.audience === 'owner'
+                      ? { view: 'day', date: monthDay }
+                      : { view: 'day', date: monthDay, as: page.audience },
+                }}
+              >
+                Open day
+                <NavPendingMark />
+              </Link>
+            </div>
           )}
 
           {/* KEYED ON THE AUDIENCE, so changing who is looking replays the staggered
@@ -1233,12 +1306,18 @@ export function CalendarScreen({
           {/* Rendered conditionally rather than hidden: two copies of every title in the
               DOM would mean any assertion about a title matching twice, and a `hidden`
               subtree is still text a naive leak scan would find. */}
-          {view === 'agenda' && (
-          <ol className={styles.agenda} key={page.audience}>
-            {agendaDays.map(([day, occurrences]) => (
+          {(view === 'agenda' || (view === 'month' && isPhone)) && (
+          <ol className={styles.agenda} key={`${page.audience}:${view}:${monthDay ?? ''}`}>
+            {listDays.map(([day, occurrences]) => (
               // The id is the week strip's anchor target; scroll-margin in CSS keeps the
               // heading clear of the sticky chrome.
               <li key={day} id={`day-${day}`} className={styles.day}>
+                {/* The month's inline list is ONE day and `.monthDayBar` above it is already
+                    that day's heading, plus the door into the full day view. Rendering this
+                    one as well printed "Tuesday, May 19" twice, three lines apart. Not hidden
+                    with CSS: two copies of the same heading text in the DOM is how a
+                    `getByRole('heading', { name })` assertion starts matching twice. */}
+                {view !== 'month' && (
                 <h2 className={styles.dayHeading}>
                   {DAY_LABEL.format(new Date(`${day}T00:00:00Z`))}
                   {/* Inside the heading, not a row of its own: a holiday is a property OF
@@ -1253,6 +1332,7 @@ export function CalendarScreen({
                     )
                   })()}
                 </h2>
+                )}
                 <ul className={styles.events}>
                   {occurrences.map((occurrence, index) => (
                     <li

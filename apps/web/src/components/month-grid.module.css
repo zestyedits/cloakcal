@@ -155,3 +155,80 @@
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
+
+/* The entries list, which the phone turns into a row of dots. On desktop it is the column
+   of title lines it always was, so this wrapper changes nothing above 900px. */
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/*
+ * THE PHONE'S MONTH: DATES AND MARKS, WITH THE WORDS UNDERNEATH.
+ *
+ * What was here was the desktop month at a third of the width. Seven `1fr` columns at 390px
+ * are ~52px each, holding a 12px title behind a 3px spine and 4px of padding -- which is how
+ * the grid came to render "Team s", "Legal c", "Project". That is not a truncation a reader
+ * can complete; it is the shape of a label with none of the information.
+ *
+ * So the cell carries WHEN and WHICH CALENDAR, and nothing it cannot hold. Up to three dots,
+ * from the same entry elements the desktop prints as lines, capped by the same MAX_ENTRIES.
+ * Tapping selects, and the selected day's events are listed in full below the grid.
+ *
+ * NO COUNT, and that is a privacy decision rather than a layout one. `redactPage` has already
+ * dropped every event this audience may not know about, so a count of what remains would be
+ * truthful -- but a number invites "is that all of them?", which is the one question this
+ * product must never appear to answer. Three marks and no more says "something is here"
+ * without saying how much. `+N more` goes for the same reason.
+ *
+ * 44px is the touch floor, not a look: the cell is a control.
+ */
+@media (max-width: 899px) {
+  .cell {
+    min-height: var(--touch-min);
+    gap: 3px;
+  }
+
+  .entries {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .entry {
+    flex: none;
+    gap: 0;
+  }
+
+  /* The spine becomes the dot. Same element, same colour token, same source of truth. */
+  .spine {
+    width: 5px;
+    height: 5px;
+    border-radius: var(--radius-full);
+  }
+
+  /* `display: none`, not clipped -- unlike an event block, where the hidden line is the
+     only place the information exists. Here every title is rendered in full in the agenda
+     directly below, and 42 cells x 3 titles read out on the way past it is noise, not
+     access. The cell's own aria-label carries the date, the holiday and the count.
+
+     THE HOLIDAY NAME GOES FOR THE SAME REASON AS THE TITLES, and it is the same defect: at
+     49px a cell rendered "10 M" for Memorial Day. One letter beside a date is not a label,
+     it is a smudge that reads as a rendering fault. The name is already in the cell's
+     aria-label and in the selected-day heading underneath, both in full. */
+  .entryTitle,
+  .holiday,
+  .more {
+    display: none;
+  }
+
+  /* Selection is a ring on the cell, distinct from today's ring on the NUMBER, so a
+     selected day that is not today and a today that is not selected both stay legible. */
+  .cell[data-selected] {
+    background: var(--surface-overlay);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+}
