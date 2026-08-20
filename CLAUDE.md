@@ -835,6 +835,17 @@ for no gain, and opening a door without running it ships an unread assumption.
   real trashed title are all unrun. Same family as the contact-name ingest bug: fixture-only
   green is not evidence for a path the fixture cannot take.
 - **Before `CLOAKCAL_BILLING=1`:** the four items under item 4 above, unchanged.
+- **Before the mobile redesign is called done: A REAL PHONE.** Every number in it is Chromium
+  at a synthetic viewport. That proved layout and it cannot certify: the on-screen keyboard
+  against a bottom-anchored sheet whose Save is its last element, `env(safe-area-inset-*)`
+  against an actual notch and home indicator, Safari's toolbar behaviour against a `100dvh`
+  shell whose document never scrolls, touch hit areas, or `navigator.standalone`. Playwright's
+  WebKit is not Safari and has none of them. Minimum: one notched iPhone (Safari and
+  installed), one Android (Chrome and installed), one 375px phone. The loading handoff's
+  painted geometry is on this list too - see `e2e/loading-continuity.spec.ts` for the three
+  ways of observing it locally that were tried and are unsound.
+- **Before an install path ships:** ADR 0010's items 1-4. An installed shell has no browser
+  back button, and today Android's Back leaves the calendar with a sheet open.
 - **Before public launch:** the independent security review, unchanged.
 
 Merging Settings does not wait on any of this. The branch is done; the door is not open.
@@ -892,6 +903,43 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **CLIPPING TEXT AND CLIPPING A BLOCK'S IDENTITY ARE DIFFERENT THINGS, and the fix for the
+  first can cause the second.** Slicing a title through the middle of its glyphs was real, and
+  the fix - clip whatever does not fit - blanked half the phone week into anonymous coloured
+  rectangles. The calendar colours name a SOURCE, not a meaning, so colour plus position
+  identifies nothing: a rectangle is not an event. A block must carry a legible title or be
+  folded into a counted aggregate; there is no third state, and `e2e/block-legibility.spec.ts`
+  walks every painted block on both viewports to say so.
+- **`lanes` WAS COMPUTED PER DAY, NOT PER CLUSTER, AND HAD BEEN SINCE THE GRID WAS WRITTEN.**
+  One 09:00-17:00 all-hands made every other event that day render at half width, including
+  ones overlapping nothing. It only surfaced because a width-based rule started blanking those
+  blocks - the narrowing itself had been invisible for months, because a half-width block that
+  still shows its title looks like a design choice.
+- **A `<dialog>` FALLBACK CANNOT BE OBSERVED BY HOLDING ITS NAVIGATION.** With the response for
+  a route fully held, Next keeps the PREVIOUS route painted and never renders the loading
+  boundary - which is exactly why `ui/nav-pending.tsx` exists in this product. A test that
+  clicks and waits for the fallback waits its whole timeout for something that is not coming.
+  Blocking the chunk files does not help either: the fallback-to-content swap is an inline
+  script. Re-serving a truncated copy of the streamed HTML paints something whose layout is not
+  the page's (an 850px header, measured). Pin the chrome on the SOURCE and pin the
+  destination's values live, so the source test is checked against reality.
+- **A LOADING FALLBACK THAT DRAWS THE REAL CLASSES CAN STILL DRIFT, AND ITS OWN PROSE BREAKS
+  THE SCAN THAT WOULD CATCH IT.** `loading.tsx` explains the drift it is guarding, so it
+  contains `<ThemeToggle />` as a QUOTATION - a positional check against the raw file found the
+  comment's copy and failed on correct code. Strip comments first, line before block. And the
+  comment explaining that trap must not SPELL a block-comment terminator, because writing one
+  inside a block comment ends it: that cost a transform error one layer up.
+- **BACKSLASH ESCAPES DO NOT SURVIVE EVERY LAYER THEY PASS THROUGH, and the failure names
+  nothing.** A backslash-d in a template literal handed to `new RegExp` matches a literal
+  `d`. A backslash-n written into a file through a shell heredoc can arrive as a REAL
+  newline and terminate the regex literal it was inside. Both surface as a not-found or a
+  syntax error pointing at the wrong place. Prefer a character class, a plain substring, or
+  an index comparison over an escape that has to cross a boundary. This entry was itself
+  written twice, because the first draft spelled the escape and the escape did the thing
+  the sentence warns about.
+- **`pnpm typecheck` NEVER COMPILES CSS.** A stray brace in a CSS module typechecks perfectly
+  and 500s the page. Only `pnpm build` or loading the route sees it, which is worth knowing
+  when a change is CSS-only and typecheck looks like enough.
 - **A QUERY CONTAINER'S SIZE IS ITS CONTENT BOX, AND A BLIND SWEEP LOOKS EXACTLY LIKE A
   CLEAN ONE.** `container-type: size` on `.event` (week-grid) answers `@container
   (max-width: N)` with the element's CONTENT box: `.event` carries 8px side padding, a 3px

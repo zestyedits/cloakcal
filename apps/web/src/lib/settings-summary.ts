@@ -43,16 +43,28 @@ const plural = (value: number, one: string, many: string): string =>
 export function summariseSettings(counts: SettingsCounts): SettingsSummary {
   return {
     /*
-     * "Nobody yet" rather than "0 people · 0 default rules". A zero is a true answer to a
+     * "Nobody yet" rather than "0 people · 0 privacy rules". A zero is a true answer to a
      * question nobody asked; the door is there to say whether there is anything to look at.
+     *
+     * "PRIVACY RULE", NOT "DEFAULT RULE". The old wording read as a rule ABOUT defaults, or
+     * as a default that happens to be a rule -- jargon either way for the one door whose job
+     * is to be plain. It counts the same thing: workspace-scoped rows, never per-event ones.
+     *
+     * It is still a COUNT and not a level. Saying "Default: Full details" would be the more
+     * useful line and it is deliberately not attempted here: the baseline is the widest
+     * disclosure across every workspace viewer, which needs the contacts, the groups and the
+     * rules loaded and the engine run over them. This hub is six head counts with no
+     * CloakProvider and no client JavaScript, and that is what lets a page of four links be a
+     * plain server component. A richer line needs a deliberately designed aggregate, not a
+     * seventh query bolted onto this one.
      */
     privacy:
       counts.contacts === 0
         ? 'Nobody yet'
         : `${plural(counts.contacts, 'person', 'people')} · ${plural(
             counts.workspaceRules,
-            'default rule',
-            'default rules',
+            'privacy rule',
+            'privacy rules',
           )}`,
     // Underscores out: `America/New_York` is a database value, "America/New York" is a place.
     calendar: `${plural(counts.calendars, 'calendar', 'calendars')} · ${counts.timezone.replaceAll('_', ' ')}`,

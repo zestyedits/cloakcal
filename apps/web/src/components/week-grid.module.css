@@ -821,3 +821,8 @@
   opacity: 0.55;
   pointer-events: none;
 }
+
+/* A touch-primary control needs feedback a finger can produce. Hover is not that. */
+.privacyNoteButton:active {
+  transform: translateY(1px);
+}

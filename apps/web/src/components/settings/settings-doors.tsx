@@ -79,7 +79,7 @@ export function SettingsDoors({
  *
  * The Plan card already reasoned this way and was alone in it: it printed "Demo" rather than
  * "Free" because a plan is an ACCOUNT fact and the fixture has no account. So are contacts,
- * calendars, default rules and passkeys. A fixture that answers "02 calendars" is answering a
+ * calendars, privacy rules and passkeys. A fixture that answers "02 calendars" is answering a
  * question about an account that does not exist, which is the same error the old readout band
  * made four times at display size.
  */

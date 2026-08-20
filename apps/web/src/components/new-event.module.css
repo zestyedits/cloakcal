@@ -65,9 +65,23 @@
     transform var(--duration-fast) var(--ease-standard);
 }
 
-.fab:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
+/*
+ * GUARDED, AND GIVEN A PRESS.
+ *
+ * This lifted 1px on hover with no guard and had no `:active` at all, so on a phone the
+ * compose button rose and stayed risen after every tap, and the tap itself produced no
+ * feedback. That is backwards for a touch-primary control: the press is the state a finger
+ * can actually produce, and the lift is the one it cannot undo.
+ */
+@media (hover: hover) {
+  .fab:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+  }
+}
+
+.fab:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .fab:disabled {

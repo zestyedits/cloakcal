@@ -70,3 +70,8 @@
   box-shadow: var(--ring-today);
   color: var(--text-primary);
 }
+
+/* A touch-primary control needs feedback a finger can produce. Hover is not that. */
+.day:active {
+  transform: translateY(1px);
+}

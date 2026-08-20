@@ -124,8 +124,13 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.door:hover .doorChevron {
-  transform: translateX(2px);
+/* The door's background is guarded two rules above; this was not, so on a phone the chevron
+   of the last-tapped door stayed nudged 2px right after navigating back. A transform that
+   sticks reads as a rendering fault, not as a hover. */
+@media (hover: hover) {
+  .door:hover .doorChevron {
+    transform: translateX(2px);
+  }
 }
 
 /*
@@ -226,8 +231,14 @@
   }
 }
 
-.legalRow a:hover {
-  text-decoration: underline;
+/* INSIDE the guard, with the colour half it belongs to. These two rules were adjacent and
+   only one was guarded, so on touch the underline latched onto whichever row was tapped last
+   while its partner did not -- a state neither rule intended. A split guard is worse than no
+   guard: it is half a hover left behind. */
+@media (hover: hover) {
+  .legalRow a:hover {
+    text-decoration: underline;
+  }
 }
 
 /* Wide enough for the state to sit BESIDE the title rather than under it -- the same

@@ -49,13 +49,13 @@ const base = {
 
 describe('what each door says to a real account', () => {
   it('states people and rules once there is anybody', () => {
-    expect(summariseSettings(base).privacy).toBe('3 people · 1 default rule')
+    expect(summariseSettings(base).privacy).toBe('3 people · 1 privacy rule')
   })
 
   it('says "Nobody yet" rather than a pair of zeroes', () => {
     /*
      * A zero is a true answer to a question nobody asked. The door exists to say whether there
-     * is anything in there to look at, and "0 people · 0 default rules" makes an empty account
+     * is anything in there to look at, and "0 people · 0 privacy rules" makes an empty account
      * read as a broken one — which is most of what the old four-figure readout band did wrong.
      */
     const line = summariseSettings({ ...base, contacts: 0, workspaceRules: 0 }).privacy

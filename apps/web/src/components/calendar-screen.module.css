@@ -879,9 +879,14 @@
     transform var(--duration-instant) var(--ease-standard);
 }
 
-.cloakTile:hover {
-  background-image: var(--gradient-accent-deep-hover);
-  box-shadow: var(--shadow-md), var(--glow-accent);
+/* GUARDED, because this is the phone's single most prominent control and an unguarded glow
+   applies on tap and stays. The centre nav tile keeping an accent halo after every press is
+   the clearest case of hover feedback outliving the finger that caused it. */
+@media (hover: hover) {
+  .cloakTile:hover {
+    background-image: var(--gradient-accent-deep-hover);
+    box-shadow: var(--shadow-md), var(--glow-accent);
+  }
 }
 
 .cloakTile:active {
