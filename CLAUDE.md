@@ -780,25 +780,39 @@ MEANS is a product decision with an architecture cost, not a copy tweak.
 2. Device pairing UI. The crypto and schema are done and tested; there is no flow. Demoted
    by passkeys, which answer the same question without a second device.
 3. Month-cell interactions (edit/visibility from a cell) — cells currently drill into day.
-4. **Stripe is BUILT, in test mode, behind a fail-closed flag. It has never met a real
-   Stripe account.** See ADR 0009. Checkout, the webhook, and cancel / resume / switch on our
-   own settings page; `pnpm billing:setup` provisions the Product, both Prices, the portal
-   configuration and the webhook endpoint over the API. Everything below is what remains:
-   - **A `sk_test_…` key.** The one input nothing here can substitute for.
-   - **`billing_writer` has no password.** 0028 created it NOLOGIN deliberately; the
-     `alter role` block in `docs/deploy.md` has to be run by hand, and until it is, every
-     webhook 500s *after* checkout has already succeeded.
-   - **The pooler question is ANSWERED, and not the way the design assumed.** Supabase offers
-     this project a DEDICATED pooler at `db.<ref>.supabase.co:6543`, whose username is the
-     bare role rather than Supavisor's `billing_writer.<ref>`. `billingConfig()` required the
-     suffix and would have rejected the only correct string, silently, as "not configured".
-     Both spellings pass now. **But that host has no A record — it is IPv6 only, and Vercel
-     functions connect over IPv4, so it works locally and fails in production.** Either find
-     the shared Supavisor pooler (IPv4, takes the suffixed username) or buy the IPv4 add-on.
-     See docs/deploy.md.
+4. **Stripe is BUILT and CONFIGURED IN TEST MODE, and as of 2026-08-21 it is switched ON in
+   production.** See ADR 0009. Checkout, the webhook, and cancel / resume / switch on our own
+   settings page; `pnpm billing:setup` provisions the Product, both Prices, the portal
+   configuration and the webhook endpoint over the API. This entry listed four blockers for
+   weeks; three were already closed and one of those had been closed since 16 August, which
+   is the same drift that let 0030 sit unapplied while the prose read as if it had not. What
+   is TRUE now, each verified rather than assumed:
+   - **All seven variables are set on Production** (the six plus `CLOAKCAL_BILLING=1`), the
+     three secrets typed Sensitive. The Stripe objects behind them were read back from the
+     API: CloakCal Pro at $8/month and $72/year, price ids matching the environment and
+     differing from each other, portal `bpc_1U5CGt…` active, and the webhook endpoint
+     **enabled** on the four events it should carry.
+   - **`billing_writer` has its password and the boundary holds in production.** Connecting
+     as it gives `is_superuser` off, `SELECT,INSERT,UPDATE` on `subscriptions`,
+     `SELECT,INSERT` on `billing_events`, and `42501` on both `workspaces` and `events`.
+     Rule 4 had only ever been proved on PGlite before this.
+   - **The pooler question is CLOSED, by option 1 rather than by paying.** The shared
+     Supavisor host `aws-0-us-east-2.pooler.supabase.com:6543` has real A records and takes
+     the suffixed username. A signed synthetic event POSTed to the live webhook returned 200
+     and its row is in `billing_events`, so a Vercel function genuinely reaches the pooler
+     over IPv4. The dedicated `db.<ref>.supabase.co` remains IPv6-only and unusable here.
+   - **A real checkout has already run** (16 August, against a local dev server pointed at the
+     production database). `subscriptions` is nonetheless empty, and that is the documented
+     cascade rather than a fault: the throwaway account was deleted and took the row with it.
+     All three Stripe test subscriptions are `canceled`, so nothing is orphaned and billing.
    - **Cancelling upstream before an account delete.** Still unbuilt, because there is still
      no delete flow to hook it to. The legal copy now says deletion is by email, which is
-     true; when the flow lands, the upstream cancel is its FIRST step.
+     true; when the flow lands, the upstream cancel is its FIRST step. **This is the one
+     genuinely open item on billing.**
+   - **Changing any of the seven needs a REDEPLOY**, contrary to what `config.ts` and
+     `docs/deploy.md` both used to claim. Vercel snapshots environment variables into a
+     deployment at build time. Measured: six set, webhook 503, redeploy of the same commit,
+     webhook 400.
 
    `billing_events` settles the idempotency question ADR 0007 left open: the event id is the
    primary key, so a replay is a constraint violation the handler reads as "already done".
@@ -834,7 +848,13 @@ for no gain, and opening a door without running it ships an unread assumption.
   exceptions` is readable at all under its policy, and whether the private CloakStore opens a
   real trashed title are all unrun. Same family as the contact-name ingest bug: fixture-only
   green is not evidence for a path the fixture cannot take.
-- **Before `CLOAKCAL_BILLING=1`:** the four items under item 4 above, unchanged.
+- **`CLOAKCAL_BILLING=1` IS SET on production, since 2026-08-21**, in TEST MODE. This entry
+  used to name it as a future step. The window was chosen deliberately: sign-ups are closed
+  so no stranger holds an account, and `billingConfig()` refuses anything but `sk_test_`, so
+  the worst case on the live site is a confusing button rather than a charge. What that
+  bought is the one check nothing local can run — the production webhook reaching the pooler,
+  now proved. **Before a LIVE key** the open item is the upstream cancel under item 4, plus
+  the independent security review, which gates everything.
 - **Before the mobile redesign is called done: A REAL PHONE.** Every number in it is Chromium
   at a synthetic viewport. That proved layout and it cannot certify: the on-screen keyboard
   against a bottom-anchored sheet whose Save is its last element, `env(safe-area-inset-*)`
