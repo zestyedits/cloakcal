@@ -70,10 +70,15 @@ Neither is reachable through the Supabase MCP tools, so both are manual.
 
 ## Billing
 
-Nothing here is set today, and billing is therefore off in every environment. The whole
-block is fail-closed as a **set**: `billingConfig()` returns null unless every one of the
-six is present and well-formed, so a half-configured deployment renders no purchase control
-at all rather than a button whose route 500s.
+**Five of the six are set on Production as of 2026-08-21**, and were verified against the
+live Stripe objects rather than assumed. `STRIPE_WEBHOOK_SECRET` is the one outstanding
+value; until it lands, billing is off in production and that is the fail-closed design
+working, not a fault.
+
+The whole block is fail-closed as a **set**: `billingConfig()` returns null unless every one
+of the six is present and well-formed, so a half-configured deployment renders no purchase
+control at all rather than a button whose route 500s. That is exactly the state Production
+is in right now, deliberately.
 
 | Variable | Value | Secret |
 |---|---|---|
@@ -91,8 +96,16 @@ prints them.
 **`CLOAKCAL_BILLING` is deliberately NOT `NEXT_PUBLIC_`,** unlike the sign-ups flag. Sign-ups
 had to be public because the browser talks to Supabase directly, so that flag is the door and
 Supabase Auth is the wall. Every billing action goes through one of our own route handlers,
-so here the server *is* the wall — and a server-only variable can be flipped without a
-redeploy, because Next does not inline it.
+so here the server *is* the wall — nothing in a bundle needs to know it.
+
+**But "no redeploy needed" is FALSE, and this file and `config.ts` both used to say it.**
+Not inlining is a Next fact; it says nothing about how Vercel delivers the value. Vercel
+snapshots environment variables into a deployment at build time, so a function keeps reading
+the values its own build was made with. Measured 2026-08-21, in this order: all six set on
+Production, then `POST /api/billing/webhook` → **503** (`billingConfig()` still null), then
+`vercel redeploy` of the same commit, then the identical request → **400**. The webhook
+route's own comment already knew — it says 503 "keeps Stripe retrying long enough for a
+deploy to fix it". Changing any of the seven means a redeploy before it is true.
 
 **A live key disables billing rather than enabling it.** `billingConfig()` refuses anything
 but `sk_test_`. That is how "nothing takes real money before the independent security review"
@@ -110,6 +123,13 @@ Migration 0028 creates the role `NOLOGIN` with no password, because a password i
 migration is a password in the git history forever. **Until somebody runs this by hand in the
 Supabase SQL editor, the webhook cannot connect and every delivery 500s — after checkout has
 already succeeded.**
+
+**This was done, and it is verified: 2026-08-21 a connection as `billing_writer` succeeded
+against the live project.** `current_user` is `billing_writer`, `is_superuser` is off, the
+grants are `SELECT,INSERT,UPDATE` on `subscriptions` and `SELECT,INSERT` on `billing_events`
+and nothing else, and `workspaces` and `events` both refuse it with `42501`. That is rule 4's
+boundary proved against production rather than against PGlite, which is the only place it had
+ever been checked.
 
 Generate a URL-safe password so there is no percent-encoding step to get wrong:
 
@@ -156,6 +176,15 @@ dig +short AAAA db.bnjbgjzbddypqtoolunz.supabase.co   # 2600:1f16:1482:9402:…
 Vercel's functions make outbound connections over IPv4, so **the dedicated pooler is not
 reachable from a Vercel deployment as things stand.** Local development is fine if the machine
 has IPv6. Three ways out, in order of preference:
+
+**Option 1 was taken, and it is verified end to end (2026-08-21).** `BILLING_DATABASE_URL`
+points at `aws-0-us-east-2.pooler.supabase.com:6543` with the suffixed username
+`billing_writer.bnjbgjzbddypqtoolunz`. A signed synthetic `customer.subscription.deleted` was
+POSTed to `https://cloakcal.com/api/billing/webhook` and returned **200**, and the matching
+`evt_probe_ipv4_*` row is in `billing_events` — so a real Vercel production function reached
+the pooler over IPv4 as `billing_writer` and committed. Nothing in this repo can test that,
+which is why it is written down here with the evidence rather than as an assurance. No IPv4
+add-on was needed.
 
 1. **Use the shared Supavisor pooler instead** — `aws-N-<region>.pooler.supabase.com:6543`,
    which is IPv4 and takes the `billing_writer.<project-ref>` username. Look for a

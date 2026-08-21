@@ -12,8 +12,15 @@ import 'server-only'
  * THE FLAG IS SERVER-ONLY, UNLIKE SIGN-UPS, and the difference is where the wall is. Sign-ups
  * had to be `NEXT_PUBLIC_` because the browser talks to Supabase directly, so that flag is the
  * door and Supabase Auth is the wall. Every billing action goes through one of our own route
- * handlers, so here the server IS the wall — nothing in a bundle needs to know, and a
- * server-only variable can be flipped without a redeploy because Next does not inline it.
+ * handlers, so here the server IS the wall — nothing in a bundle needs to know.
+ *
+ * THIS COMMENT USED TO ADD "and can be flipped without a redeploy because Next does not
+ * inline it", AND THAT WAS WRONG. Not inlining is a Next fact and says nothing about how the
+ * host delivers the value; Vercel snapshots environment variables into a deployment at build
+ * time, so a function keeps reading what its own build was made with. Measured 2026-08-21:
+ * all six set on Production, webhook answered 503, `vercel redeploy` of the SAME commit, the
+ * identical request answered 400. The route below already knew — its 503 comment says that
+ * status "keeps Stripe retrying long enough for a deploy to fix it". See docs/deploy.md.
  *
  * TEST MODE IS ENFORCED HERE RATHER THAN PROMISED IN A DOCUMENT. A key that is not `sk_test_`
  * disables billing instead of enabling it, so the decision that nothing takes real money
