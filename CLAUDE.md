@@ -833,18 +833,29 @@ wire, which is a normal state for this repo to be in and a bad one to forget it 
 distinction matters both ways: holding a branch for a check nothing local can run stalls work
 for no gain, and opening a door without running it ships an unread assumption.
 
-- **Before `NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN=1`:** run `loadSettingsSummary` against a
-  throwaway account. The hub's four lines are pure-function tested for every branch, and their
-  six PostgREST head counts have never executed — the fixture has no session, so every door
+- **`loadSettingsSummary` HAS NOW RUN against a throwaway account (2026-08-21), and all four
+  lines were correct.** Privacy read "Nobody yet", Calendar "1 calendar / America/New York",
+  Security & data "Password and recovery phrase, no passkey", Billing "Free". The passkey
+  count is the one worth recording: its query carries NO user or workspace filter and leans
+  entirely on RLS, and a passkey wrap belonging to a DIFFERENT account existed in the table at
+  the time, so "no passkey" is a real negative rather than an empty database. What remains
+  before the flag is the wall, below.
+  *(Original note kept for the reasoning:)* The hub's four lines are pure-function tested for
+  every branch, and their six PostgREST head counts had never executed — the fixture has no session, so every door
   reads "Demo" and the queries return nothing to compose. What a live pass would see and
   nothing else can: whether RLS scopes each count to the caller, whether `visibility_rules`
   with `.is('event_id', null)` matches what the Privacy page lists, and whether the
   `root_key_wraps` count survives its own policy. A wrong count here is silent and plausible,
   which is the family the contact-name ingest bug and the bytea spelling bug both belong to.
-- **Before the undo strip or the Trash page are trusted:** 0031 is applied now, so what remains is to run the
-  throwaway-account recipe. Everything about them is verified in code and unverified on the
-  wire. The fixture has no session, so `TrashSection` has never issued one of its queries
-  against PostgREST — whether RLS scopes each list to the caller, whether `recurrence_
+- **The undo strip and the Trash page ARE now trusted (2026-08-21).** Verified on a real
+  account against production, not the fixture: create, delete, undo (the event came back),
+  delete again, and the Trash list on `/settings/security` showed the event with **its title
+  decrypted**, which is the private CloakStore opening a real sealed value. Restore returned it
+  to the calendar; "Delete permanently" spelled out "cannot be undone", offered Keep, and after
+  confirming, `events` held zero rows for the account and the only surviving `cloaked_fields`
+  row was the calendar's own `display_name`. So 0031 erases content rather than hiding it.
+  *(Original note kept for the reasoning:)* The fixture has no session, so `TrashSection` had
+  never issued one of its queries against PostgREST — whether RLS scopes each list to the caller, whether `recurrence_
   exceptions` is readable at all under its policy, and whether the private CloakStore opens a
   real trashed title are all unrun. Same family as the contact-name ingest bug: fixture-only
   green is not evidence for a path the fixture cannot take.
@@ -855,6 +866,25 @@ for no gain, and opening a door without running it ships an unread assumption.
   bought is the one check nothing local can run — the production webhook reaching the pooler,
   now proved. **Before a LIVE key** the open item is the upstream cancel under item 4, plus
   the independent security review, which gates everything.
+- **THE SIGN-UP DOOR IS SHUT AND THE WALL IS OPEN, which is the one combination this file
+  says must never happen.** `NEXT_PUBLIC_CLOAKCAL_SIGNUPS_OPEN` is unset on Production, so
+  `/sign-up` renders the notice — but Supabase Auth reports `disable_signup: false`, so the
+  browser can create an account by calling `/auth/v1/signup` directly with the publishable
+  key, which ships in the bundle. The flag is the door and Supabase Auth is the wall, and the
+  two are meant to move together; right now only the door is closed. Found 2026-08-21 while
+  looking for a way to make a throwaway account, and used to make one. **Switch "Allow new
+  users to sign up" OFF in the Supabase dashboard.** `GET $SUPABASE_URL/auth/v1/settings` with
+  the anon key answers this in one request and needs no dashboard.
+- **The full billing lifecycle IS verified in production (2026-08-21), in test mode.** On a
+  throwaway account: Checkout reached (so `form-action 'self'` did not block the
+  `window.location` navigation), card paid, and the plan page came back reading "You are on
+  Pro. It renews on 21 August 2027" — **with a real date, which is the `current_period_end`
+  trap not firing**. Then switch-to-monthly moved renewal to 21 September 2026 and Stripe
+  confirmed the subscription still had exactly ONE item at `$8/month, qty 1`, so the
+  `items[0].id` trap did not fire either; cancel read "on Pro until ... and it will not
+  renew"; resume restored it. Cancelling upstream drove `customer.subscription.deleted` and
+  the row went to `plan: free, provider_status: canceled`. **This is the first `subscriptions`
+  row in the project's history that has ever been observed to survive being written.**
 - **Before the mobile redesign is called done: A REAL PHONE.** Every number in it is Chromium
   at a synthetic viewport. That proved layout and it cannot certify: the on-screen keyboard
   against a bottom-anchored sheet whose Save is its last element, `env(safe-area-inset-*)`
@@ -878,6 +908,22 @@ commits behind. A push to `main` produces a production deploy now, and the apex 
 
 Four things about that are worth knowing, and the first is the one that bites.
 
+- **CI HAS NOT COMPLETED SINCE 2026-08-19, BECAUSE IT TIMES OUT RATHER THAN FAILS.** `ci.yml`
+  is ONE job with `timeout-minutes: 35`, and every run since the mobile pass has been killed
+  at the ceiling: four in a row on 08-20 and again on 08-21. The annotation is "The job has
+  exceeded the maximum execution time of 35m0s", and GitHub records that as **cancelled**, not
+  failed — so the run list looks like somebody stopped it rather than like a broken build.
+  Everything up to the browsers passes; `npx playwright test` is the long pole. Combined with
+  the next bullet (CI does not gate the deploy anyway), the practical position is that NOTHING
+  has checked `main` end to end for two days. Fixing it means sharding the e2e step or
+  splitting the job, not raising the ceiling.
+- **Two committed Linux visual baselines are STALE, and the suite cannot tell you.** The
+  `-win32` problem this file used to describe is long fixed — `-linux` and `-darwin` baselines
+  both exist. But the linux set was regenerated on 08-18 and six mobile-redesign commits landed
+  after it, and re-running the `Visual baselines (linux)` workflow on 08-21 produced
+  `agenda-mobile-visual-linux.png` and `agenda-locked-mobile-visual-linux.png` that differ from
+  what is committed. Nobody has seen that failure because the e2e step never reaches the visual
+  tests before the 35-minute kill. Download the artifact from the workflow run and commit it.
 - **CI DOES NOT GATE THE DEPLOY**, and it spent five commits red while shipping every one of
   them. `ci.yml` has no deploy step, so the two race. `main` failed from the
   `design/settings-cohesion` merge onward — `e2e/prelaunch.spec.ts` (both tests) and
