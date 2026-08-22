@@ -1669,9 +1669,16 @@ crosses it, which is the only time understanding it is worth anything. Nothing i
 answer either — they are questions about comprehension, and the passkey flow additionally has
 never met a real authenticator.
 
-**None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
-authenticator only proves the API was called as intended. Safari's PRF behaviour and the
-two-prompt flow are unverified until someone runs the throwaway-account recipe in a browser.
+**REGISTRATION HAS met a real authenticator; UNLOCK AND RECOVER HAVE NOT.** This file said
+"none of it has" for weeks, and the live database disagrees: Keith's own account carries a
+`kind = 'passkey'` wrap created 2026-08-15. That row is the evidence, because it can only be
+written after the PRF output comes back — registration creates the credential, immediately
+asserts against it, and writes NOTHING if the second call yields no PRF. So the two-prompt
+ceremony completed on real hardware. What is still unrun is unlocking WITH the passkey and
+using one on `/recover`, plus Safari specifically (the 08-15 registration says nothing about
+which browser). Those need no throwaway account — that wrap already exists, so the check is
+"sign out, then unlock with the passkey". Every other test here is source-level or PGlite,
+and a mocked authenticator only proves the API was called as intended.
 **Migration 0023 was applied to production all along**, contrary to what this file said for
 weeks. Verified 2026-08-15 against the live project: `credential_id` and `prf_salt` both
 exist, all four paired constraints are there, `root_key_wraps_one_per_credential` is there,
