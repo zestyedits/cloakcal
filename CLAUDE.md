@@ -81,8 +81,8 @@ tools/                   email-setup (Resend/Porkbun/Supabase), fixture generato
 ```bash
 pnpm dev                 # localhost:3000, needs apps/web/.env.local
 pnpm build               # production build to .next-prod. RUN THIS BEFORE pnpm test.
-pnpm test                # 1350 unit tests
-pnpm test:e2e            # 531 Playwright tests, runs its own dev server
+pnpm test                # 1384 unit tests
+pnpm test:e2e            # 604 Playwright tests, sharded 4 ways on CI, runs its own dev server
 pnpm typecheck           # covers .ts AND .tsx
 pnpm email:setup         # Resend + DNS + Supabase SMTP, idempotent
 pnpm billing:setup       # Stripe product, prices, portal config, webhook. Needs sk_test_
@@ -908,22 +908,24 @@ commits behind. A push to `main` produces a production deploy now, and the apex 
 
 Four things about that are worth knowing, and the first is the one that bites.
 
-- **CI HAS NOT COMPLETED SINCE 2026-08-19, BECAUSE IT TIMES OUT RATHER THAN FAILS.** `ci.yml`
-  is ONE job with `timeout-minutes: 35`, and every run since the mobile pass has been killed
-  at the ceiling: four in a row on 08-20 and again on 08-21. The annotation is "The job has
-  exceeded the maximum execution time of 35m0s", and GitHub records that as **cancelled**, not
-  failed — so the run list looks like somebody stopped it rather than like a broken build.
-  Everything up to the browsers passes; `npx playwright test` is the long pole. Combined with
-  the next bullet (CI does not gate the deploy anyway), the practical position is that NOTHING
-  has checked `main` end to end for two days. Fixing it means sharding the e2e step or
-  splitting the job, not raising the ceiling.
-- **Two committed Linux visual baselines are STALE, and the suite cannot tell you.** The
-  `-win32` problem this file used to describe is long fixed — `-linux` and `-darwin` baselines
-  both exist. But the linux set was regenerated on 08-18 and six mobile-redesign commits landed
-  after it, and re-running the `Visual baselines (linux)` workflow on 08-21 produced
-  `agenda-mobile-visual-linux.png` and `agenda-locked-mobile-visual-linux.png` that differ from
-  what is committed. Nobody has seen that failure because the e2e step never reaches the visual
-  tests before the 35-minute kill. Download the artifact from the workflow run and commit it.
+- **CI USED TO TIME OUT RATHER THAN FAIL, AND THE CEILING WAS THE WRONG LEVER TWICE.** One
+  job with `timeout-minutes: 35`, and every run from 08-19 was killed at it — four on 08-20,
+  one on 08-21. GitHub files that as **cancelled**, not failed, so the run list read like
+  somebody pressed stop rather than like a broken build, and nothing checked `main` end to end
+  for two days. The budget had ALREADY gone 15 -> 35 for the identical symptom, which is the
+  lesson: minutes were never the fix. **Split 2026-08-21 into `verify` and a four-way sharded
+  `e2e`**, which run in parallel; the suite is 604 tests and each shard takes 151. Sharding
+  rather than more workers, because `workers: 2` is pinned by contention on ONE `next dev`
+  server and a shard is a whole runner with its own. **If it goes long again, add shards.**
+- **The two stale Linux mobile baselines are refreshed (2026-08-21), and the OLD ONE HAD AN
+  ERROR BAKED INTO IT.** The `-win32` problem this file used to describe is long fixed. But the
+  linux set was regenerated 08-18, six mobile-redesign commits landed after it, and nobody saw
+  the failure because the e2e step never reached the visual tests before the 35-minute kill.
+  Worth knowing for next time: the superseded `agenda-mobile-visual-linux.png` carried Next's
+  red **"1 Issue"** dev-overlay badge in the corner, so a baseline had been blessing a page
+  with a runtime error on it. Look at a regenerated screenshot before committing it — a
+  baseline is an assertion that this is CORRECT, and `maxDiffPixelRatio: 0.02` will not
+  notice a small badge.
 - **CI DOES NOT GATE THE DEPLOY**, and it spent five commits red while shipping every one of
   them. `ci.yml` has no deploy step, so the two race. `main` failed from the
   `design/settings-cohesion` merge onward — `e2e/prelaunch.spec.ts` (both tests) and
@@ -1667,9 +1669,16 @@ crosses it, which is the only time understanding it is worth anything. Nothing i
 answer either — they are questions about comprehension, and the passkey flow additionally has
 never met a real authenticator.
 
-**None of it has met a real authenticator.** Every test is source-level or PGlite; a mocked
-authenticator only proves the API was called as intended. Safari's PRF behaviour and the
-two-prompt flow are unverified until someone runs the throwaway-account recipe in a browser.
+**REGISTRATION HAS met a real authenticator; UNLOCK AND RECOVER HAVE NOT.** This file said
+"none of it has" for weeks, and the live database disagrees: Keith's own account carries a
+`kind = 'passkey'` wrap created 2026-08-15. That row is the evidence, because it can only be
+written after the PRF output comes back — registration creates the credential, immediately
+asserts against it, and writes NOTHING if the second call yields no PRF. So the two-prompt
+ceremony completed on real hardware. What is still unrun is unlocking WITH the passkey and
+using one on `/recover`, plus Safari specifically (the 08-15 registration says nothing about
+which browser). Those need no throwaway account — that wrap already exists, so the check is
+"sign out, then unlock with the passkey". Every other test here is source-level or PGlite,
+and a mocked authenticator only proves the API was called as intended.
 **Migration 0023 was applied to production all along**, contrary to what this file said for
 weeks. Verified 2026-08-15 against the live project: `credential_id` and `prf_salt` both
 exist, all four paired constraints are there, `root_key_wraps_one_per_credential` is there,
