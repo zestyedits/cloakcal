@@ -46,43 +46,48 @@
   padding: var(--space-6);
 
   /*
-   * THE RESEAL: a right-to-left wipe, the exact mirror of the uncloak in
-   * cloaked-text.module.css, which runs left-to-right. One is content opening and one is the
-   * calendar closing, and they are the two halves of a single idea rather than two ideas —
-   * which is why they share --duration-cloak and why nothing else in the app may spend it.
+   * THE RESEAL: a right-to-left curtain, drawn with a TRANSFORM.
+   *
+   * It was a clip-path over a bespoke --duration-cloak. Both are gone with the rest of the
+   * signature motion, and the property matters more than it looks: the replacement had to
+   * keep "a pixel is either covered or not covered", which is the whole argument below. A
+   * translated opaque plate has exactly that property. A fade does not.
    *
    * `both` holds the end state: this plate must not fade back out on its own. It is removed
    * when the navigation commits, which is the only thing that should ever reveal what is
    * under it.
    *
-   * Compositor-only (clip-path alone; see the keyframe), so no layout. Reduced motion collapses
-   * --duration-cloak to 1ms in tokens.css, which leaves the cover appearing instantly — the
-   * correct degradation, because the cover is the correctness half and the wipe is the
-   * gesture half.
+   * Compositor-only (transform alone; see the keyframe), so no layout. Reduced motion
+   * collapses --duration-base to 1ms in tokens.css, which leaves the cover appearing
+   * instantly — the correct degradation, because the cover is the correctness half and the
+   * travel is the gesture half.
    */
-  animation: reseal var(--duration-cloak) var(--ease-accelerate) both;
+  animation: reseal var(--duration-base) var(--ease-accelerate) both;
 }
 
 /*
- * CLIP-PATH ONLY. There is no opacity in this animation and there must never be one.
+ * TRANSFORM ONLY. There is no opacity in this animation and there must never be one.
  *
- * The first version faded 0.6 -> 1 alongside the wipe, which turns the cover into a FOG for
- * the length of the gesture: every pixel of the calendar underneath stays partly legible for
- * 420ms. That is the same defect as the blurred rest state this file exists to argue against,
- * just wearing an animation. Caught by e2e/cloak-transition.spec.ts sampling the computed
- * opacity mid-wipe and getting 0.607.
+ * The first version faded 0.6 -> 1 alongside the travel, which turns the cover into a FOG for
+ * the length of the gesture: every pixel of the calendar underneath stays partly legible
+ * throughout. That is the same defect as the blurred rest state this file exists to argue
+ * against, just wearing an animation. Caught by e2e/cloak-transition.spec.ts sampling the
+ * computed opacity mid-transition and getting 0.607.
  *
- * Wiping at full opacity means a pixel is either not covered yet or covered COMPLETELY, which
- * is what a curtain does and what a haze does not. The accessibility half does not wait for
- * any of it: `inert` is applied on the same tick the plate mounts.
+ * Travelling at full opacity means a pixel is either not covered yet or covered COMPLETELY,
+ * which is what a curtain does and what a haze does not. THIS IS WHY THE COVER MAY NEVER
+ * ANIMATE IN WITH OPACITY: an audience switch is a server navigation, so the owner's own
+ * full titles are the thing still painted underneath while the restricted frame loads. The
+ * accessibility half does not wait for any of it: `inert` is applied on the same tick the
+ * plate mounts.
  */
 @keyframes reseal {
   from {
-    clip-path: inset(0 0 0 100%);
+    transform: translateX(100%);
   }
 
   to {
-    clip-path: inset(0);
+    transform: none;
   }
 }
 

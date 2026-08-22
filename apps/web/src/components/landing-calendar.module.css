@@ -284,7 +284,7 @@
   border-left: 2px solid var(--brand-indigo);
   border-radius: var(--radius-sm);
   background: rgba(109, 92, 255, 0.16);
-  animation: reseal var(--duration-cloak) var(--ease-decelerate) both;
+  animation: reseal var(--duration-base) var(--ease-decelerate) both;
   /* 70ms per COLUMN, and deliberately not --stagger-step (24ms). That token paces a
      vertical list of rows entering one after another; this paces five day columns wiping
      open left to right, and at 24ms the five columns land inside 100ms and read as one

@@ -90,9 +90,8 @@
 }
 
 .dayName {
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  font-weight: var(--weight-regular);
+  font-weight: var(--weight-medium);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -430,7 +429,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 /*
  * The owner's visibility door: the same second line, as a button ABOVE the stretched

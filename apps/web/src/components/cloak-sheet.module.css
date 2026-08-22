@@ -11,10 +11,8 @@
 /* Engraved, matching the event sheet: one face, one weight, tracking for emphasis. */
 .title {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
+  font-weight: var(--weight-medium);
 }
 
 /* A 44px icon control. Same hit area the ghost Button gave it, a quarter of the visual

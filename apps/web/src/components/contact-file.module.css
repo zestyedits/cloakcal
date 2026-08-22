@@ -56,12 +56,9 @@
   /* Machined, not rounded: the tab is engraved into the caseback below it. */
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: var(--surface-raised);
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-regular);
+  font-weight: var(--weight-medium);
 }
 
 .fileTabId {
@@ -93,10 +90,8 @@
   flex: 1;
   min-width: 10rem;
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-xl);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
+  font-weight: var(--weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,12 +123,9 @@
 
 .sectionTitle {
   margin: 0 0 var(--space-2);
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-regular);
+  font-weight: var(--weight-medium);
 }
 
 .sectionLede {

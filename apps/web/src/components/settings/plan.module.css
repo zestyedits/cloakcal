@@ -116,11 +116,8 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
+  font-weight: var(--weight-medium);
   /* --text-secondary, which is what the segmented view control already puts on a sunken
      track. `textSecondaryOnSunken` in tokens.ts is the COMPOSITED value that pair is
      checked at, not a custom property anything may name. */
@@ -187,12 +184,9 @@
    typographic, which is what keeps the roadmap from shouting as loudly as the tier name. */
 .roadmapTitle {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
-  font-weight: var(--weight-regular);
+  font-weight: var(--weight-medium);
 }
 
 /* Free's own roadmap rows sit inside the "Your plan" band rather than in a band of their

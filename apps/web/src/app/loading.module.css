@@ -22,7 +22,6 @@
    it exactly as it squeezes the wrapping date it stands in for. */
 .rangeBar {
   height: 1rem;
-  font-family: var(--font-display);
   font-size: var(--text-base);
   width: 11ch;
   border-radius: var(--radius-sm);

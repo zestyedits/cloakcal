@@ -1272,9 +1272,11 @@ export function CalendarScreen({
               simply becomes different text under a still cursor — the one moment in the
               product where something ought to be seen happening.
 
-              The entrance is `rise`, not the cloak wipe. --duration-cloak is already spent
-              on a sealed VALUE becoming readable (cloaked-text.module.css), and spending it
-              on a list re-entrance as well would make the signature motion mean two things.
+              The entrance is `rise`, not the uncloak reveal. The reveal belongs to a sealed
+              VALUE becoming readable (cloaked-text.module.css); running it on a list
+              re-entrance too would make one gesture mean two things. Both now share
+              --duration-base rather than a bespoke duration, so the distinction is what
+              MOVES rather than how long it takes.
               Same trick as the landing hero, which keys its grid for exactly this reason. */}
           {/* Rendered conditionally rather than hidden: two copies of every title in the
               DOM would mean any assertion about a title matching twice, and a `hidden`

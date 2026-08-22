@@ -388,11 +388,8 @@
      is not. */
   flex: none;
   white-space: nowrap;
-  font-family: var(--font-display);
   font-size: var(--text-sm);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved-caps);
-  text-transform: uppercase;
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -455,10 +452,7 @@
 
 .fieldLabel {
   display: block;
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
 }
 
@@ -684,10 +678,8 @@
  */
 .subTitle {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-base);
-  font-weight: var(--weight-regular);
-  letter-spacing: var(--tracking-engraved);
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
 }
 
@@ -818,10 +810,7 @@
 }
 
 .readingLabel {
-  font-family: var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: var(--tracking-engraved-caps-wide);
-  text-transform: uppercase;
   color: var(--text-secondary);
 }
 

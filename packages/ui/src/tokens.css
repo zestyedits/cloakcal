@@ -192,7 +192,15 @@
   --duration-fast: 140ms;
   --duration-base: 220ms;
   --duration-slow: 340ms;
-  --duration-cloak: 420ms; /* the cloak/reveal transition — the signature motion */
+  /* Sheets travel further than a view change does, so they get their own step. Everything
+     else in the product uses --duration-base; there is no third speed to reach for.
+
+     --duration-cloak (420ms) WAS HERE and is gone. It was "the signature motion", spent on
+     the uncloak wipe and the audience cover, and the 2026-08-22 pass folded both into the
+     one system: nothing in this product now animates for longer than a sheet. The cover's
+     gesture survives as a transform rather than a clip-path (see audience-transition), which
+     is the same curtain drawn with a property the rest of the app already uses. */
+  --duration-sheet: 260ms;
 
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-decelerate: cubic-bezier(0, 0, 0, 1);
@@ -544,7 +552,7 @@
     --duration-fast: 1ms;
     --duration-base: 1ms;
     --duration-slow: 1ms;
-    --duration-cloak: 1ms;
+    --duration-sheet: 1ms;
   }
 
   *,
