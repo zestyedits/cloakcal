@@ -11,14 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Everything that is not a browser. Runs in about six and a half minutes, and in PARALLEL
+  # with the `e2e` matrix below rather than in front of it — the whole problem being solved
+  # here is wall clock, and making the browsers queue behind a typecheck adds seven minutes
+  # to every run to save runner time on the rare run where the typecheck is what breaks.
   verify:
     runs-on: ubuntu-latest
-    # 15 was the budget when this suite was 91 specs, and it silently stopped being enough:
-    # four merges in a row were CANCELLED mid-E2E rather than failing, which reads like
-    # someone hit the button rather than like a gate that needs more room. The number is
-    # generous on purpose — a gate that times out teaches people to ignore it, and this one
-    # is meant to become a required check.
-    timeout-minutes: 35
+    # Generous against a six-minute job, because a gate that times out teaches people to
+    # ignore it. It is NOT the lever for a slow suite: see the note on `e2e`.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -70,19 +71,59 @@ jobs:
       - name: Unit and domain
         run: pnpm test
 
+  # THE BROWSER SUITE, SHARDED ACROSS FOUR RUNNERS.
+  #
+  # RAISING THE CEILING IS NOT THE FIX, AND HAS ALREADY BEEN TRIED. This job's budget went
+  # 15 -> 35 minutes the first time runs were killed mid-E2E, and on 2026-08-19 the same
+  # symptom came back at 35: five runs in a row cancelled, which GitHub files as "cancelled"
+  # rather than "failed" and therefore reads like somebody pressed stop. Nothing checked
+  # `main` end to end for two days. If this job goes long again, add shards — do not add
+  # minutes.
+  #
+  # WHY SHARDING AND NOT MORE WORKERS. playwright.config.ts pins `workers: 2` on CI and says
+  # why: every worker shares ONE `next dev` server that compiles routes on demand, so more
+  # workers against one server buys queuing rather than throughput. A shard is a whole
+  # runner with its own server, which sidesteps that contention instead of fighting it.
+  # Measured before the split: 6m30s for everything else, and E2E still unfinished at 28m42s.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      # A red shard must not cancel its siblings: with four of them, the first failure would
+      # hide whatever the other three were about to say, and "one shard failed" is a much
+      # worse bug report than "these three tests failed".
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
       - name: Install browsers
         run: npx playwright install --with-deps chromium
 
       # E2E runs against the DEV server on purpose: the development key legitimately
       # cannot unlock a production build, and relaxing that gate to suit a test would
       # trade a real guarantee for a convenient one. Production artifacts are covered by
-      # the build-output leak suite above.
+      # the build-output leak suite in `verify`.
       # THE ONLY STEP THAT GETS SUPABASE VARIABLES, and the split is deliberate.
       #
-      # The `Build web` step above must NOT have them: its absence of them is what makes the
-      # prerender trap fire, so a server page missing `force-dynamic` dies loudly here
+      # The `Build web` step in `verify` must NOT have them: its absence of them is what makes
+      # the prerender trap fire, so a server page missing `force-dynamic` dies loudly there
       # instead of silently baking an empty session into static HTML on Vercel. That gate
-      # stays exactly as it was.
+      # stays exactly as it was, and the job split does not bring these values near it.
       #
       # But a BROWSER needs them. `supabaseBrowser()` throws when they are undefined, so
       # /recover never rendered its form and e2e/prelaunch.spec.ts failed on CI while passing
@@ -96,17 +137,18 @@ jobs:
       # serves every page, and a URL that resolves to nothing is enough to let the client
       # construct. Pointing CI at the live project would be strictly worse — a test that can
       # reach production data is a test that can change it.
-      - name: E2E, accessibility and visual
-        run: npx playwright test
+      - name: E2E, accessibility and visual (shard ${{ matrix.shard }}/4)
+        run: npx playwright test --shard=${{ matrix.shard }}/4
         env:
           NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK: '1'
           NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder.supabase.co'
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ci_placeholder_not_a_real_key'
 
+      # Named per shard because upload-artifact@v4 requires unique names within a run.
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
