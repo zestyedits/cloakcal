@@ -971,6 +971,21 @@ and re-add.
 
 ## Things that will waste your time if you do not know them
 
+- **A ROUTE-LEVEL `loading.tsx` CANNOT BE OBSERVED FROM A BROWSER TEST, SO ITS ABSENCE IS
+  ASSERTED ON THE TREE.** Measured 2026-08-22, not reasoned about: with a real fallback
+  restored at `app/settings`, a plain 390px navigation polled every 10ms saw it **zero
+  times**, and the suite written to catch it passed with the ghost sitting in the tree.
+  Holding the response is worse than useless — Next then keeps the previous route painted
+  and never renders the boundary at all, so the harness suppresses the very thing it is
+  looking for. That is the same wall the deleted `loading-continuity.spec.ts` hit, and why
+  its companion was source-level. All eight fallbacks are gone now and
+  `no-loading-boundaries.server.test.ts` asserts they stay gone; `e2e/no-skeleton.spec.ts`
+  is a backstop that can catch a fallback which genuinely paints and can never prove one
+  does not. **A green from a runtime test here means nothing on its own.**
+- **`tsc --pretty` WRAPS "error" IN ANSI COLOUR CODES, SO `grep "error TS"` FINDS NOTHING ON
+  A FAILING BUILD.** The escape sequence sits between the two words. Two real errors were
+  read as a clean typecheck this way. Pipe to `tail` and read the summary, or check
+  `${PIPESTATUS[0]}` — never trust a filtered grep to tell you a typecheck passed.
 - **CLIPPING TEXT AND CLIPPING A BLOCK'S IDENTITY ARE DIFFERENT THINGS, and the fix for the
   first can cause the second.** Slicing a title through the middle of its glyphs was real, and
   the fix - clip whatever does not fit - blanked half the phone week into anonymous coloured
