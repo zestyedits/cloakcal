@@ -7,7 +7,7 @@ import {
 import { describeBilling } from '@/lib/billing-copy'
 import type { BillingView } from '@/server/billing/view'
 import type { CheckoutReturn } from './billing-band'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { Button } from '../ui/button'
 import { PlanBadge } from '../ui/plan-badge'
 import { BillingBand } from './billing-band'
@@ -79,7 +79,7 @@ export function PlanScreen({
   const pro = planById('pro')
 
   return (
-    <PageShell back={{ href: '/settings', label: 'Settings' }}>
+    <PageBody>
       {/* The lede said "what Pro will cost when billing opens" for as long as it could not be
           bought. That is a claim with an expiry date on a page that now sometimes takes a
           payment, so it states the durable fact instead and lets the bands say which case
@@ -196,7 +196,7 @@ export function PlanScreen({
       </main>
 
       <SettingsSiblings current="plan" billingEnabled={billing !== null} />
-    </PageShell>
+    </PageBody>
   )
 }
 

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { decisionToLevel, type VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
@@ -12,7 +11,7 @@ import { rpcErrorMessage } from '@/lib/rpc-error'
 import { sealFields } from '@/lib/cloaked-fields'
 import { CloakProvider, useCloakStore, type ExtraSealedField } from './cloak-provider'
 import { useCloakedLabels } from './use-cloaked-labels'
-import { PageMasthead, PageShell } from './page-shell'
+import { PageMasthead, PageBody } from './page-shell'
 import { workspaceDecisionFor } from './visibility-control'
 import { PrivacyChip } from './ui/privacy-chip'
 import { Button } from './ui/button'
@@ -54,24 +53,23 @@ export const audienceNamesOf = (
 export function PeopleShell({
   children,
   masthead,
-  back = { href: '/', label: 'Calendar' },
 }: {
   children: React.ReactNode
   /** Sits OUTSIDE <main>, matching the settings pages — /people had its h1 inside. */
   masthead?: React.ReactNode
-  /** Where "up" goes. A contact's file goes back to the register, not past it. */
-  back?: { href: Route; label: string }
 }) {
   return (
     /* NARROW throughout now. /people used to be forced wide to leave room for the settings
        rail beside it; the rail is gone, and a register at 64rem is a line-length problem
-       rather than a use of the space. Its way up is still the door it was opened from. */
-    <PageShell back={back} measure="narrow">
+       rather than a use of the space.
+       The BAR is not here any more — app/people/layout.tsx owns it so it survives the move
+       between the register and a file. `back` is therefore unused and gone with it. */
+    <PageBody measure="narrow">
       {masthead}
       <main id="main" className={styles.main}>
         {children}
       </main>
-    </PageShell>
+    </PageBody>
   )
 }
 

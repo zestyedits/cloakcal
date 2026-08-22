@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { rpcErrorMessage } from '@/lib/rpc-error'
 import type { AvailabilityWeek, AvailabilityWindow } from '@/server/availability'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { SettingsSiblings } from './settings-doors'
 import { Button } from '../ui/button'
 import { InlineError } from '../ui/inline-error'
@@ -143,7 +143,7 @@ export function AvailabilityScreen({
   }
 
   return (
-    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+    <PageBody measure="narrow">
       <PageMasthead
         title="Availability"
         lede="The hours you are open, and what the calendar shades outside them."
@@ -257,6 +257,6 @@ export function AvailabilityScreen({
       </main>
 
       <SettingsSiblings current="calendar" billingEnabled={billingEnabled} />
-    </PageShell>
+    </PageBody>
   )
 }

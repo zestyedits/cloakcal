@@ -5,7 +5,7 @@ import type { VisibilityRule } from '@cloakcal/policy'
 import type { RedactedPage } from '@/server/audience'
 import type { AudienceOption } from '@/lib/audiences'
 import { CloakProvider, type ExtraSealedField } from '../cloak-provider'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { ButtonLink } from '../ui/button'
 import { SettingsSiblings } from './settings-doors'
 import { VisibilitySection } from './visibility-section'
@@ -83,7 +83,7 @@ export function PrivacyScreen({
     <CloakProvider page={page} email={email} extraFields={nameFields}>
       {/* NARROW, like every settings sub-page. Without a rail beside it, 64rem of form is a
           line-length problem rather than a use of the space. */}
-      <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+      <PageBody measure="narrow">
         <PageMasthead
           title="Privacy"
           lede="What each person and group sees of your calendar, and who those people are."
@@ -151,7 +151,7 @@ export function PrivacyScreen({
         </main>
 
         <SettingsSiblings current="privacy" billingEnabled={billingEnabled} />
-      </PageShell>
+      </PageBody>
     </CloakProvider>
   )
 }

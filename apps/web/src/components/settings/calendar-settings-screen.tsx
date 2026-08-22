@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { RedactedPage } from '@/server/audience'
 import type { CalendarPrefs, SettingsCalendar } from '@/server/settings'
 import { CloakProvider } from '../cloak-provider'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { ButtonLink } from '../ui/button'
 import { AppearanceSection } from './appearance-section'
 import { CalendarsSection } from './calendars-section'
@@ -62,7 +62,7 @@ export function CalendarSettingsScreen({
 
   return (
     <CloakProvider page={page} email={email}>
-      <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+      <PageBody measure="narrow">
         <PageMasthead
           title="Calendar"
           lede="Your calendars, the time they are drawn in, how they look, and the hours you are open."
@@ -142,7 +142,7 @@ export function CalendarSettingsScreen({
         </main>
 
         <SettingsSiblings current="calendar" billingEnabled={billingEnabled} />
-      </PageShell>
+      </PageBody>
     </CloakProvider>
   )
 }

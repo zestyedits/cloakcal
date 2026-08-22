@@ -9,7 +9,7 @@ import type { SettingsDevice } from '@/server/settings'
  * a handful of constants, and it is also the module a capability check is allowed to look at.
  */
 import { DELETE_ACCOUNT_SUBJECT, SUPPORT_EMAIL, mailtoFor } from '@/lib/contact'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { ChangePassword } from '../change-password'
 import { ExportCalendar } from '../export-calendar'
 import { PasskeysSection } from '../passkeys-section'
@@ -57,7 +57,7 @@ export function SecurityScreen({
     /* NARROW, now that the rail is gone. This page was forced wide to leave room for a 13rem
        scroll-spy column beside it; without one, 64rem of single-column form is the "narrow
        rail in a huge empty canvas" complaint rather than a use of the space. */
-    <PageShell back={{ href: '/settings', label: 'Settings' }} measure="narrow">
+    <PageBody measure="narrow">
       <PageMasthead
         title="Security &amp; data"
         lede="Your password, your passkeys and your recovery phrase all open the same key. Changing any one of them re-wraps that key; none of them touches an event."
@@ -226,6 +226,6 @@ export function SecurityScreen({
       </main>
 
       <SettingsSiblings current="security" billingEnabled={billingEnabled} />
-    </PageShell>
+    </PageBody>
   )
 }

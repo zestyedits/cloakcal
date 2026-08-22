@@ -67,4 +67,23 @@ export function PageMasthead({ title, lede }: { title: string; lede: string }) {
   )
 }
 
+/**
+ * The content block, without a bar.
+ *
+ * For routes whose chrome lives in a LAYOUT (settings today, people next). `PageShell`
+ * still exists for the one-off pages that have no shared segment — legal, contact — where a
+ * layout would own a bar for a single child and buy nothing.
+ */
+export function PageBody({
+  measure = 'wide',
+  children,
+}: {
+  measure?: 'wide' | 'narrow'
+  children: ReactNode
+}) {
+  return (
+    <div className={`${styles.body} ${measure === 'narrow' ? styles.narrow : ''}`}>{children}</div>
+  )
+}
+
 export { styles as pageShellStyles }

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { SettingsSummary } from '@/lib/settings-sections'
-import { PageMasthead, PageShell } from '../page-shell'
+import { PageMasthead, PageBody } from '../page-shell'
 import { SettingsDoors } from './settings-doors'
 import { LegacyHashForward } from './legacy-hash-forward'
 import styles from './settings-hub.module.css'
@@ -37,7 +37,7 @@ export function SettingsHub({
   billingEnabled: boolean
 }) {
   return (
-    <PageShell back={{ href: '/', label: 'Calendar' }}>
+    <PageBody>
       <LegacyHashForward />
       <PageMasthead
         title="Settings"
@@ -75,6 +75,6 @@ export function SettingsHub({
           </Link>
         </p>
       </main>
-    </PageShell>
+    </PageBody>
   )
 }
