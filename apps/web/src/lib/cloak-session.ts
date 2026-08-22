@@ -704,11 +704,7 @@ export async function listPasskeys(): Promise<PasskeySummary[]> {
  * The ceremony runs BEFORE the insert and nothing is written if it fails, so a cancelled
  * prompt leaves no half-registered passkey behind.
  */
-export async function registerPasskeyWrap(
-  rootKey: RootKey,
-  email: string,
-  label: string,
-): Promise<void> {
+export async function registerPasskeyWrap(rootKey: RootKey, label: string): Promise<void> {
   const supabase = supabaseBrowser()
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError !== null) throw userError
@@ -718,8 +714,6 @@ export async function registerPasskeyWrap(
   // ADDS a passkey rather than silently replacing the one already wrapped here.
   const existing = await loadPasskeyWraps()
   const { credentialId, prfSalt, prfOutput } = await registerPasskey({
-    userId,
-    email,
     label,
     existingCredentialIds: existing.map((wrap) => fromPgBytea(wrap.credential_id)),
   })

@@ -116,7 +116,7 @@ export function PasskeysSection({ email, demo }: { email: string; demo: boolean 
        * back, and without this line the second one reads as the first having failed.
        */
       setWorking('Confirm twice: once to make the passkey, once to derive its key')
-      await registerPasskeyWrap(rootKey, email, `CloakCal (${email})`)
+      await registerPasskeyWrap(rootKey, `CloakCal (${email})`)
 
       setPassword('')
       setPhrase('')

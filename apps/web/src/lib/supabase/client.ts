@@ -33,6 +33,17 @@ export function supabaseBrowser(): SupabaseClient {
     )
   }
 
-  cached = createBrowserClient(url, key)
+  /*
+   * PASSKEY SIGN-IN IS OPT-IN AND STILL BETA, so the flag is here rather than assumed.
+   * Supabase's `signInWithPasskey` and the `auth.passkey` namespace do not exist on the
+   * client without it, and the failure without the flag is a missing method rather than a
+   * refused request — which reads like a version problem and is not one. See ADR 0011.
+   *
+   * It changes nothing for any other caller: the flag adds methods, and a project with
+   * passkeys switched off answers them with `passkey_disabled` rather than misbehaving.
+   */
+  cached = createBrowserClient(url, key, {
+    auth: { experimental: { passkey: true } },
+  })
   return cached
 }
