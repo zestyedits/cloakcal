@@ -15,6 +15,7 @@ playwright-report/
 .env
 .env.*
 !.env.example
+!.env.base44-defaults
 .vercel
 
 # Next build output
@@ -23,6 +24,7 @@ apps/web/.next-prod/
 apps/web/next-env.d.ts
 /test-results/
 .env*
+!.env.base44-defaults
 .playwright-mcp/
 
 # iCloud Drive collision copies. This repo lives under ~/Documents, which iCloud syncs, and
