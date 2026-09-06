@@ -3,6 +3,14 @@ import type { NextConfig } from 'next'
 const config: NextConfig = {
   reactStrictMode: true,
 
+  // Base44 preview serves the dev server through an external hostname that changes whenever
+  // the environment is recreated. Next.js gates dev assets/HMR by ORIGIN, and a bare '*'
+  // does not match (wildcards only cover subdomains), so derive the allowed origin from the
+  // platform's host suffix. Unset locally, this is a no-op.
+  allowedDevOrigins: process.env['BASE44_PUBLIC_HOST_SUFFIX']
+    ? ['3000-' + process.env['BASE44_PUBLIC_HOST_SUFFIX']]
+    : [],
+
   // Production builds go to their own directory. `next dev` writes to .next, and it would
   // otherwise overwrite the prerendered HTML and RSC payloads that the build-output leak
   // suite inspects — making a privacy gate fail for reasons that have nothing to do with

@@ -1,6 +1,10 @@
 node_modules/
 .next/
 dist/
+
+# pnpm content-addressable store — must never live inside the repo (bind mount creates
+# it here by default; we redirect it to /tmp in docker-compose.base44.yml).
+.pnpm-store/
 *.tsbuildinfo
 coverage/
 test-results/
