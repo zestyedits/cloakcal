@@ -1,0 +1,11 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "description": "Supabase publishable (anon) key for the CloakCal project bnjbgjzbddypqtoolunz. Find it in the Supabase dashboard under Settings > API > Project API keys (the 'anon public' key). Public by design — safe in a client bundle; RLS is what authorizes."
+    }
+  ]
+}

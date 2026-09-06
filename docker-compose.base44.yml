@@ -1,0 +1,31 @@
+# Base44 dev environment for CloakCal.
+# Runs the Next.js PWA from the cloned source with live reload.
+#
+# Database + auth: keeps the app's existing remote Supabase project (Postgres + JWT auth +
+# RLS). The publishable key is delivered via the platform-managed env file so the user's
+# real value always wins over the placeholder. While NEXT_PUBLIC_CLOAKCAL_DEV_UNLOCK=1 the
+# app serves its committed demo fixture and bypasses auth; flip it to 0 to use the real
+# Supabase backend.
+#
+# Billing: the Stripe integration is fail-closed (no keys = no purchase controls shown).
+# See AGENTS.md for the Base44 Payments situation.
+services:
+  web:
+    image: node:22-bookworm-slim
+    working_dir: /repo
+    volumes:
+      - ./:/repo
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env.base44-defaults   # placeholders — app boots without credentials
+      - /run/base44/app.env      # platform secrets — LAST, always wins
+    environment:
+      # Platform-managed (not a user secret); stays in environment so it never needs a file.
+      - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX}
+      # Makes pnpm non-interactive (skip the "reinstall from scratch?" prompt).
+      - CI=true
+    command: >-
+      sh -c "corepack enable && corepack prepare pnpm@10.13.1 --activate &&
+      pnpm install --store-dir /tmp/pnpm-store &&
+      cd apps/web && pnpm exec next dev -H 0.0.0.0 -p 3000"
