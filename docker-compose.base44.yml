@@ -23,6 +23,8 @@ services:
     environment:
       # Platform-managed (not a user secret); stays in environment so it never needs a file.
       - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX}
+      # Makes pnpm non-interactive (skip the "reinstall from scratch?" prompt).
+      - CI=true
     command: >-
       sh -c "corepack enable && corepack prepare pnpm@10.13.1 --activate &&
       pnpm install --store-dir /tmp/pnpm-store &&
