@@ -2,6 +2,10 @@
 
 import { PRF_OUTPUT_BYTES, createPrfSalt } from '@cloakcal/crypto'
 
+import { supabaseBrowser } from './supabase/client'
+import type { CreationOptionsJson } from './passkey-wire'
+import { fromCreatedCredential, toCreationOptions } from './passkey-wire'
+
 /**
  * The WebAuthn half of the passkey wrap (ADR 0005).
  *
@@ -117,13 +121,10 @@ export interface RegisteredPasskey {
  * opens nothing, which is worse than not having one.
  */
 export async function registerPasskey({
-  userId,
-  email,
   label,
   existingCredentialIds = [],
 }: {
-  userId: string
-  email: string
+  /** Friendly name for Supabase's passkey list. The authenticator names itself separately. */
   label: string
   /**
    * Credential ids this account already has a wrap for.
@@ -134,49 +135,73 @@ export async function registerPasskey({
    * lands squarely on the last-wrap guard, which counts rows rather than working keys, so
    * "that is the only way left in" could be satisfied by a wrap that opens nothing.
    * Passing them lets the authenticator say "you already have one for this account".
+   *
+   * Supabase supplies its own exclusions for credentials IT knows about; ours are merged on
+   * top, because the two lists answer different questions and neither is a superset.
    */
   existingCredentialIds?: readonly Uint8Array[]
 }): Promise<RegisteredPasskey> {
   if (!isPasskeySupported()) throw new PasskeyUnsupportedError()
 
+  const supabase = supabaseBrowser()
+
+  /*
+   * SUPABASE OWNS THE CHALLENGE, THE RP AND THE USER HANDLE NOW (ADR 0011).
+   *
+   * This function used to mint all three itself, which was correct while the credential was
+   * ours alone. It is not any more: the same credential has to answer `signInWithPasskey`,
+   * and a server verifies an assertion against the challenge IT issued and the user handle
+   * IT stored. Substituting our own `userId` bytes here would produce a credential that
+   * wraps a key perfectly and can never sign anybody in — and it would fail at sign-in, on
+   * another day, rather than here.
+   */
+  const started = await supabase.auth.passkey.startRegistration()
+  if (started.error !== null) throw started.error
+
   const prfSalt = createPrfSalt()
-  const userIdBytes = new TextEncoder().encode(userId)
 
   let created: PublicKeyCredential | null
   try {
+    const options = toCreationOptions(
+      started.data.options as unknown as CreationOptionsJson,
+      { prf: {} } as AuthenticationExtensionsClientInputs,
+    )
     created = (await navigator.credentials.create({
       publicKey: {
-        challenge: randomChallenge() as BufferSource,
-        rp: { name: 'CloakCal' },
-        user: {
-          id: userIdBytes as BufferSource,
-          name: email,
-          displayName: label,
-        },
-        // ES256 then RS256. We never verify a signature, but an authenticator still has to
-        // pick something it can do.
-        pubKeyCredParams: [
-          { type: 'public-key', alg: -7 },
-          { type: 'public-key', alg: -257 },
+        ...options,
+        excludeCredentials: [
+          ...(options.excludeCredentials ?? []),
+          ...existingCredentialIds.map((id) => ({
+            type: 'public-key' as const,
+            id: id as BufferSource,
+          })),
         ],
-        authenticatorSelection: {
-          // REQUIRED, not preferred. User verification is the entire security argument for
-          // letting a passkey rotate a password: without it, an unlocked laptop is enough.
-          userVerification: 'required',
-          residentKey: 'preferred',
-        },
-        excludeCredentials: existingCredentialIds.map((id) => ({
-          type: 'public-key' as const,
-          id: id as BufferSource,
-        })),
         timeout: CEREMONY_TIMEOUT_MS,
-        extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
       },
     })) as PublicKeyCredential | null
   } catch {
     throw new PasskeyCancelledError()
   }
   if (created === null) throw new PasskeyCancelledError()
+
+  /*
+   * VERIFY BEFORE ASKING FOR PRF, and the order is deliberate. If Supabase rejects the
+   * attestation we want to fail with its reason while nothing has been written anywhere,
+   * rather than burn the user's second biometric prompt first and then discover the
+   * credential is not registered. The wrap is still only written by the caller, after both.
+   */
+  const verified = await supabase.auth.passkey.verifyRegistration({
+    challengeId: started.data.challenge_id,
+    credential: fromCreatedCredential(created) as never,
+  })
+  if (verified.error !== null) throw verified.error
+
+  // Best effort: the list is nicer with a name, and a failure here is cosmetic.
+  if (verified.data?.id !== undefined) {
+    await supabase.auth.passkey
+      .update({ passkeyId: verified.data.id, friendlyName: label.slice(0, 120) })
+      .catch(() => undefined)
+  }
 
   const credentialId = toBytes(created.rawId)
   const prfOutput = await evaluatePrf(credentialId, prfSalt)
